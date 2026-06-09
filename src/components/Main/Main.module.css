@@ -1,0 +1,30 @@
+p {
+  text-align: justify;
+}
+
+.disclairmer {
+  font-size: 0.8rem;
+  color: #666;
+  margin-top: 3rem;
+  margin: 5vh 5vh 5vh 5vh;
+}
+
+.boomerWarrenBanner {
+  width: 100%;
+  max-width: 450px;
+  margin: 2rem auto 0.2rem auto;
+}
+
+
+.outerOuvidoriaDiv {
+  background-color: #f9f7fa;
+}
+
+.contactInfo {
+  background-color: #f9f7fa;
+  font-family: "Fira Sans", sans-serif;
+}
+
+.contactText {
+  padding: 1.5rem;
+}
