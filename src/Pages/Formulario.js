@@ -3,6 +3,7 @@ import { Container, Form, Button, Row, Col, Alert, InputGroup } from 'react-boot
 import { Widget } from '@uploadcare/react-widget';
 import Header from '../components/Header/Header';
 import Footer from '../components/Footer/Footer';
+import { buscarCEP, enviarFormulario } from '../services/formularioService';
 
 const maskCPF = v => v.replace(/\D/g, '').slice(0, 11)
   .replace(/(\d{3})(\d)/, '$1.$2')
@@ -415,24 +416,15 @@ function Formulario() {
     endereco: { ...prev.endereco, [field]: value },
   }));
 
-  const buscarCEP = async () => {
+  const handleBuscarCEP = async () => {
     const cep = formData.endereco.cep.replace(/\D/g, '');
     if (cep.length !== 8) return;
     try {
-      const res = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
-      const data = await res.json();
-      if (!data.erro) {
-        setFormData(prev => ({
-          ...prev,
-          endereco: {
-            ...prev.endereco,
-            logradouro: data.logradouro || '',
-            bairro: data.bairro || '',
-            cidade: data.localidade || '',
-            estado: data.uf || '',
-          },
-        }));
-      }
+      const endereco = await buscarCEP(cep);
+      setFormData(prev => ({
+        ...prev,
+        endereco: { ...prev.endereco, ...endereco },
+      }));
     } catch { }
   };
 
@@ -517,15 +509,10 @@ function Formulario() {
     setLoading(true);
     setSubmitError('');
     try {
-      const res = await fetch(process.env.REACT_APP_ZAPIER_WEBHOOK_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
-      });
-      if (res.ok) setSubmitted(true);
-      else setSubmitError('Erro ao enviar. Tente novamente.');
-    } catch {
-      setSubmitError('Erro de conexão. Verifique sua internet.');
+      await enviarFormulario(formData);
+      setSubmitted(true);
+    } catch (err) {
+      setSubmitError(err.message || 'Erro de conexão. Verifique sua internet.');
     } finally {
       setLoading(false);
     }
@@ -571,7 +558,7 @@ function Formulario() {
               errors={errors}
               set={set}
               setEndereco={setEndereco}
-              buscarCEP={buscarCEP}
+              buscarCEP={handleBuscarCEP}
             />
           )}
           {step === 2 && (
