@@ -3,12 +3,12 @@
   "version": "0.1.0",
   "homepage": "https://www.boomerinvestimentos.com.br",
   "private": true,
+  "proxy": "http://localhost:3001",
   "dependencies": {
     "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "^6.6.4",
     "@testing-library/react": "^16.3.0",
     "@testing-library/user-event": "^13.5.0",
-    "@uploadcare/react-widget": "^3.0.1",
     "bootstrap": "^5.3.7",
     "react": "^19.1.1",
     "react-bootstrap": "^2.10.10",

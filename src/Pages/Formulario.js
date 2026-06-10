@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { Container, Form, Button, Row, Col, Alert, InputGroup } from 'react-bootstrap';
-import { Widget } from '@uploadcare/react-widget';
 import Header from '../components/Header/Header';
 import Footer from '../components/Footer/Footer';
 import { buscarCEP, enviarFormulario } from '../services/formularioService';
@@ -35,7 +34,7 @@ const emptyCusto = () => ({ nome: '', valor: '', metodo: '' });
 
 const initialState = {
   nome: '', celular: '', email: '', cpf: '',
-  documento_tipo: '', documento_url: '',
+  documento_tipo: '', documento: null,
   endereco: { cep: '', logradouro: '', numero: '', complemento: '', bairro: '', cidade: '', estado: '' },
   banco: '',
   cartoes: [emptyCartao()],
@@ -121,22 +120,21 @@ function StepOne({ data, errors, set, setEndereco, buscarCEP }) {
           </Form.Group>
         </Col>
         <Col xs={12} className="mb-4">
-          <Form.Label>Documento de identidade (PDF) *</Form.Label>
-          <div>
-            <Widget
-              publicKey={process.env.REACT_APP_UPLOADCARE_PUBLIC_KEY}
-              onChange={info => set('documento_url', info.cdnUrl)}
-              tabs="file"
-              previewStep
-              clearable
+          <Form.Group>
+            <Form.Label>Documento de identidade (PDF ou imagem) *</Form.Label>
+            <Form.Control
+              type="file"
+              accept=".pdf,.jpg,.jpeg,.png"
+              onChange={e => set('documento', e.target.files[0] || null)}
+              isInvalid={!!errors.documento}
             />
-          </div>
-          {data.documento_url && (
-            <div className="text-success mt-1" style={{ fontSize: '0.85rem' }}>
-              Arquivo enviado ✓
-            </div>
-          )}
-          <FieldError msg={errors.documento_url} />
+            {data.documento && (
+              <div className="text-success mt-1" style={{ fontSize: '0.85rem' }}>
+                {data.documento.name} selecionado ✓
+              </div>
+            )}
+            <FieldError msg={errors.documento} />
+          </Form.Group>
         </Col>
       </Row>
 
@@ -435,7 +433,7 @@ function Formulario() {
     if (!/\S+@\S+\.\S+/.test(formData.email)) e.email = 'E-mail inválido';
     if (formData.cpf.replace(/\D/g, '').length < 11) e.cpf = 'CPF inválido';
     if (!formData.documento_tipo) e.documento_tipo = 'Selecione o tipo';
-    if (!formData.documento_url) e.documento_url = 'Faça o upload do documento';
+    if (!formData.documento) e.documento = 'Selecione o documento';
     if (!formData.endereco.cep.trim()) e.cep = 'Obrigatório';
     if (!formData.endereco.logradouro.trim()) e.logradouro = 'Obrigatório';
     if (!formData.endereco.numero.trim()) e.numero = 'Obrigatório';
@@ -509,7 +507,7 @@ function Formulario() {
     setLoading(true);
     setSubmitError('');
     try {
-      await enviarFormulario(formData);
+      await enviarFormulario(formData, formData.documento);
       setSubmitted(true);
     } catch (err) {
       setSubmitError(err.message || 'Erro de conexão. Verifique sua internet.');
