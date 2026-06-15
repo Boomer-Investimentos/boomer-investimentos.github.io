@@ -2,8 +2,8 @@ require('dotenv').config();
 const express = require('express');
 const multer = require('multer');
 const axios = require('axios');
-const FormData = require('form-data');
 const cors = require('cors');
+const { google } = require('googleapis');
 
 const app = express();
 
@@ -26,31 +26,76 @@ app.use(cors({
   methods: ['POST'],
 }));
 
+function getDriveClient() {
+  const raw = process.env.GOOGLE_SERVICE_ACCOUNT_JSON.replace(/^['"]|['"]$/g, '');
+  const credentials = JSON.parse(raw);
+  const auth = new google.auth.GoogleAuth({
+    credentials,
+    scopes: ['https://www.googleapis.com/auth/drive'],
+  });
+  return google.drive({ version: 'v3', auth });
+}
+
+async function uploadToDrive(nome, file) {
+  const drive = getDriveClient();
+  const parentFolderId = process.env.GOOGLE_DRIVE_FOLDER_ID;
+
+  const folderRes = await drive.files.create({
+    requestBody: {
+      name: nome,
+      mimeType: 'application/vnd.google-apps.folder',
+      parents: [parentFolderId],
+    },
+    supportsAllDrives: true,
+    fields: 'id',
+  });
+  const folderId = folderRes.data.id;
+
+  const { Readable } = require('stream');
+  const fileRes = await drive.files.create({
+    requestBody: {
+      name: file.originalname,
+      parents: [folderId],
+    },
+    media: {
+      mimeType: file.mimetype,
+      body: Readable.from(file.buffer),
+    },
+    supportsAllDrives: true,
+    fields: 'id, webViewLink',
+  });
+
+  return fileRes.data.webViewLink;
+}
+
 app.post('/api/send-form', upload.single('documento'), async (req, res) => {
   const { nome, celular, email, cpf, documento_tipo, banco, endereco, cartoes, rendas, custos_fixos } = req.body;
 
-  const fd = new FormData();
-  fd.append('nome', nome || '');
-  fd.append('celular', celular || '');
-  fd.append('email', email || '');
-  fd.append('cpf', cpf || '');
-  fd.append('documento_tipo', documento_tipo || '');
-  fd.append('banco', banco || '');
-  fd.append('endereco', endereco || '{}');
-  fd.append('cartoes', cartoes || '[]');
-  fd.append('rendas', rendas || '[]');
-  fd.append('custos_fixos', custos_fixos || '[]');
-
+  let documentoLink = null;
   if (req.file) {
-    fd.append('documento', req.file.buffer, {
-      filename: req.file.originalname,
-      contentType: req.file.mimetype,
-    });
+    try {
+      documentoLink = await uploadToDrive(nome, req.file);
+    } catch (err) {
+      console.error('Google Drive error:', err.message);
+      return res.status(502).json({ error: 'Erro ao fazer upload do documento. Tente novamente.' });
+    }
   }
 
   try {
-    await axios.post(process.env.ZAPIER_WEBHOOK_URL, fd, {
-      headers: fd.getHeaders(),
+    await axios.post(process.env.ZAPIER_WEBHOOK_URL, {
+      nome,
+      celular,
+      email,
+      cpf,
+      documento_tipo,
+      banco,
+      endereco: endereco ? JSON.parse(endereco) : {},
+      cartoes: cartoes ? JSON.parse(cartoes) : [],
+      rendas: rendas ? JSON.parse(rendas) : [],
+      custos_fixos: custos_fixos ? JSON.parse(custos_fixos) : [],
+      documento_link: documentoLink,
+    }, {
+      headers: { 'Content-Type': 'application/json' },
       timeout: 15000,
     });
     res.status(200).json({ ok: true });
