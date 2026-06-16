@@ -23,7 +23,7 @@ const maskBRL = v => {
 
 const BANCOS = [
   'Nubank', 'Itaú', 'Bradesco', 'Santander', 'Caixa Econômica Federal',
-  'Banco do Brasil', 'Inter', 'C6 Bank', 'Sicoob', 'Outro',
+  'Banco do Brasil', 'Inter', 'C6 Bank', 'Sicoob', 'Outro', 'Cora', 'Neon', 'PagBank', 'Mercado Pago'
 ];
 const TIPOS_DOCUMENTO = ['RG', 'CNH', 'Carteira de Trabalho', 'Passaporte', 'RNE', 'Outro'];
 const METODOS_PAGAMENTO = ['Pix', 'Boleto', 'Dinheiro', 'Débito', 'Cartão de Crédito'];
@@ -103,7 +103,7 @@ function StepOne({ data, errors, set, setEndereco, buscarCEP }) {
         </Col>
         <Col xs={12} md={6} className="mb-3">
           <Form.Group>
-            <Form.Label>Tipo de documento *</Form.Label>
+            <Form.Label>Tipo de documento</Form.Label>
             <div className="d-flex flex-wrap gap-2 mt-1">
               {TIPOS_DOCUMENTO.map(tipo => (
                 <Button
@@ -121,7 +121,7 @@ function StepOne({ data, errors, set, setEndereco, buscarCEP }) {
         </Col>
         <Col xs={12} className="mb-4">
           <Form.Group>
-            <Form.Label>Documento de identidade (PDF ou imagem) *</Form.Label>
+            <Form.Label>Documento de identificação (PDF ou imagem) *</Form.Label>
             <Form.Control
               type="file"
               accept=".pdf,.jpg,.jpeg,.png"
@@ -334,7 +334,7 @@ function StepThree({ data, errors, updateRenda, addRenda, removeRenda, updateCus
                 value={renda.tipo}
                 onChange={e => updateRenda(i, 'tipo', e.target.value)}
                 isInvalid={!!errors[`renda_tipo_${i}`]}
-                placeholder="Ex: CLT, Freelance, Aluguel"
+                placeholder="Ex: CLT, Freelance, Pensão"
               />
               <FieldError msg={errors[`renda_tipo_${i}`]} />
             </Col>
@@ -386,7 +386,7 @@ function StepThree({ data, errors, updateRenda, addRenda, removeRenda, updateCus
                 onChange={e => updateCusto(i, 'metodo', e.target.value)}
                 isInvalid={!!errors[`custo_metodo_${i}`]}
               >
-                <option value="">Método</option>
+                <option value="">Método de pagamento</option>
                 {METODOS_PAGAMENTO.map(m => <option key={m} value={m}>{m}</option>)}
               </Form.Select>
               <FieldError msg={errors[`custo_metodo_${i}`]} />
@@ -467,7 +467,6 @@ function Formulario() {
     if (!formData.celular.trim()) e.celular = 'Obrigatório';
     if (!/\S+@\S+\.\S+/.test(formData.email)) e.email = 'E-mail inválido';
     if (formData.cpf.replace(/\D/g, '').length < 11) e.cpf = 'CPF inválido';
-    if (!formData.documento_tipo) e.documento_tipo = 'Selecione o tipo';
     if (!formData.documento) e.documento = 'Selecione o documento';
     if (!formData.endereco.cep.trim()) e.cep = 'Obrigatório';
     if (!formData.endereco.logradouro.trim()) e.logradouro = 'Obrigatório';
