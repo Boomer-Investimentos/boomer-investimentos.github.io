@@ -30,7 +30,7 @@ const METODOS_PAGAMENTO = ['Pix', 'Boleto', 'Dinheiro', 'Débito', 'Cartão de C
 
 const emptyCartao = () => ({ modelo: '', fechamento: '', vencimento: '' });
 const emptyRenda = () => ({ tipo: '', valor: '' });
-const emptyCusto = () => ({ nome: '', valor: '', metodo: '' });
+const emptyCusto = () => ({ nome: '', valor: '', metodo: '', parcelado: false, parcelas: '', inicio_parcela: '' });
 
 const initialState = {
   nome: '', celular: '', email: '', cpf: '',
@@ -392,6 +392,41 @@ function StepThree({ data, errors, updateRenda, addRenda, removeRenda, updateCus
               <FieldError msg={errors[`custo_metodo_${i}`]} />
             </Col>
           </Row>
+          <Form.Check
+            className="mt-2"
+            type="checkbox"
+            label="Custo parcelado"
+            checked={custo.parcelado}
+            onChange={e => updateCusto(i, 'parcelado', e.target.checked)}
+          />
+          {custo.parcelado && (
+            <div className="mt-2 p-3 border rounded" style={{ background: 'var(--bs-white)' }}>
+              <Row>
+                <Col xs={5} md={3} className="mb-2">
+                  <Form.Label style={{ fontSize: '0.85rem' }}>Nº de parcelas *</Form.Label>
+                  <Form.Control
+                    type="number"
+                    min={2}
+                    value={custo.parcelas}
+                    onChange={e => updateCusto(i, 'parcelas', e.target.value)}
+                    isInvalid={!!errors[`custo_parcelas_${i}`]}
+                    placeholder="Ex: 48"
+                  />
+                  <FieldError msg={errors[`custo_parcelas_${i}`]} />
+                </Col>
+                <Col xs={7} md={4} className="mb-2">
+                  <Form.Label style={{ fontSize: '0.85rem' }}>Início da 1ª parcela *</Form.Label>
+                  <Form.Control
+                    type="date"
+                    value={custo.inicio_parcela}
+                    onChange={e => updateCusto(i, 'inicio_parcela', e.target.value)}
+                    isInvalid={!!errors[`custo_inicio_${i}`]}
+                  />
+                  <FieldError msg={errors[`custo_inicio_${i}`]} />
+                </Col>
+              </Row>
+            </div>
+          )}
         </div>
       ))}
       <Button variant="outline-dark" size="sm" onClick={addCusto} className="mb-2">+ Adicionar custo</Button>
@@ -466,6 +501,10 @@ function Formulario() {
       if (!c.nome.trim()) e[`custo_nome_${i}`] = 'Obrigatório';
       if (!c.valor || c.valor === 'R$ 0,00') e[`custo_valor_${i}`] = 'Obrigatório';
       if (!c.metodo) e[`custo_metodo_${i}`] = 'Obrigatório';
+      if (c.parcelado) {
+        if (!c.parcelas || Number(c.parcelas) < 2) e[`custo_parcelas_${i}`] = 'Informe o nº de parcelas (mín. 2)';
+        if (!c.inicio_parcela) e[`custo_inicio_${i}`] = 'Informe o início';
+      }
     });
     setErrors(e);
     return Object.keys(e).length === 0;
