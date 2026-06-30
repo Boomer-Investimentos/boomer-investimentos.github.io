@@ -1,0 +1,19 @@
+{
+  "files": {
+    "main.css": "/static/css/main.13659b2c.css",
+    "main.js": "/static/js/main.efafd67b.js",
+    "static/media/hero-img.webp": "/static/media/hero-img.63108b264fcc5396d7ed.webp",
+    "static/media/cvm-logo.webp": "/static/media/cvm-logo.137edad0830ad2c27243.webp",
+    "static/media/logo_ancord.webp": "/static/media/logo_ancord.0784b6f89d8156d37897.webp",
+    "static/media/banner_boomer_warren_white.png": "/static/media/banner_boomer_warren_white.15d4ffd22cea93007a43.png",
+    "static/media/banner_boomer_warren_black_.webp": "/static/media/banner_boomer_warren_black_.f54239e7042cd7afe3c3.webp",
+    "static/media/logo_bsm_supervisao_de_mercados.webp": "/static/media/logo_bsm_supervisao_de_mercados.4e56f06bd5f9a20a4a4c.webp",
+    "index.html": "/index.html",
+    "main.13659b2c.css.map": "/static/css/main.13659b2c.css.map",
+    "main.efafd67b.js.map": "/static/js/main.efafd67b.js.map"
+  },
+  "entrypoints": [
+    "static/css/main.13659b2c.css",
+    "static/js/main.efafd67b.js"
+  ]
+}
