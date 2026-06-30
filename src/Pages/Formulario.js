@@ -320,6 +320,13 @@ function StepThree({ data, errors, updateRenda, addRenda, removeRenda, updateCus
   return (
     <>
       <h5 className="mb-3">Renda Mensal</h5>
+      <Alert variant="warning" className="py-2">
+        <small>
+          ⚠️ Informar cada renda de forma individualizada. Exemplo:<br />
+          Freelancer - R$ 1.000,00<br />
+          Salário - R$ 3.000,00
+        </small>
+      </Alert>
       {data.rendas.map((renda, i) => (
         <div key={i} className="border rounded p-3 mb-3" style={{ background: '#f8f9fa' }}>
           <div className="d-flex justify-content-between align-items-center mb-2">
@@ -334,7 +341,7 @@ function StepThree({ data, errors, updateRenda, addRenda, removeRenda, updateCus
                 value={renda.tipo}
                 onChange={e => updateRenda(i, 'tipo', e.target.value)}
                 isInvalid={!!errors[`renda_tipo_${i}`]}
-                placeholder="Ex: CLT, Freelance, Pensão"
+                placeholder="Ex: CLT"
               />
               <FieldError msg={errors[`renda_tipo_${i}`]} />
             </Col>
@@ -352,7 +359,14 @@ function StepThree({ data, errors, updateRenda, addRenda, removeRenda, updateCus
       ))}
       <Button variant="outline-dark" size="sm" onClick={addRenda} className="mb-4">+ Adicionar renda</Button>
 
-      <h5 className="mb-3">Custos Fixos Mensais</h5>
+      <h5 className="mb-3">Custos Fixos Mensais</h5>      <Alert variant="warning" className="py-2">
+        <small>
+          ⚠️ Informar cada custo fixo mensal de forma individualizada. Exemplo:<br />
+          Aluguel - R$ 1.000,00<br />
+          Internet - R$ 300,00<br /><br />
+          <strong>OBS: Alimentação, transporte são custos variáveis e não precisam ser inseridos.</strong>
+        </small>
+      </Alert>
       {data.custos_fixos.map((custo, i) => (
         <div key={i} className="border rounded p-3 mb-3" style={{ background: '#f8f9fa' }}>
           <div className="d-flex justify-content-between align-items-center mb-2">
@@ -367,7 +381,7 @@ function StepThree({ data, errors, updateRenda, addRenda, removeRenda, updateCus
                 value={custo.nome}
                 onChange={e => updateCusto(i, 'nome', e.target.value)}
                 isInvalid={!!errors[`custo_nome_${i}`]}
-                placeholder="Ex: Aluguel, Internet"
+                placeholder="Ex: Aluguel"
               />
               <FieldError msg={errors[`custo_nome_${i}`]} />
             </Col>
