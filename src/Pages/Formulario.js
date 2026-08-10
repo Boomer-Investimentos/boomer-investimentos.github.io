@@ -239,23 +239,8 @@ function StepOne({ data, errors, set, setEndereco, buscarCEP }) {
 function StepTwo({ data, errors, set, updateCartao, addCartao, removeCartao }) {
   return (
     <>
-      <h5 className="mb-3">Informações Bancárias</h5>
-      <Row>
-        <Col xs={12} className="mb-4">
-          <Form.Group>
-            <Form.Label>Banco principal *</Form.Label>
-            <Form.Select
-              value={data.banco}
-              onChange={e => set('banco', e.target.value)}
-              isInvalid={!!errors.banco}
-            >
-              <option value="">Selecione um banco...</option>
-              {BANCOS.map(b => <option key={b} value={b}>{b}</option>)}
-            </Form.Select>
-            <FieldError msg={errors.banco} />
-          </Form.Group>
-        </Col>
-      </Row>
+      <h4 className="mb-3">Informações Bancárias</h4>
+
 
       <h5 className="mb-3">Cartões de Crédito</h5>
       {data.cartoes.map((cartao, i) => (
@@ -277,7 +262,7 @@ function StepTwo({ data, errors, set, updateCartao, addCartao, removeCartao }) {
               <FieldError msg={errors[`cartao_modelo_${i}`]} />
             </Col>
             <Col xs={6} className="mb-2">
-              <Form.Label style={{ fontSize: '0.85rem' }}>Fechamento (dia) *</Form.Label>
+              <Form.Label style={{ fontSize: '0.85rem' }}>Fechamento (dia)</Form.Label>
               <Form.Control
                 type="number"
                 min={1}
@@ -285,12 +270,12 @@ function StepTwo({ data, errors, set, updateCartao, addCartao, removeCartao }) {
                 value={cartao.fechamento}
                 onChange={e => updateCartao(i, 'fechamento', e.target.value)}
                 isInvalid={!!errors[`cartao_fechamento_${i}`]}
-                placeholder="Dia"
+                placeholder="1"
               />
               <FieldError msg={errors[`cartao_fechamento_${i}`]} />
             </Col>
             <Col xs={6} className="mb-2">
-              <Form.Label style={{ fontSize: '0.85rem' }}>Vencimento (dia) *</Form.Label>
+              <Form.Label style={{ fontSize: '0.85rem' }}>Vencimento (dia)</Form.Label>
               <Form.Control
                 type="number"
                 min={1}
@@ -298,14 +283,14 @@ function StepTwo({ data, errors, set, updateCartao, addCartao, removeCartao }) {
                 value={cartao.vencimento}
                 onChange={e => updateCartao(i, 'vencimento', e.target.value)}
                 isInvalid={!!errors[`cartao_vencimento_${i}`]}
-                placeholder="Dia"
+                placeholder="5"
               />
               <FieldError msg={errors[`cartao_vencimento_${i}`]} />
             </Col>
           </Row>
         </div>
       ))}
-      <Button variant="outline-dark" size="sm" onClick={addCartao} className="mb-3">+ Adicionar cartão</Button>
+      <Button size="sm" onClick={addCartao} className="mb-3" style={{ background: '#0096FF', borderColor: '#0096FF', color: '#fff' }}>+ Adicionar outro cartão</Button>
       <Alert variant="warning" className="py-2">
         <small>
           ⚠️ Se no seu cartão estiver escrito "melhor dia de compra", a data de fechamento é um dia antes.
@@ -334,7 +319,7 @@ function StepThree({ data, errors, updateRenda, addRenda, removeRenda, updateCus
                 value={renda.tipo}
                 onChange={e => updateRenda(i, 'tipo', e.target.value)}
                 isInvalid={!!errors[`renda_tipo_${i}`]}
-                placeholder="Ex: CLT, Freelance, Pensão"
+                placeholder="Ex: CLT"
               />
               <FieldError msg={errors[`renda_tipo_${i}`]} />
             </Col>
@@ -350,7 +335,7 @@ function StepThree({ data, errors, updateRenda, addRenda, removeRenda, updateCus
           </Row>
         </div>
       ))}
-      <Button variant="outline-dark" size="sm" onClick={addRenda} className="mb-4">+ Adicionar renda</Button>
+      <Button size="sm" onClick={addRenda} className="mb-4" style={{ background: '#0096FF', borderColor: '#0096FF', color: '#fff' }}>+ Adicionar outra renda</Button>
 
       <h5 className="mb-3">Custos Fixos Mensais</h5>
       {data.custos_fixos.map((custo, i) => (
@@ -367,7 +352,7 @@ function StepThree({ data, errors, updateRenda, addRenda, removeRenda, updateCus
                 value={custo.nome}
                 onChange={e => updateCusto(i, 'nome', e.target.value)}
                 isInvalid={!!errors[`custo_nome_${i}`]}
-                placeholder="Ex: Aluguel, Internet"
+                placeholder="Ex: Aluguel"
               />
               <FieldError msg={errors[`custo_nome_${i}`]} />
             </Col>
@@ -429,7 +414,7 @@ function StepThree({ data, errors, updateRenda, addRenda, removeRenda, updateCus
           )}
         </div>
       ))}
-      <Button variant="outline-dark" size="sm" onClick={addCusto} className="mb-2">+ Adicionar custo</Button>
+      <Button size="sm" onClick={addCusto} className="mb-2" style={{ background: '#0096FF', borderColor: '#0096FF', color: '#fff' }}>+ Adicionar outro custo</Button>
     </>
   );
 }
@@ -478,19 +463,8 @@ function Formulario() {
     return Object.keys(e).length === 0;
   };
 
-  const validateStep2 = () => {
-    const e = {};
-    if (!formData.banco) e.banco = 'Obrigatório';
-    formData.cartoes.forEach((c, i) => {
-      if (!c.modelo.trim()) e[`cartao_modelo_${i}`] = 'Obrigatório';
-      if (!c.fechamento) e[`cartao_fechamento_${i}`] = 'Obrigatório';
-      if (!c.vencimento) e[`cartao_vencimento_${i}`] = 'Obrigatório';
-    });
-    setErrors(e);
-    return Object.keys(e).length === 0;
-  };
 
-  const validateStep3 = () => {
+  const validateStep2 = () => {
     const e = {};
     formData.rendas.forEach((r, i) => {
       if (!r.tipo.trim()) e[`renda_tipo_${i}`] = 'Obrigatório';
@@ -510,8 +484,9 @@ function Formulario() {
   };
 
   const next = () => {
-    const valid = step === 1 ? validateStep1() : validateStep2();
-    if (valid) { setErrors({}); setStep(s => s + 1); }
+    if (step === 1 && !validateStep1()) return;
+    setErrors({});
+    setStep(s => s + 1);
   };
 
   const back = () => { setErrors({}); setStep(s => s - 1); };
@@ -541,7 +516,7 @@ function Formulario() {
   const removeCusto = i => set('custos_fixos', formData.custos_fixos.filter((_, idx) => idx !== i));
 
   const handleSubmit = async () => {
-    if (!validateStep3()) return;
+    if (!validateStep2()) return;
     setLoading(true);
     setSubmitError('');
     try {
