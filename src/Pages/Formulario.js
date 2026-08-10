@@ -21,10 +21,6 @@ const maskBRL = v => {
   return 'R$ ' + n.slice(0, -2).replace(/^0+(?=\d)/, '') + ',' + n.slice(-2);
 };
 
-const BANCOS = [
-  'Nubank', 'Itaú', 'Bradesco', 'Santander', 'Caixa Econômica Federal',
-  'Banco do Brasil', 'Inter', 'C6 Bank', 'Sicoob', 'Outro', 'Cora', 'Neon', 'PagBank', 'Mercado Pago'
-];
 const TIPOS_DOCUMENTO = ['RG', 'CNH', 'Carteira de Trabalho', 'Passaporte', 'RNE', 'Outro'];
 const METODOS_PAGAMENTO = ['Pix', 'Boleto', 'Dinheiro', 'Débito', 'Cartão de Crédito'];
 
