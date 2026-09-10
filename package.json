@@ -27,7 +27,12 @@
     "deploy": "gh-pages -d build",
     "build": "react-scripts build",
     "test": "react-scripts test",
+    "test:cal": "jest -c jest.config.cal.cjs",
+    "test:ci": "react-scripts test --watchAll=false && jest -c jest.config.cal.cjs --ci --coverage",
     "eject": "react-scripts eject"
+  },
+  "engines": {
+    "node": "22.x"
   },
   "eslintConfig": {
     "extends": [
@@ -48,6 +53,7 @@
     ]
   },
   "devDependencies": {
-    "gh-pages": "^6.3.0"
+    "gh-pages": "^6.3.0",
+    "supertest": "^7.0.0"
   }
 }

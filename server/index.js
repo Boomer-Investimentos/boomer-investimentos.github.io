@@ -117,4 +117,11 @@ app.use((err, _req, res, _next) => {
 });
 
 const PORT = process.env.PORT || 3001;
-app.listen(PORT, () => console.log(`Servidor rodando na porta ${PORT}`));
+
+// Só sobe a porta quando executado direto (`node index.js`).
+// Importado (ex.: supertest nos testes do calendário) apenas exporta o app.
+if (require.main === module) {
+  app.listen(PORT, () => console.log(`Servidor rodando na porta ${PORT}`));
+}
+
+module.exports = app;
