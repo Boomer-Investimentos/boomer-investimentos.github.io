@@ -4,6 +4,7 @@ const multer = require('multer');
 const axios = require('axios');
 const cors = require('cors');
 const { google } = require('googleapis');
+const { sanitizeDeep } = require('./sanitize');
 
 const app = express();
 
@@ -82,7 +83,7 @@ app.post('/api/send-form', upload.single('documento'), async (req, res) => {
   }
 
   try {
-    await axios.post(process.env.ZAPIER_WEBHOOK_URL, {
+    const payload = sanitizeDeep({
       nome,
       celular,
       email,
@@ -94,7 +95,9 @@ app.post('/api/send-form', upload.single('documento'), async (req, res) => {
       rendas: rendas ? JSON.parse(rendas) : [],
       custos_fixos: custos_fixos ? JSON.parse(custos_fixos) : [],
       documento_link: documentoLink,
-    }, {
+    });
+
+    await axios.post(process.env.ZAPIER_WEBHOOK_URL, payload, {
       headers: { 'Content-Type': 'application/json' },
       timeout: 15000,
     });
