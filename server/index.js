@@ -25,6 +25,17 @@ app.use(cors({
   origin: process.env.ALLOWED_ORIGIN || 'http://localhost:3000',
   methods: ['POST'],
 }));
+app.use(express.json());
+
+// Calendário Financeiro (/api/cal/*) — mesmos handlers da Vercel (api/cal/*.js),
+// montados aqui só pra existir localmente (`npm start` + este servidor). Em
+// produção a Vercel serve esses arquivos direto, sem passar por este Express.
+app.all('/api/cal/mes', (req, res) => require('../api/cal/mes')(req, res));
+app.all('/api/cal/login', (req, res) => require('../api/cal/login')(req, res));
+app.all('/api/cal/verificar', (req, res) => require('../api/cal/verificar')(req, res));
+app.all('/api/cal/logout', (req, res) => require('../api/cal/logout')(req, res));
+app.all('/api/cal/pagamento', (req, res) => require('../api/cal/pagamento')(req, res));
+app.all('/api/cal/lancamento', (req, res) => require('../api/cal/lancamento')(req, res));
 
 function getDriveClient() {
   const raw = process.env.GOOGLE_SERVICE_ACCOUNT_JSON.replace(/^['"]|['"]$/g, '');
