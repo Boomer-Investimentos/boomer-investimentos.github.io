@@ -46,6 +46,16 @@ function tituloMes(mes) {
   return nome.charAt(0).toUpperCase() + nome.slice(1);
 }
 
+function tituloDia(dataISO) {
+  const nome = new Date(`${dataISO}T00:00:00Z`).toLocaleDateString('pt-BR', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    timeZone: 'UTC',
+  });
+  return nome.charAt(0).toUpperCase() + nome.slice(1);
+}
+
 export default function CalendarioPage() {
   const [linkToken, setLinkToken] = useState('');
   const [mes, setMes] = useState(mesAtual());
@@ -177,7 +187,12 @@ export default function CalendarioPage() {
             carregando={carregando}
           />
           <SummaryCards totals={dados.totals} moeda={dados.moeda} />
-          <MonthGrid dados={dados} mes={mes} onTogglePago={alternarPago} />
+          <div className={styles.desktopOnly}>
+            <MonthGrid dados={dados} mes={mes} onTogglePago={alternarPago} />
+          </div>
+          <div className={styles.mobileOnly}>
+            <MobileAgenda dados={dados} mes={mes} onTogglePago={alternarPago} />
+          </div>
           <Legend categorias={dados.categorias} />
           {dados.semData.length > 0 && (
             <SemData itens={dados.semData} moeda={dados.moeda} onTogglePago={alternarPago} />
@@ -363,6 +378,150 @@ function Item({ item, onTogglePago }) {
           {marca !== '+' ? marca : ''}
         </div>
       </div>
+    </div>
+  );
+}
+
+/*
+ * Vista mobile: em vez da grade de 7 colunas do desktop com texto dentro de
+ * cada célula (ilegível em ~400px — nomes/valores cortados), usa o padrão do
+ * mockup original pra celular: mini-calendário só com pontinhos por
+ * categoria + lista de detalhe do dia selecionado abaixo.
+ */
+function MobileAgenda({ dados, mes, onTogglePago }) {
+  const hojeNoMes = dados.dias.some((d) => d.data === dados.hoje);
+  const [diaSelecionado, setDiaSelecionado] = useState(hojeNoMes ? dados.hoje : dados.dias[0]?.data);
+
+  useEffect(() => {
+    const hoje = dados.dias.some((d) => d.data === dados.hoje);
+    setDiaSelecionado(hoje ? dados.hoje : dados.dias[0]?.data);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mes]);
+
+  const diaAtual = dados.dias.find((d) => d.data === diaSelecionado) || dados.dias[0];
+  if (!diaAtual) return null;
+
+  return (
+    <div className={styles.mobileAgenda}>
+      <MiniCalendar mes={mes} dias={dados.dias} hoje={dados.hoje} selecionado={diaAtual.data} onSelecionar={setDiaSelecionado} />
+      <DayList dia={diaAtual} hoje={dados.hoje} moeda={dados.moeda} onTogglePago={onTogglePago} />
+    </div>
+  );
+}
+
+function MiniCalendar({ mes, dias, hoje, selecionado, onSelecionar }) {
+  const blanksAntes = primeiroDiaDaSemana(mes);
+  const totalCelulas = blanksAntes + dias.length;
+  const blanksDepois = (7 - (totalCelulas % 7)) % 7;
+
+  return (
+    <>
+      <div className={styles.dowRow}>
+        {DOW.map((d) => (
+          <div key={d} className={styles.dow}>
+            {d}
+          </div>
+        ))}
+      </div>
+      <div className={styles.miniGrid}>
+        {Array.from({ length: blanksAntes }).map((_, i) => (
+          <div key={`antes-${i}`} className={`${styles.miniCell} ${styles.cellBlank}`} />
+        ))}
+        {dias.map((dia) => (
+          <MiniCell
+            key={dia.data}
+            dia={dia}
+            isHoje={dia.data === hoje}
+            isSelecionado={dia.data === selecionado}
+            onSelecionar={onSelecionar}
+          />
+        ))}
+        {Array.from({ length: blanksDepois }).map((_, i) => (
+          <div key={`depois-${i}`} className={`${styles.miniCell} ${styles.cellBlank}`} />
+        ))}
+      </div>
+    </>
+  );
+}
+
+function MiniCell({ dia, isHoje, isSelecionado, onSelecionar }) {
+  const atrasado = dia.itens.some((i) => i.atrasado);
+  const classe = [
+    styles.miniCell,
+    isHoje ? styles.cellToday : '',
+    !isHoje && isSelecionado ? styles.miniCellSelecionado : '',
+    !isHoje && atrasado ? styles.cellLate : '',
+  ]
+    .filter(Boolean)
+    .join(' ');
+
+  return (
+    <button type="button" className={classe} onClick={() => onSelecionar(dia.data)}>
+      <span className={`${styles.cellDay} ${isHoje ? styles.cellDayToday : ''}`}>{dia.dia}</span>
+      <span className={styles.miniDots}>
+        {dia.itens.slice(0, 3).map((item, idx) => (
+          <span key={idx} className={styles.miniDot} style={{ background: item.categoria.cor }} />
+        ))}
+      </span>
+    </button>
+  );
+}
+
+function DayList({ dia, hoje, moeda, onTogglePago }) {
+  return (
+    <div className={styles.dayList}>
+      <div className={styles.dayListHead}>
+        <span className={styles.dayListTitle}>{tituloDia(dia.data)}</span>
+        {dia.data === hoje && <span className={styles.dayListBadge}>hoje</span>}
+      </div>
+      {dia.itens.length === 0 ? (
+        <div className={styles.dayListVazio}>Nenhum lançamento neste dia.</div>
+      ) : (
+        dia.itens.map((item, idx) => <DayListRow key={idx} item={item} moeda={moeda} onTogglePago={onTogglePago} />)
+      )}
+    </div>
+  );
+}
+
+function DayListRow({ item, moeda, onTogglePago }) {
+  const clicavel = item.tipo === 'custo';
+  const statusLabel = item.tipo === 'renda' ? null : item.atrasado ? 'Atrasado' : item.statusPagamento === 'pago' ? 'Pago' : 'Não pago';
+  const statusClasse = item.atrasado ? styles.dayListBadgeAtrasado : item.statusPagamento === 'pago' ? styles.dayListBadgePago : styles.dayListBadgePendente;
+  const valorClasse =
+    item.tipo === 'renda'
+      ? styles.itemAmountReceita
+      : item.atrasado
+        ? styles.itemAmountAtrasado
+        : item.statusPagamento === 'pago'
+          ? styles.itemAmountPago
+          : styles.itemAmountPendente;
+
+  const acionar = () => onTogglePago(item);
+  const aoTeclar = (ev) => {
+    if (ev.key === 'Enter' || ev.key === ' ') {
+      ev.preventDefault();
+      acionar();
+    }
+  };
+
+  return (
+    <div
+      className={`${styles.dayListRow} ${clicavel ? styles.itemClickable : ''}`}
+      onClick={clicavel ? acionar : undefined}
+      onKeyDown={clicavel ? aoTeclar : undefined}
+      role={clicavel ? 'button' : undefined}
+      tabIndex={clicavel ? 0 : undefined}
+    >
+      <span className={styles.itemDot} style={{ background: item.categoria.cor }} />
+      <div className={styles.itemBody} style={{ flex: 1 }}>
+        <div className={styles.itemName}>{item.nome}</div>
+        {item.tipo === 'custo' && <div className={styles.semDataMeta}>{item.categoria.nome}</div>}
+      </div>
+      {statusLabel && <span className={`${styles.dayListBadgeBase} ${statusClasse}`}>{statusLabel}</span>}
+      <span className={`${styles.dayListAmount} ${valorClasse}`}>
+        {item.tipo === 'renda' ? '+' : ''}
+        {formatarMoeda(item.valor, moeda)}
+      </span>
     </div>
   );
 }
