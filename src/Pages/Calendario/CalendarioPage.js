@@ -143,15 +143,21 @@ export default function CalendarioPage() {
   };
 
   if (carregando && !dados) {
-    return <div className={styles.centerScreen}>Carregando calendário…</div>;
+    return (
+      <div className={styles.page}>
+        <div className={styles.centerScreen}>Carregando calendário…</div>
+      </div>
+    );
   }
 
   if (erroFatal && !dados) {
     return (
-      <div className={styles.centerScreen}>
-        {erroFatal}
-        <br />
-        Use o link enviado pelo seu assessor para acessar o Calendário Financeiro.
+      <div className={styles.page}>
+        <div className={styles.centerScreen}>
+          {erroFatal}
+          <br />
+          Use o link enviado pelo seu assessor para acessar o Calendário Financeiro.
+        </div>
       </div>
     );
   }
@@ -245,10 +251,10 @@ function Toolbar({ mes, dados, onNav, onAdicionar, carregando }) {
 function SummaryCards({ totals, moeda }) {
   return (
     <div className={styles.summaryRow}>
-      <SummaryCard label="Pago no mês" valor={totals.pago} moeda={moeda} cor="#ede6e2" />
-      <SummaryCard label="A pagar" valor={totals.pendente} moeda={moeda} cor="#c9772f" />
-      <SummaryCard label="Em atraso" valor={totals.atrasado} moeda={moeda} cor="#d9603f" />
-      <SummaryCard label="Entradas" valor={totals.receita} moeda={moeda} cor="#6fc49b" receita />
+      <SummaryCard label="Pago no mês" valor={totals.pago} moeda={moeda} cor="var(--ink-subtle)" />
+      <SummaryCard label="A pagar" valor={totals.pendente} moeda={moeda} cor="var(--ink)" />
+      <SummaryCard label="Em atraso" valor={totals.atrasado} moeda={moeda} cor="var(--status-atrasado)" />
+      <SummaryCard label="Entradas" valor={totals.receita} moeda={moeda} cor="var(--status-receita)" receita />
     </div>
   );
 }
@@ -324,17 +330,28 @@ function Item({ item, onTogglePago }) {
     item.tipo === 'renda'
       ? styles.itemAmountReceita
       : item.atrasado
-      ? styles.itemAmountAtrasado
-      : item.statusPagamento === 'pago'
-      ? styles.itemAmountPago
-      : styles.itemAmountPendente;
+        ? styles.itemAmountAtrasado
+        : item.statusPagamento === 'pago'
+          ? styles.itemAmountPago
+          : styles.itemAmountPendente;
 
   const marca = item.tipo === 'renda' ? '+' : item.statusPagamento === 'pago' ? ' ✓' : item.atrasado ? ' !' : '';
+
+  const acionar = () => onTogglePago(item);
+  const aoTeclar = (ev) => {
+    if (ev.key === 'Enter' || ev.key === ' ') {
+      ev.preventDefault();
+      acionar();
+    }
+  };
 
   return (
     <div
       className={`${styles.item} ${clicavel ? styles.itemClickable : ''}`}
-      onClick={clicavel ? () => onTogglePago(item) : undefined}
+      onClick={clicavel ? acionar : undefined}
+      onKeyDown={clicavel ? aoTeclar : undefined}
+      role={clicavel ? 'button' : undefined}
+      tabIndex={clicavel ? 0 : undefined}
       title={clicavel ? 'Marcar como pago/pendente' : undefined}
     >
       <span className={styles.itemDot} style={{ background: item.categoria.cor }} />
@@ -362,11 +379,11 @@ function Legend({ categorias }) {
         </div>
       ))}
       <div className={styles.legendItem}>
-        <span style={{ color: '#5fa47e' }}>✓</span>
+        <span style={{ color: 'var(--ink-subtle)' }}>✓</span>
         <span>pago</span>
       </div>
       <div className={styles.legendItem}>
-        <span style={{ color: '#d9603f' }}>!</span>
+        <span style={{ color: 'var(--status-atrasado)' }}>!</span>
         <span>atrasado</span>
       </div>
     </div>
@@ -382,16 +399,15 @@ function SemData({ itens, moeda, onTogglePago }) {
           <span className={styles.itemDot} style={{ background: item.categoria.cor }} />
           <div className={styles.itemBody} style={{ flex: 1 }}>
             <div className={styles.itemName}>{item.nome}</div>
-            <div style={{ fontSize: 10.5, color: '#9b9b9e' }}>{item.diaTexto}</div>
+            <div className={styles.semDataMeta}>{item.diaTexto}</div>
           </div>
           <button
-            className={styles.btnGhost}
-            style={{ padding: '6px 10px', fontSize: 11 }}
+            className={`${styles.btnGhost} ${styles.btnCompact}`}
             onClick={() => onTogglePago(item)}
           >
             {item.statusPagamento === 'pago' ? 'Pago' : 'Marcar pago'}
           </button>
-          <span style={{ fontWeight: 800, fontSize: 13 }}>{formatarMoeda(item.valor, moeda)}</span>
+          <span className={styles.semDataAmount}>{formatarMoeda(item.valor, moeda)}</span>
         </div>
       ))}
     </div>
@@ -505,7 +521,11 @@ function LoginModal({ email, onEmailChange, mensagem, onEnviar, onFechar }) {
       }}
       onClick={onFechar}
     >
-      <div className={styles.panel} style={{ width: 340 }} onClick={(e) => e.stopPropagation()}>
+      <div
+        className={`${styles.panel} ${styles.modalPanel}`}
+        style={{ width: 340, maxWidth: '90vw' }}
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className={styles.panelTitle}>Confirme seu e-mail</div>
         <div className={styles.panelSubtitle}>Editar pagamentos exige verificação por e-mail.</div>
         <form className={styles.loginForm} onSubmit={onEnviar}>
@@ -518,7 +538,7 @@ function LoginModal({ email, onEmailChange, mensagem, onEnviar, onFechar }) {
             value={email}
             onChange={(e) => onEmailChange(e.target.value)}
           />
-          <button className={styles.btnPrimary} style={{ flex: 'none', padding: '11px 16px' }} type="submit">
+          <button className={styles.btnPrimary} style={{ flex: 'none', padding: 'var(--space-3) var(--space-4)' }} type="submit">
             Enviar
           </button>
         </form>

@@ -1,65 +1,134 @@
+/*
+ * Tokens do Design System oficial da Boomer (brand manual, tema Escuro —
+ * este produto é deliberadamente dark-only, "tom escuro sóbrio").
+ * Cores/spacing/radius/shadow abaixo são os valores literais dos tokens
+ * `dark` do manual; nomes batem com o checklist de design.
+ *
+ * Exceção documentada (aprovada): a paleta oficial (Carvão/Midnight/
+ * Terracota/Cinza/Areia) não tem verde/vermelho. pago/atrasado/receita
+ * usam --status-* fora da paleta, especificamente pra esses 3 estados.
+ */
 .page {
+  --surface: #141c31;
+  --surface-raised: #1a2340;
+  --surface-inset: #0f1015;
+  --ink: #ede6e2;
+  --ink-subtle: #aa8a78;
+  --ink-disabled: #40445a;
+  --border: #25345a;
+  --border-strong: #ede6e2;
+  --interactive: #ede6e2;
+  --interactive-hover: #fbf9f8;
+  --interactive-fg: #141c31;
+  --focus-ring: #ede6e2;
+  --accent: #da7742;
+  --accent-fg: #141c31;
+
+  /* exceção de status — ver nota acima. #E17048 (não #D9603F) porque o tom
+     mais escuro só batia 4.19:1 em surface-raised — abaixo do mínimo AA de
+     4.5:1 pra texto pequeno; #E17048 fica em 4.87:1. */
+  --status-atrasado: #e17048;
+  --status-receita: #6fc49b;
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-2xl: 24px;
+  --radius-full: 9999px;
+
+  --shadow-sm: 0 1px 3px rgba(15, 16, 21, 0.08), 0 1px 2px rgba(15, 16, 21, 0.05);
+  --shadow-md: 0 4px 12px rgba(15, 16, 21, 0.12), 0 2px 4px rgba(15, 16, 21, 0.06);
+  --shadow-lg: 0 8px 24px rgba(15, 16, 21, 0.16), 0 4px 8px rgba(15, 16, 21, 0.08);
+  --shadow-xl: 0 16px 48px rgba(15, 16, 21, 0.22), 0 8px 16px rgba(15, 16, 21, 0.1);
+
+  /* type.families.sans/display — Comfortaa Variable é a fonte primária em
+     toda a hierarquia; Nunito Sans só entra como fallback da própria stack. */
+  --font-sans: 'Comfortaa Variable Font wght', 'Comfortaa', 'Nunito Sans', system-ui, -apple-system, sans-serif;
+
   min-height: 100vh;
-  background: #0f1015;
-  font-family: 'Nunito Sans', system-ui, sans-serif;
-  color: #ede6e2;
+  background: var(--surface);
+  font-family: var(--font-sans);
+  color: var(--ink);
+}
+
+/* Anel de foco (navegação por teclado) em todo controle interativo da página. */
+.page a:focus-visible,
+.page button:focus-visible,
+.page input:focus-visible,
+.page [tabindex]:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
 }
 
 .topbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 14px 26px;
-  border-bottom: 1px solid #26272e;
-  background: #0f1015;
+  padding: var(--space-4) var(--space-10);
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
 }
 
 .brandGroup {
   display: flex;
   align-items: center;
-  gap: 11px;
+  gap: var(--space-3);
 }
 
+/* Ícone de app/avatar: radius-2xl (24px), nunca distorcido/rotacionado/com sombra. */
 .brandMark {
   width: 26px;
   height: 26px;
-  border-radius: 7px;
-  background: #7d3c19;
+  border-radius: var(--radius-2xl);
+  background: var(--accent);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-family: 'Comfortaa', system-ui;
   font-size: 15px;
   font-weight: 700;
-  color: #f6efe9;
+  color: var(--accent-fg);
 }
 
+/* heading-md */
 .brandName {
-  font-family: 'Comfortaa', system-ui;
-  font-size: 16px;
+  font-size: 17px;
+  line-height: 24px;
   font-weight: 600;
-  letter-spacing: -0.01em;
 }
 
 .brandDivider {
   width: 1px;
   height: 15px;
-  background: #2b2c34;
-  margin: 0 3px;
+  background: var(--border);
+  margin: 0 var(--space-1);
 }
 
+/* label-md, ink-subtle */
 .brandSection {
-  font-size: 12.5px;
+  font-size: 13px;
+  line-height: 18px;
   font-weight: 600;
-  color: #8a8a8c;
+  letter-spacing: 0.01em;
+  color: var(--ink-subtle);
 }
 
 .content {
   max-width: 1320px;
   margin: 0 auto;
-  padding: 26px;
+  padding: var(--space-8) var(--space-10);
   display: flex;
-  gap: 20px;
+  gap: var(--space-5);
   align-items: flex-start;
   flex-wrap: wrap;
 }
@@ -73,41 +142,44 @@
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
-  margin-bottom: 20px;
-  gap: 12px;
+  margin-bottom: var(--space-5);
+  gap: var(--space-3);
 }
 
+/* display-md */
 .monthTitle {
-  font-family: 'Comfortaa', system-ui;
   font-size: 28px;
-  font-weight: 600;
-  letter-spacing: -0.015em;
-  color: #ede6e2;
+  line-height: 36px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--ink);
 }
 
+/* caption, ink-subtle */
 .monthSubtitle {
-  font-size: 12.5px;
-  color: #8a8a8c;
-  margin-top: 5px;
+  font-size: 12px;
+  line-height: 17px;
+  color: var(--ink-subtle);
+  margin-top: var(--space-1);
 }
 
 .toolbarActions {
   display: flex;
-  gap: 8px;
+  gap: var(--space-2);
   align-items: center;
 }
 
 .navGroup {
   display: flex;
-  background: #0f1015;
-  border: 1px solid #2b2c34;
-  border-radius: 9px;
+  background: var(--surface-inset);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
   overflow: hidden;
 }
 
 .navButton {
-  padding: 8px 14px;
-  color: #c5c4c4;
+  padding: var(--space-2) var(--space-3);
+  color: var(--ink-subtle);
   font-size: 14px;
   background: none;
   border: none;
@@ -115,114 +187,133 @@
 }
 
 .navButton:first-child {
-  border-right: 1px solid #2b2c34;
+  border-right: 1px solid var(--border);
 }
 
 .navButton:hover {
-  color: #ede6e2;
+  color: var(--ink);
 }
 
+.navButton:disabled {
+  color: var(--ink-disabled);
+  cursor: default;
+}
+
+/* label-lg — rótulo de botão */
 .addButton {
-  padding: 10px 15px;
-  background: #7d3c19;
-  color: #f6efe9;
+  padding: var(--space-3) var(--space-4);
+  background: var(--interactive);
+  color: var(--interactive-fg);
   border: none;
-  border-radius: 9px;
-  font-size: 12.5px;
-  font-weight: 800;
+  border-radius: var(--radius-md);
+  font-size: 15px;
+  line-height: 20px;
+  font-weight: 600;
+  letter-spacing: 0.005em;
   cursor: pointer;
 }
 
 .addButton:hover {
-  background: #8f4620;
+  background: var(--interactive-hover);
 }
 
 .summaryRow {
   display: flex;
-  gap: 10px;
-  margin-bottom: 18px;
+  gap: var(--space-3);
+  margin-bottom: var(--space-5);
   flex-wrap: wrap;
 }
 
+/* Padding de card padrão = space-6. Card = superfície elevada -> surface-raised
+   (surface-inset é pra áreas recuadas: campos, sidebars — não cards). */
 .summaryCard {
   flex: 1;
   min-width: 130px;
-  background: #0f1015;
-  border: 1px solid #23242b;
-  border-radius: 12px;
-  padding: 14px 16px;
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-6);
+  box-shadow: var(--shadow-sm);
 }
 
 .summaryCardReceita {
-  background: #141c31;
-  border-color: #22304f;
+  border-color: var(--border-strong);
 }
 
+/* label-sm */
 .summaryLabel {
-  font-size: 10px;
-  letter-spacing: 0.1em;
-  color: #9b9b9e;
+  font-size: 11px;
+  line-height: 16px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--ink-subtle);
   text-transform: uppercase;
 }
 
-.summaryCardReceita .summaryLabel {
-  color: #8fa3c7;
-}
-
+/* heading-xl */
 .summaryValue {
-  font-family: 'Comfortaa', system-ui;
-  font-size: 21px;
-  font-weight: 600;
-  margin-top: 5px;
+  font-size: 24px;
+  line-height: 32px;
+  font-weight: 700;
+  margin-top: var(--space-1);
   white-space: nowrap;
 }
 
+/* dowRow e grid compartilham grid-template-columns: o gap tem que ser
+   idêntico nos dois pra os rótulos DOM/SEG/... alinharem com as colunas. */
 .dowRow {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  gap: 6px;
-  margin-bottom: 6px;
+  gap: var(--space-6);
+  margin-bottom: var(--space-2);
 }
 
+/* label-sm */
 .dow {
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.12em;
-  color: #9b9b9e;
+  font-size: 11px;
+  line-height: 16px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--ink-subtle);
   text-align: center;
-  padding: 5px 0;
+  padding: var(--space-1) 0;
 }
 
 .grid {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  gap: 6px;
+  gap: var(--space-6);
 }
 
+/* Célula de dia: densidade de grid de calendário não comporta padding de
+   "card padrão" (24px deixaria a grade de 7 colunas impraticável), por isso
+   usa space-3 em vez de space-6 — exceção funcional, não de cor/token.
+   Fundo surface-raised (é um "card": superfície elevada sobre a página). */
 .cell {
   min-height: 118px;
-  border-radius: 11px;
-  padding: 9px;
+  border-radius: var(--radius-lg);
+  padding: var(--space-3);
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  background: #0f1015;
-  border: 1px solid #23242b;
+  gap: var(--space-2);
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
 }
 
 .cellBlank {
-  background: #111217;
-  border: 1px solid #1c1d23;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  opacity: 0.5;
 }
 
+/* Hoje/atrasado se diferenciam pela borda (accent/status-atrasado) + cor do
+   número do dia — não por um 3º tom de fundo que o design system não define. */
 .cellToday {
-  background: #1d1a16;
-  border-color: #7d3c19;
+  border-color: var(--accent);
 }
 
 .cellLate {
-  background: #1c1416;
-  border-color: #4a2620;
+  border-color: var(--status-atrasado);
 }
 
 .cellHead {
@@ -231,32 +322,40 @@
   justify-content: space-between;
 }
 
+/* heading-sm */
 .cellDay {
-  font-family: 'Comfortaa', system-ui;
-  font-size: 13.5px;
-  font-weight: 700;
-  color: #c5c4c4;
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 600;
+  color: var(--ink);
 }
 
 .cellDayToday {
-  color: #e29a57;
+  color: var(--accent);
 }
 
+/* caption-strong */
 .cellDayTotal {
-  font-size: 10px;
-  font-weight: 800;
-  color: #a6a6aa;
+  font-size: 12px;
+  line-height: 17px;
+  font-weight: 600;
+  color: var(--ink-subtle);
 }
 
 .item {
   display: flex;
-  gap: 6px;
+  gap: var(--space-2);
   align-items: flex-start;
   cursor: default;
+  border-radius: var(--radius-sm);
 }
 
 .itemClickable {
   cursor: pointer;
+}
+
+.itemClickable:hover {
+  background: var(--surface-raised);
 }
 
 .itemDot {
@@ -271,173 +370,227 @@
   min-width: 0;
 }
 
+/* caption */
 .itemName {
-  font-size: 11px;
-  font-weight: 600;
-  line-height: 1.25;
-  color: #c5c4c4;
+  font-size: 12px;
+  line-height: 17px;
+  font-weight: 400;
+  color: var(--ink);
 }
 
 .itemNamePago {
-  color: #8b8b90;
+  color: var(--ink-subtle);
 }
 
+/* caption-strong */
 .itemAmount {
-  font-size: 11.5px;
-  font-weight: 800;
-  line-height: 1.35;
-  color: #ede6e2;
+  font-size: 12px;
+  line-height: 17px;
+  font-weight: 600;
+  color: var(--ink);
 }
 
 .itemAmountPendente {
-  color: #ede6e2;
+  color: var(--ink);
 }
 
 .itemAmountPago {
-  color: #8b8b90;
+  color: var(--ink-subtle);
 }
 
 .itemAmountAtrasado {
-  color: #d9603f;
+  color: var(--status-atrasado);
 }
 
 .itemAmountReceita {
-  color: #6fc49b;
+  color: var(--status-receita);
 }
 
 .legend {
   display: flex;
   flex-wrap: wrap;
-  gap: 18px;
-  margin-top: 16px;
-  padding-top: 14px;
-  border-top: 1px solid #23242b;
+  gap: var(--space-5);
+  margin-top: var(--space-4);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--border);
 }
 
+/* caption */
 .legendItem {
   display: flex;
   align-items: center;
-  gap: 7px;
-  font-size: 11px;
-  color: #9b9b9e;
+  gap: var(--space-2);
+  font-size: 12px;
+  line-height: 17px;
+  color: var(--ink-subtle);
 }
 
 .legendDot {
   width: 7px;
   height: 7px;
-  border-radius: 2px;
+  border-radius: var(--radius-sm);
 }
 
 .semDataBox {
-  margin-top: 18px;
-  padding: 16px 18px;
-  background: #0f1015;
-  border: 1px solid #23242b;
-  border-radius: 12px;
+  margin-top: var(--space-5);
+  padding: var(--space-6);
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
 }
 
+/* label-sm */
 .semDataTitle {
-  font-size: 10px;
-  letter-spacing: 0.1em;
+  font-size: 11px;
+  line-height: 16px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: #9b9b9e;
-  margin-bottom: 10px;
+  color: var(--ink-subtle);
+  margin-bottom: var(--space-3);
 }
 
 .semDataRow {
   display: flex;
   align-items: center;
-  gap: 11px;
-  padding: 8px 0;
-  border-bottom: 1px solid #1e1f25;
+  gap: var(--space-3);
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--border);
 }
 
 .semDataRow:last-child {
   border-bottom: none;
 }
 
+/* caption, ink-subtle */
+.semDataMeta {
+  font-size: 12px;
+  line-height: 17px;
+  color: var(--ink-subtle);
+}
+
+/* heading-sm — total em destaque numa linha de lista */
+.semDataAmount {
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+/* Variante compacta de btnGhost pra controles dentro de uma linha de lista. */
+.btnCompact {
+  padding: var(--space-1) var(--space-2);
+  font-size: 13px;
+  line-height: 18px;
+  letter-spacing: 0.01em;
+}
+
+/* Card: radius-lg + shadow-sm em repouso (painel fica sempre visível dentro
+   do layout, não é um overlay — por isso sm, não lg). Modal de fato usa
+   .modalPanel (shadow-lg), ver abaixo. */
 .panel {
   width: 296px;
   flex: none;
-  background: #0f1015;
-  border: 1px solid #26272e;
-  border-radius: 14px;
-  padding: 22px;
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-6);
   display: flex;
   flex-direction: column;
+  box-shadow: var(--shadow-sm);
 }
 
+/* Modais/drawers usam shadow-lg (mais elevação que um card em repouso). */
+.modalPanel {
+  box-shadow: var(--shadow-lg);
+}
+
+/* heading-md */
 .panelTitle {
-  font-family: 'Comfortaa', system-ui;
-  font-size: 16px;
+  font-size: 17px;
+  line-height: 24px;
   font-weight: 600;
-  color: #ede6e2;
+  color: var(--ink);
 }
 
+/* caption */
 .panelSubtitle {
-  font-size: 11.5px;
-  color: #9b9b9e;
-  margin: 5px 0 20px;
+  font-size: 12px;
+  line-height: 17px;
+  color: var(--ink-subtle);
+  margin: var(--space-1) 0 var(--space-5);
 }
 
+/* label-sm */
 .fieldLabel {
-  font-size: 10px;
-  letter-spacing: 0.1em;
+  font-size: 11px;
+  line-height: 16px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: #9b9b9e;
-  margin-bottom: 7px;
+  color: var(--ink-subtle);
+  margin-bottom: var(--space-2);
   display: block;
 }
 
 .fieldRow {
   display: flex;
-  gap: 10px;
-  margin-bottom: 15px;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
 }
 
+/* body-sm; campos/botões compactos usam space-4 de padding base. */
 .fieldInput {
   width: 100%;
   box-sizing: border-box;
-  background: #15161c;
-  border: 1px solid #2b2c34;
-  border-radius: 9px;
-  padding: 11px 13px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-4);
   font-size: 13px;
-  color: #ede6e2;
+  line-height: 20px;
+  color: var(--ink);
   font-family: inherit;
-  margin-bottom: 15px;
+  margin-bottom: var(--space-4);
+}
+
+.fieldInput::placeholder {
+  color: var(--ink-disabled);
 }
 
 .fieldInput:focus {
   outline: none;
-  border-color: #7d3c19;
+  border-color: var(--border-strong);
 }
 
 .chipsRow {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
-  margin-bottom: 17px;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
 }
 
+/* Pílula: radius-full. Padding de badges/chips = space-2 (token usage). */
 .chip {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 6px 11px;
-  border-radius: 20px;
-  font-size: 11px;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  border-radius: var(--radius-full);
+  font-size: 12px;
+  line-height: 17px;
   font-weight: 600;
-  background: #15161c;
-  border: 1px solid #2b2c34;
-  color: #9b9b9e;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--ink-subtle);
   cursor: pointer;
 }
 
 .chipActive {
-  color: #ede6e2;
-  border-color: #4a3b26;
-  background: #1c1712;
+  color: var(--ink);
+  border-color: var(--border-strong);
+  background: var(--surface-raised);
 }
 
 .chipDot {
@@ -448,44 +601,44 @@
 
 .statusToggle {
   display: flex;
-  background: #15161c;
-  border: 1px solid #2b2c34;
-  border-radius: 10px;
-  padding: 3px;
-  margin-bottom: 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: var(--space-1);
+  margin-bottom: var(--space-4);
 }
 
 .statusOption {
   flex: 1;
   text-align: center;
-  padding: 9px 0;
-  border-radius: 8px;
+  padding: var(--space-3) 0;
+  border-radius: var(--radius-sm);
   font-size: 12px;
   font-weight: 600;
-  color: #8a8a8c;
+  color: var(--ink-subtle);
   background: none;
   border: none;
   cursor: pointer;
 }
 
 .statusOptionActive {
-  font-weight: 800;
-  background: #26272e;
-  color: #ede6e2;
+  font-weight: 700;
+  background: var(--surface-raised);
+  color: var(--ink);
 }
 
 .switchRow {
   display: flex;
   align-items: center;
-  gap: 10px;
-  margin-bottom: 22px;
+  gap: var(--space-3);
+  margin-bottom: var(--space-6);
 }
 
 .switchTrack {
   width: 36px;
   height: 20px;
-  border-radius: 12px;
-  background: #26272e;
+  border-radius: var(--radius-full);
+  background: var(--surface-raised);
   padding: 2px;
   display: flex;
   align-items: center;
@@ -494,7 +647,7 @@
 }
 
 .switchTrackOn {
-  background: #7d3c19;
+  background: var(--accent);
   justify-content: flex-end;
 }
 
@@ -502,85 +655,108 @@
   width: 16px;
   height: 16px;
   border-radius: 50%;
-  background: #f6efe9;
+  background: var(--ink);
 }
 
+/* body-sm */
 .switchLabel {
-  font-size: 11.5px;
-  color: #c5c4c4;
+  font-size: 13px;
+  line-height: 20px;
+  color: var(--ink);
 }
 
 .panelActions {
   display: flex;
-  gap: 8px;
+  gap: var(--space-2);
   margin-top: auto;
 }
 
+/* label-lg — rótulo de botão primário */
 .btnPrimary {
   flex: 1;
   text-align: center;
-  padding: 12px 0;
-  border-radius: 10px;
-  background: #7d3c19;
-  color: #f6efe9;
-  font-size: 12.5px;
-  font-weight: 800;
+  padding: var(--space-3) 0;
+  border-radius: var(--radius-md);
+  background: var(--interactive);
+  color: var(--interactive-fg);
+  font-size: 15px;
+  line-height: 20px;
+  font-weight: 600;
+  letter-spacing: 0.005em;
   border: none;
   cursor: pointer;
 }
 
+.btnPrimary:hover:not(:disabled) {
+  background: var(--interactive-hover);
+}
+
 .btnPrimary:disabled {
-  opacity: 0.6;
+  background: var(--ink-disabled);
+  color: var(--surface);
   cursor: default;
 }
 
+/* label-lg */
 .btnGhost {
-  padding: 12px 17px;
-  border-radius: 10px;
-  border: 1px solid #2b2c34;
-  color: #9b9b9e;
-  font-size: 12.5px;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  color: var(--ink-subtle);
+  font-size: 15px;
+  line-height: 20px;
   font-weight: 600;
+  letter-spacing: 0.005em;
   background: none;
   cursor: pointer;
 }
 
+.btnGhost:hover {
+  border-color: var(--border-strong);
+  color: var(--ink);
+}
+
 .loginNotice {
-  background: #1c1712;
-  border: 1px solid #4a3b26;
-  border-radius: 10px;
-  padding: 12px 14px;
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-4);
   font-size: 12px;
-  color: #e29a57;
-  margin-bottom: 16px;
+  color: var(--accent);
+  margin-bottom: var(--space-4);
 }
 
 .loginForm {
   display: flex;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
+/* caption, exceção de status (ver topo do arquivo) */
 .errorText {
   font-size: 12px;
-  color: #d9603f;
-  margin-top: 8px;
+  line-height: 17px;
+  color: var(--status-atrasado);
+  margin-top: var(--space-2);
 }
 
 .okText {
   font-size: 12px;
-  color: #6fc49b;
-  margin-top: 8px;
+  line-height: 17px;
+  color: var(--status-receita);
+  margin-top: var(--space-2);
 }
 
+/* body-md */
 .centerScreen {
   min-height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #9b9b9e;
-  font-size: 14px;
+  color: var(--ink-subtle);
+  font-size: 15px;
+  line-height: 23px;
   text-align: center;
-  padding: 24px;
+  padding: var(--space-6);
 }
 
 @media (max-width: 980px) {
@@ -590,5 +766,98 @@
   }
   .panel {
     width: 100%;
+  }
+}
+
+@media (max-width: 640px) {
+  .topbar {
+    padding: var(--space-3) var(--space-4);
+  }
+
+  .content {
+    padding: var(--space-4);
+    gap: var(--space-4);
+  }
+
+  .toolbar {
+    flex-wrap: wrap;
+  }
+
+  .monthTitle {
+    font-size: 22px;
+    line-height: 28px;
+  }
+
+  .toolbarActions {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .summaryRow {
+    gap: var(--space-2);
+  }
+
+  .summaryCard {
+    flex: 1 1 calc(50% - 4px);
+    min-width: 0;
+    padding: var(--space-3);
+  }
+
+  .summaryValue {
+    font-size: 17px;
+    line-height: 24px;
+  }
+
+  .dowRow,
+  .grid {
+    gap: var(--space-1);
+  }
+
+  .dow {
+    font-size: 9px;
+    padding: var(--space-1) 0;
+  }
+
+  .cell {
+    min-height: 62px;
+    padding: var(--space-1);
+    border-radius: var(--radius-md);
+    gap: var(--space-1);
+  }
+
+  .cellDay {
+    font-size: 12px;
+  }
+
+  .cellDayTotal {
+    font-size: 9px;
+  }
+
+  .item {
+    gap: var(--space-1);
+  }
+
+  .itemName {
+    font-size: 9px;
+  }
+
+  .itemAmount {
+    font-size: 9px;
+  }
+
+  .legend {
+    gap: var(--space-3);
+  }
+
+  .legendItem {
+    font-size: 10px;
+  }
+
+  .semDataRow {
+    flex-wrap: wrap;
+  }
+
+  .fieldRow {
+    flex-wrap: wrap;
   }
 }
