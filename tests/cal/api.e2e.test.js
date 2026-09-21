@@ -30,6 +30,9 @@ function montarApp() {
   app.all('/api/cal/logout', (req, res) => require('../../api/cal/logout')(req, res));
   app.all('/api/cal/pagamento', (req, res) => require('../../api/cal/pagamento')(req, res));
   app.all('/api/cal/lancamento', (req, res) => require('../../api/cal/lancamento')(req, res));
+  app.all('/api/cal/custo-editar', (req, res) => require('../../api/cal/custo-editar')(req, res));
+  app.all('/api/cal/renda-lancamento', (req, res) => require('../../api/cal/renda-lancamento')(req, res));
+  app.all('/api/cal/renda-editar', (req, res) => require('../../api/cal/renda-editar')(req, res));
   return app;
 }
 
@@ -45,6 +48,7 @@ describe('api/cal — fio completo via HTTP', () => {
     });
     sheets.getValues.mockResolvedValue(fx.SHEETS.CONFIG);
     sheets.updateCell.mockResolvedValue();
+    sheets.updateRow.mockResolvedValue();
     sheets.appendRow.mockResolvedValue();
     emailIO.enviarMagicLink.mockResolvedValue();
   });
@@ -103,6 +107,46 @@ describe('api/cal — fio completo via HTTP', () => {
       .send({ nome: 'Streaming', valor: 15, categoria: 'Entretenimento', dia: 12, mes: '2026-09' });
     expect(res.status).toBe(201);
     expect(sheets.appendRow).toHaveBeenCalledTimes(1);
+  });
+
+  test('POST /api/cal/custo-editar com sessão edita a linha', async () => {
+    const token = auth.assinarSessao({ sid: fx.SPREADSHEET_ID, email: fx.EMAIL });
+    sheets.getValues.mockResolvedValueOnce(fx.SHEETS.CUSTO_FIXO);
+    const res = await request(app)
+      .post('/api/cal/custo-editar')
+      .set('Cookie', `${auth.COOKIE_NOME}=${token}`)
+      .send({ linhaPlanilha: 2, nome: 'Aluguel', valor: 950, categoria: 'Moradia', dia: 1, mes: '2026-09', repetirTodoMes: true });
+    expect(res.status).toBe(200);
+    expect(sheets.updateRow).toHaveBeenCalledTimes(1);
+  });
+
+  test('POST /api/cal/custo-editar sem sessão -> 401', async () => {
+    const res = await request(app)
+      .post('/api/cal/custo-editar')
+      .send({ linhaPlanilha: 2, nome: 'Aluguel', valor: 950, dia: 1, mes: '2026-09' });
+    expect(res.status).toBe(401);
+  });
+
+  test('POST /api/cal/renda-lancamento com sessão cria a linha', async () => {
+    const token = auth.assinarSessao({ sid: fx.SPREADSHEET_ID, email: fx.EMAIL });
+    sheets.getValues.mockResolvedValueOnce(fx.SHEETS.RENDA);
+    const res = await request(app)
+      .post('/api/cal/renda-lancamento')
+      .set('Cookie', `${auth.COOKIE_NOME}=${token}`)
+      .send({ fonte: 'Freelance', valor: 300, frequencia: 'Mensal', diaRecebimento: 10, mes: '2026-09' });
+    expect(res.status).toBe(201);
+    expect(sheets.appendRow).toHaveBeenCalledTimes(1);
+  });
+
+  test('POST /api/cal/renda-editar com sessão edita a linha', async () => {
+    const token = auth.assinarSessao({ sid: fx.SPREADSHEET_ID, email: fx.EMAIL });
+    sheets.getValues.mockResolvedValueOnce(fx.SHEETS.RENDA);
+    const res = await request(app)
+      .post('/api/cal/renda-editar')
+      .set('Cookie', `${auth.COOKIE_NOME}=${token}`)
+      .send({ linhaPlanilha: 2, fonte: 'Salário', valor: 850, frequencia: 'Semanal', diaRecebimento: 'Sexta-feira', mes: '2026-09', repetirTodoMes: true });
+    expect(res.status).toBe(200);
+    expect(sheets.updateRow).toHaveBeenCalledTimes(1);
   });
 
   test('POST /api/cal/logout limpa o cookie', async () => {

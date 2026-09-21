@@ -43,3 +43,27 @@ export function criarLancamento(dados) {
     body: JSON.stringify(dados),
   }).then(tratarResposta);
 }
+
+export function editarCusto(dados) {
+  return fetch(`${BASE}/custo-editar`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(dados),
+  }).then(tratarResposta);
+}
+
+export function criarRenda(dados) {
+  return fetch(`${BASE}/renda-lancamento`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(dados),
+  }).then(tratarResposta);
+}
+
+export function editarRenda(dados) {
+  return fetch(`${BASE}/renda-editar`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(dados),
+  }).then(tratarResposta);
+}

@@ -36,6 +36,9 @@ app.all('/api/cal/verificar', (req, res) => require('../api/cal/verificar')(req,
 app.all('/api/cal/logout', (req, res) => require('../api/cal/logout')(req, res));
 app.all('/api/cal/pagamento', (req, res) => require('../api/cal/pagamento')(req, res));
 app.all('/api/cal/lancamento', (req, res) => require('../api/cal/lancamento')(req, res));
+app.all('/api/cal/custo-editar', (req, res) => require('../api/cal/custo-editar')(req, res));
+app.all('/api/cal/renda-lancamento', (req, res) => require('../api/cal/renda-lancamento')(req, res));
+app.all('/api/cal/renda-editar', (req, res) => require('../api/cal/renda-editar')(req, res));
 
 function getDriveClient() {
   const raw = process.env.GOOGLE_SERVICE_ACCOUNT_JSON.replace(/^['"]|['"]$/g, '');

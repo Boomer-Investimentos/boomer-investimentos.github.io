@@ -6,6 +6,9 @@ import {
   pedirAcesso,
   atualizarPagamento,
   criarLancamento,
+  editarCusto,
+  criarRenda,
+  editarRenda,
 } from '../../services/calendarioService';
 
 const LINK_TOKEN_KEY = 'cal_link_token';
@@ -66,7 +69,7 @@ export default function CalendarioPage() {
   const [mostrarLogin, setMostrarLogin] = useState(false);
   const [emailLogin, setEmailLogin] = useState('');
   const [mensagemLogin, setMensagemLogin] = useState(null);
-  const [painelAberto, setPainelAberto] = useState(false);
+  const [painelItem, setPainelItem] = useState(null); // null | { modo: 'criar'|'editar', tipo: 'custo'|'renda', item? }
 
   const carregarMes = useCallback(async (mesAlvo, token) => {
     setCarregando(true);
@@ -136,16 +139,44 @@ export default function CalendarioPage() {
     }
   };
 
-  const abrirPainel = () => {
+  const abrirPainelCriar = () => {
     if (dados && !dados.autenticado) return exigirLogin();
-    setPainelAberto(true);
+    setPainelItem({ modo: 'criar', tipo: 'custo' });
   };
 
-  const salvarNovoPagamento = async (form) => {
+  const abrirPainelEditar = (item) => {
+    if (!dados.autenticado) return exigirLogin();
+    setPainelItem({ modo: 'editar', tipo: item.tipo, item });
+  };
+
+  const fecharPainel = () => setPainelItem(null);
+
+  const salvarPainel = async (tipo, form) => {
     setErroAcao(null);
     try {
-      await criarLancamento({ ...form, mes });
-      setPainelAberto(false);
+      if (painelItem.modo === 'criar') {
+        if (tipo === 'custo') await criarLancamento({ ...form, mes });
+        else await criarRenda({ ...form, mes });
+      } else {
+        const linhaPlanilha = painelItem.item.linhaPlanilha;
+        if (tipo === 'custo') await editarCusto({ ...form, linhaPlanilha, mes });
+        else await editarRenda({ ...form, linhaPlanilha, mes });
+      }
+      fecharPainel();
+      carregarMes(mes, linkToken);
+    } catch (e) {
+      setErroAcao(e.message);
+    }
+  };
+
+  const excluirPainel = async (tipo, form) => {
+    if (!window.confirm('Excluir este lançamento?')) return;
+    setErroAcao(null);
+    try {
+      const linhaPlanilha = painelItem.item.linhaPlanilha;
+      if (tipo === 'custo') await editarCusto({ ...form, linhaPlanilha, mes, status: 'Inativo' });
+      else await editarRenda({ ...form, linhaPlanilha, mes, status: 'Inativo' });
+      fecharPainel();
       carregarMes(mes, linkToken);
     } catch (e) {
       setErroAcao(e.message);
@@ -183,29 +214,33 @@ export default function CalendarioPage() {
             mes={mes}
             dados={dados}
             onNav={mudarMes}
-            onAdicionar={abrirPainel}
+            onAdicionar={abrirPainelCriar}
             carregando={carregando}
           />
           <SummaryCards totals={dados.totals} moeda={dados.moeda} />
           <div className={styles.desktopOnly}>
-            <MonthGrid dados={dados} mes={mes} onTogglePago={alternarPago} />
+            <MonthGrid dados={dados} mes={mes} onEditar={abrirPainelEditar} />
           </div>
           <div className={styles.mobileOnly}>
-            <MobileAgenda dados={dados} mes={mes} onTogglePago={alternarPago} />
+            <MobileAgenda dados={dados} mes={mes} onEditar={abrirPainelEditar} />
           </div>
           <Legend categorias={dados.categorias} />
           {dados.semData.length > 0 && (
-            <SemData itens={dados.semData} moeda={dados.moeda} onTogglePago={alternarPago} />
+            <SemData itens={dados.semData} moeda={dados.moeda} onEditar={abrirPainelEditar} onTogglePago={alternarPago} />
           )}
           {erroAcao && <div className={styles.errorText}>{erroAcao}</div>}
         </main>
 
-        {painelAberto && (
-          <NewPaymentPanel
+        {painelItem && (
+          <PaymentPanel
             mes={mes}
-            categorias={dados.categorias.filter((c) => c.nome !== 'Recebimento')}
-            onSalvar={salvarNovoPagamento}
-            onCancelar={() => setPainelAberto(false)}
+            categoriasCusto={dados.categorias.filter((c) => c.nome !== 'Recebimento')}
+            modo={painelItem.modo}
+            tipoInicial={painelItem.tipo}
+            item={painelItem.item}
+            onSalvar={salvarPainel}
+            onExcluir={excluirPainel}
+            onCancelar={fecharPainel}
           />
         )}
       </div>
@@ -256,7 +291,7 @@ function Toolbar({ mes, dados, onNav, onAdicionar, carregando }) {
           </button>
         </div>
         <button className={styles.addButton} onClick={onAdicionar}>
-          + Pagamento
+          + Adicionar
         </button>
       </div>
     </div>
@@ -285,7 +320,7 @@ function SummaryCard({ label, valor, moeda, cor, receita }) {
   );
 }
 
-function MonthGrid({ dados, mes, onTogglePago }) {
+function MonthGrid({ dados, mes, onEditar }) {
   const blanksAntes = primeiroDiaDaSemana(mes);
   const totalCelulas = blanksAntes + dados.dias.length;
   const blanksDepois = (7 - (totalCelulas % 7)) % 7;
@@ -304,7 +339,7 @@ function MonthGrid({ dados, mes, onTogglePago }) {
           <div key={`antes-${i}`} className={`${styles.cell} ${styles.cellBlank}`} />
         ))}
         {dados.dias.map((dia) => (
-          <DayCell key={dia.data} dia={dia} hoje={dados.hoje} onTogglePago={onTogglePago} />
+          <DayCell key={dia.data} dia={dia} hoje={dados.hoje} onEditar={onEditar} />
         ))}
         {Array.from({ length: blanksDepois }).map((_, i) => (
           <div key={`depois-${i}`} className={`${styles.cell} ${styles.cellBlank}`} />
@@ -314,7 +349,7 @@ function MonthGrid({ dados, mes, onTogglePago }) {
   );
 }
 
-function DayCell({ dia, hoje, onTogglePago }) {
+function DayCell({ dia, hoje, onEditar }) {
   const isHoje = dia.data === hoje;
   const atrasado = dia.itens.some((i) => i.atrasado);
   const totalSaida = dia.itens
@@ -332,14 +367,13 @@ function DayCell({ dia, hoje, onTogglePago }) {
         {totalSaida > 0 && <span className={styles.cellDayTotal}>−{totalSaida.toFixed(2)}</span>}
       </div>
       {dia.itens.map((item, idx) => (
-        <Item key={idx} item={item} onTogglePago={onTogglePago} />
+        <Item key={idx} item={item} onEditar={onEditar} />
       ))}
     </div>
   );
 }
 
-function Item({ item, onTogglePago }) {
-  const clicavel = item.tipo === 'custo';
+function Item({ item, onEditar }) {
   const classeNome = item.statusPagamento === 'pago' ? styles.itemNamePago : '';
   const classeValor =
     item.tipo === 'renda'
@@ -352,7 +386,7 @@ function Item({ item, onTogglePago }) {
 
   const marca = item.tipo === 'renda' ? '+' : item.statusPagamento === 'pago' ? ' ✓' : item.atrasado ? ' !' : '';
 
-  const acionar = () => onTogglePago(item);
+  const acionar = () => onEditar(item);
   const aoTeclar = (ev) => {
     if (ev.key === 'Enter' || ev.key === ' ') {
       ev.preventDefault();
@@ -362,12 +396,12 @@ function Item({ item, onTogglePago }) {
 
   return (
     <div
-      className={`${styles.item} ${clicavel ? styles.itemClickable : ''}`}
-      onClick={clicavel ? acionar : undefined}
-      onKeyDown={clicavel ? aoTeclar : undefined}
-      role={clicavel ? 'button' : undefined}
-      tabIndex={clicavel ? 0 : undefined}
-      title={clicavel ? 'Marcar como pago/pendente' : undefined}
+      className={`${styles.item} ${styles.itemClickable}`}
+      onClick={acionar}
+      onKeyDown={aoTeclar}
+      role="button"
+      tabIndex={0}
+      title="Editar lançamento"
     >
       <span className={styles.itemDot} style={{ background: item.categoria.cor }} />
       <div className={styles.itemBody}>
@@ -388,7 +422,7 @@ function Item({ item, onTogglePago }) {
  * mockup original pra celular: mini-calendário só com pontinhos por
  * categoria + lista de detalhe do dia selecionado abaixo.
  */
-function MobileAgenda({ dados, mes, onTogglePago }) {
+function MobileAgenda({ dados, mes, onEditar }) {
   const hojeNoMes = dados.dias.some((d) => d.data === dados.hoje);
   const [diaSelecionado, setDiaSelecionado] = useState(hojeNoMes ? dados.hoje : dados.dias[0]?.data);
 
@@ -404,7 +438,7 @@ function MobileAgenda({ dados, mes, onTogglePago }) {
   return (
     <div className={styles.mobileAgenda}>
       <MiniCalendar mes={mes} dias={dados.dias} hoje={dados.hoje} selecionado={diaAtual.data} onSelecionar={setDiaSelecionado} />
-      <DayList dia={diaAtual} hoje={dados.hoje} moeda={dados.moeda} onTogglePago={onTogglePago} />
+      <DayList dia={diaAtual} hoje={dados.hoje} moeda={dados.moeda} onEditar={onEditar} />
     </div>
   );
 }
@@ -467,7 +501,7 @@ function MiniCell({ dia, isHoje, isSelecionado, onSelecionar }) {
   );
 }
 
-function DayList({ dia, hoje, moeda, onTogglePago }) {
+function DayList({ dia, hoje, moeda, onEditar }) {
   return (
     <div className={styles.dayList}>
       <div className={styles.dayListHead}>
@@ -477,14 +511,13 @@ function DayList({ dia, hoje, moeda, onTogglePago }) {
       {dia.itens.length === 0 ? (
         <div className={styles.dayListVazio}>Nenhum lançamento neste dia.</div>
       ) : (
-        dia.itens.map((item, idx) => <DayListRow key={idx} item={item} moeda={moeda} onTogglePago={onTogglePago} />)
+        dia.itens.map((item, idx) => <DayListRow key={idx} item={item} moeda={moeda} onEditar={onEditar} />)
       )}
     </div>
   );
 }
 
-function DayListRow({ item, moeda, onTogglePago }) {
-  const clicavel = item.tipo === 'custo';
+function DayListRow({ item, moeda, onEditar }) {
   const statusLabel = item.tipo === 'renda' ? null : item.atrasado ? 'Atrasado' : item.statusPagamento === 'pago' ? 'Pago' : 'Não pago';
   const statusClasse = item.atrasado ? styles.dayListBadgeAtrasado : item.statusPagamento === 'pago' ? styles.dayListBadgePago : styles.dayListBadgePendente;
   const valorClasse =
@@ -496,7 +529,7 @@ function DayListRow({ item, moeda, onTogglePago }) {
           ? styles.itemAmountPago
           : styles.itemAmountPendente;
 
-  const acionar = () => onTogglePago(item);
+  const acionar = () => onEditar(item);
   const aoTeclar = (ev) => {
     if (ev.key === 'Enter' || ev.key === ' ') {
       ev.preventDefault();
@@ -506,11 +539,11 @@ function DayListRow({ item, moeda, onTogglePago }) {
 
   return (
     <div
-      className={`${styles.dayListRow} ${clicavel ? styles.itemClickable : ''}`}
-      onClick={clicavel ? acionar : undefined}
-      onKeyDown={clicavel ? aoTeclar : undefined}
-      role={clicavel ? 'button' : undefined}
-      tabIndex={clicavel ? 0 : undefined}
+      className={`${styles.dayListRow} ${styles.itemClickable}`}
+      onClick={acionar}
+      onKeyDown={aoTeclar}
+      role="button"
+      tabIndex={0}
     >
       <span className={styles.itemDot} style={{ background: item.categoria.cor }} />
       <div className={styles.itemBody} style={{ flex: 1 }}>
@@ -549,12 +582,24 @@ function Legend({ categorias }) {
   );
 }
 
-function SemData({ itens, moeda, onTogglePago }) {
+function SemData({ itens, moeda, onEditar, onTogglePago }) {
   return (
     <div className={styles.semDataBox}>
       <div className={styles.semDataTitle}>Sem data definida ({itens.length})</div>
       {itens.map((item) => (
-        <div key={item.linhaPlanilha} className={styles.semDataRow}>
+        <div
+          key={item.linhaPlanilha}
+          className={`${styles.semDataRow} ${styles.itemClickable}`}
+          onClick={() => onEditar(item)}
+          onKeyDown={(ev) => {
+            if (ev.key === 'Enter' || ev.key === ' ') {
+              ev.preventDefault();
+              onEditar(item);
+            }
+          }}
+          role="button"
+          tabIndex={0}
+        >
           <span className={styles.itemDot} style={{ background: item.categoria.cor }} />
           <div className={styles.itemBody} style={{ flex: 1 }}>
             <div className={styles.itemName}>{item.nome}</div>
@@ -562,7 +607,10 @@ function SemData({ itens, moeda, onTogglePago }) {
           </div>
           <button
             className={`${styles.btnGhost} ${styles.btnCompact}`}
-            onClick={() => onTogglePago(item)}
+            onClick={(ev) => {
+              ev.stopPropagation();
+              onTogglePago(item);
+            }}
           >
             {item.statusPagamento === 'pago' ? 'Pago' : 'Marcar pago'}
           </button>
@@ -573,29 +621,106 @@ function SemData({ itens, moeda, onTogglePago }) {
   );
 }
 
-function NewPaymentPanel({ mes, categorias, onSalvar, onCancelar }) {
-  const [nome, setNome] = useState('');
-  const [valor, setValor] = useState('');
-  const [dia, setDia] = useState('');
-  const [categoria, setCategoria] = useState(categorias[0]?.nome || '');
-  const [repetirTodoMes, setRepetirTodoMes] = useState(true);
-  const [salvando, setSalvando] = useState(false);
+const FREQUENCIAS_RENDA = ['Mensal', 'Semanal', 'Única'];
+const DIAS_SEMANA_OPCOES = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'];
 
-  const valido = nome.trim() && Number(valor) > 0 && Number(dia) >= 1 && Number(dia) <= 31;
+function semAcentoLocal(s) {
+  return String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/-?feira/g, '').trim();
+}
+
+function frequenciaExibicao(frequenciaNormalizada) {
+  if (frequenciaNormalizada === 'semanal') return 'Semanal';
+  if (frequenciaNormalizada === 'unica') return 'Única';
+  return 'Mensal';
+}
+
+function diaSemanaInicial(valorBruto) {
+  const chave = semAcentoLocal(valorBruto);
+  return DIAS_SEMANA_OPCOES.find((d) => semAcentoLocal(d) === chave) || DIAS_SEMANA_OPCOES[5];
+}
+
+function diaMesInicial(item, tipo) {
+  if (!item) return '';
+  if (tipo === 'renda') return item.diaRecebimento != null ? String(item.diaRecebimento) : '';
+  return item.data ? String(Number(item.data.slice(-2))) : '';
+}
+
+function PaymentPanel({ mes, categoriasCusto, modo, tipoInicial, item, onSalvar, onExcluir, onCancelar }) {
+  const [tipo, setTipo] = useState(item ? item.tipo : tipoInicial);
+  const [descricao, setDescricao] = useState(item?.nome || '');
+  const [valor, setValor] = useState(item ? String(item.valor) : '');
+  const [categoria, setCategoria] = useState(item?.categoria?.nome || categoriasCusto[0]?.nome || '');
+  const [frequencia, setFrequencia] = useState(item?.frequencia ? frequenciaExibicao(item.frequencia) : 'Mensal');
+  const [diaMes, setDiaMes] = useState(diaMesInicial(item, item ? item.tipo : tipoInicial));
+  const [diaSemana, setDiaSemana] = useState(item?.tipo === 'renda' ? diaSemanaInicial(item.diaRecebimento) : DIAS_SEMANA_OPCOES[5]);
+  const [repetirTodoMes, setRepetirTodoMes] = useState(item ? !!item.repete : true);
+  const [statusPago, setStatusPago] = useState(item?.statusPagamento === 'pago');
+  const [salvando, setSalvando] = useState(false);
+  const [excluindo, setExcluindo] = useState(false);
+
+  const ehRenda = tipo === 'renda';
+  const ehSemanal = ehRenda && frequencia === 'Semanal';
+  const valido = descricao.trim() && Number(valor) > 0 && (ehSemanal ? !!diaSemana : Number(diaMes) >= 1 && Number(diaMes) <= 31);
+
+  const montarForm = () => {
+    if (ehRenda) {
+      return {
+        fonte: descricao,
+        valor: Number(valor),
+        frequencia,
+        diaRecebimento: ehSemanal ? diaSemana : Number(diaMes),
+        repetirTodoMes,
+      };
+    }
+    return {
+      nome: descricao,
+      valor: Number(valor),
+      categoria,
+      dia: Number(diaMes),
+      repetirTodoMes,
+    };
+  };
 
   const salvar = async () => {
     setSalvando(true);
-    await onSalvar({ nome, valor: Number(valor), categoria, dia: Number(dia), repetirTodoMes });
+    if (modo === 'editar' && tipo === 'custo' && statusPago !== (item.statusPagamento === 'pago')) {
+      await atualizarPagamento(item.linhaPlanilha, statusPago ? 'Pago' : 'Pendente');
+    }
+    await onSalvar(tipo, montarForm());
     setSalvando(false);
   };
 
+  const excluir = async () => {
+    setExcluindo(true);
+    await onExcluir(tipo, montarForm());
+    setExcluindo(false);
+  };
+
+  const titulo = modo === 'criar' ? (ehRenda ? 'Nova renda' : 'Novo pagamento') : ehRenda ? 'Editar renda' : 'Editar pagamento';
+
   return (
     <aside className={styles.panel}>
-      <div className={styles.panelTitle}>Novo pagamento</div>
+      <div className={styles.panelTitle}>{titulo}</div>
       <div className={styles.panelSubtitle}>{tituloMes(mes)}</div>
 
-      <label className={styles.fieldLabel}>Descrição</label>
-      <input className={styles.fieldInput} value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Assinatura de streaming" />
+      {modo === 'criar' && (
+        <div className={styles.chipsRow}>
+          <button type="button" className={`${styles.chip} ${!ehRenda ? styles.chipActive : ''}`} onClick={() => setTipo('custo')}>
+            Custo
+          </button>
+          <button type="button" className={`${styles.chip} ${ehRenda ? styles.chipActive : ''}`} onClick={() => setTipo('renda')}>
+            Renda
+          </button>
+        </div>
+      )}
+
+      <label className={styles.fieldLabel}>{ehRenda ? 'Fonte' : 'Descrição'}</label>
+      <input
+        className={styles.fieldInput}
+        value={descricao}
+        onChange={(e) => setDescricao(e.target.value)}
+        placeholder={ehRenda ? 'Salário' : 'Assinatura de streaming'}
+      />
 
       <div className={styles.fieldRow}>
         <div style={{ flex: 1.3 }}>
@@ -612,34 +737,96 @@ function NewPaymentPanel({ mes, categorias, onSalvar, onCancelar }) {
           />
         </div>
         <div style={{ flex: 1 }}>
-          <label className={styles.fieldLabel}>Dia</label>
-          <input
-            className={styles.fieldInput}
-            style={{ marginBottom: 0 }}
-            type="number"
-            min="1"
-            max="31"
-            value={dia}
-            onChange={(e) => setDia(e.target.value)}
-            placeholder="23"
-          />
+          {ehSemanal ? (
+            <>
+              <label className={styles.fieldLabel}>Dia da semana</label>
+              <select
+                className={styles.fieldInput}
+                style={{ marginBottom: 0 }}
+                value={diaSemana}
+                onChange={(e) => setDiaSemana(e.target.value)}
+              >
+                {DIAS_SEMANA_OPCOES.map((d) => (
+                  <option key={d} value={d}>
+                    {d}
+                  </option>
+                ))}
+              </select>
+            </>
+          ) : (
+            <>
+              <label className={styles.fieldLabel}>Dia</label>
+              <input
+                className={styles.fieldInput}
+                style={{ marginBottom: 0 }}
+                type="number"
+                min="1"
+                max="31"
+                value={diaMes}
+                onChange={(e) => setDiaMes(e.target.value)}
+                placeholder="23"
+              />
+            </>
+          )}
         </div>
       </div>
 
-      <label className={styles.fieldLabel}>Categoria</label>
-      <div className={styles.chipsRow}>
-        {categorias.map((c) => (
-          <button
-            key={c.nome}
-            type="button"
-            className={`${styles.chip} ${categoria === c.nome ? styles.chipActive : ''}`}
-            onClick={() => setCategoria(c.nome)}
-          >
-            <span className={styles.chipDot} style={{ background: c.cor }} />
-            {c.icone} {c.nome}
-          </button>
-        ))}
-      </div>
+      {ehRenda ? (
+        <>
+          <label className={styles.fieldLabel}>Frequência</label>
+          <div className={styles.chipsRow}>
+            {FREQUENCIAS_RENDA.map((f) => (
+              <button
+                key={f}
+                type="button"
+                className={`${styles.chip} ${frequencia === f ? styles.chipActive : ''}`}
+                onClick={() => setFrequencia(f)}
+              >
+                {f}
+              </button>
+            ))}
+          </div>
+        </>
+      ) : (
+        <>
+          <label className={styles.fieldLabel}>Categoria</label>
+          <div className={styles.chipsRow}>
+            {categoriasCusto.map((c) => (
+              <button
+                key={c.nome}
+                type="button"
+                className={`${styles.chip} ${categoria === c.nome ? styles.chipActive : ''}`}
+                onClick={() => setCategoria(c.nome)}
+              >
+                <span className={styles.chipDot} style={{ background: c.cor }} />
+                {c.icone} {c.nome}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+
+      {modo === 'editar' && !ehRenda && (
+        <>
+          <label className={styles.fieldLabel}>Status</label>
+          <div className={styles.statusToggle}>
+            <button
+              type="button"
+              className={`${styles.statusOption} ${!statusPago ? styles.statusOptionActive : ''}`}
+              onClick={() => setStatusPago(false)}
+            >
+              Não pago
+            </button>
+            <button
+              type="button"
+              className={`${styles.statusOption} ${statusPago ? styles.statusOptionActive : ''}`}
+              onClick={() => setStatusPago(true)}
+            >
+              Pago
+            </button>
+          </div>
+        </>
+      )}
 
       <button
         type="button"
@@ -662,6 +849,17 @@ function NewPaymentPanel({ mes, categorias, onSalvar, onCancelar }) {
           Cancelar
         </button>
       </div>
+      {modo === 'editar' && (
+        <button
+          type="button"
+          className={styles.btnGhost}
+          style={{ marginTop: 'var(--space-2)', color: 'var(--status-atrasado)', borderColor: 'var(--status-atrasado)' }}
+          disabled={excluindo}
+          onClick={excluir}
+        >
+          {excluindo ? 'Excluindo…' : 'Excluir'}
+        </button>
+      )}
     </aside>
   );
 }
