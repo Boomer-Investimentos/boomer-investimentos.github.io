@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import styles from './CalendarioPage.module.css';
+import boomerBMark from '../../assets/imgs/boomer-b-mark.png';
 import {
   obterMes,
   verificarAcesso,
@@ -263,7 +264,7 @@ function Topbar() {
   return (
     <header className={styles.topbar}>
       <div className={styles.brandGroup}>
-        <div className={styles.brandMark}>b</div>
+        <img src={boomerBMark} alt="Boomer" className={styles.brandMark} />
         <span className={styles.brandName}>boomer</span>
         <span className={styles.brandDivider} />
         <span className={styles.brandSection}>Calendário</span>

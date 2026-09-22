@@ -86,18 +86,14 @@
   gap: var(--space-3);
 }
 
-/* Ícone de app/avatar: radius-2xl (24px), nunca distorcido/rotacionado/com sombra. */
+/* Marca "b": lettermark oficial (isotipo integrado ao "b"), formato ≤28px
+   conforme o manual — sem contêiner/fundo, cor correspondente ao fundo
+   (areia-700 sobre o surface escuro). Nunca distorcida/rotacionada/com sombra. */
 .brandMark {
-  width: 26px;
   height: 26px;
-  border-radius: var(--radius-2xl);
-  background: var(--accent);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 15px;
-  font-weight: 700;
-  color: var(--accent-fg);
+  width: auto;
+  display: block;
+  flex-shrink: 0;
 }
 
 /* heading-md */
