@@ -687,6 +687,10 @@ function PaymentPanel({ mes, categoriasCusto, modo, tipoInicial, item, onSalvar,
   const [statusPago, setStatusPago] = useState(item?.statusPagamento === 'pago');
   const [salvando, setSalvando] = useState(false);
   const [excluindo, setExcluindo] = useState(false);
+  const panelRef = useRef(null);
+  useEffect(() => {
+    panelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }, []);
 
   const ehRenda = tipo === 'renda';
   const ehSemanal = ehRenda && frequencia === 'Semanal';
@@ -729,7 +733,7 @@ function PaymentPanel({ mes, categoriasCusto, modo, tipoInicial, item, onSalvar,
   const titulo = modo === 'criar' ? (ehRenda ? 'Nova renda' : 'Novo pagamento') : ehRenda ? 'Editar renda' : 'Editar pagamento';
 
   return (
-    <aside className={styles.panel}>
+    <aside className={styles.panel} ref={panelRef}>
       <div className={styles.panelTitle}>{titulo}</div>
       <div className={styles.panelSubtitle}>{tituloMes(mes)}</div>
 
