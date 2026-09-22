@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import styles from './CalendarioPage.module.css';
 import {
   obterMes,
@@ -219,10 +219,10 @@ export default function CalendarioPage() {
           />
           <SummaryCards totals={dados.totals} moeda={dados.moeda} />
           <div className={styles.desktopOnly}>
-            <MonthGrid dados={dados} mes={mes} onEditar={abrirPainelEditar} />
+            <MonthGrid dados={dados} mes={mes} onEditar={abrirPainelEditar} onTogglePago={alternarPago} />
           </div>
           <div className={styles.mobileOnly}>
-            <MobileAgenda dados={dados} mes={mes} onEditar={abrirPainelEditar} />
+            <MobileAgenda dados={dados} mes={mes} onEditar={abrirPainelEditar} onTogglePago={alternarPago} />
           </div>
           <Legend categorias={dados.categorias} />
           {dados.semData.length > 0 && (
@@ -321,7 +321,7 @@ function SummaryCard({ label, valor, moeda, cor, receita }) {
   );
 }
 
-function MonthGrid({ dados, mes, onEditar }) {
+function MonthGrid({ dados, mes, onEditar, onTogglePago }) {
   const blanksAntes = primeiroDiaDaSemana(mes);
   const totalCelulas = blanksAntes + dados.dias.length;
   const blanksDepois = (7 - (totalCelulas % 7)) % 7;
@@ -340,7 +340,7 @@ function MonthGrid({ dados, mes, onEditar }) {
           <div key={`antes-${i}`} className={`${styles.cell} ${styles.cellBlank}`} />
         ))}
         {dados.dias.map((dia) => (
-          <DayCell key={dia.data} dia={dia} hoje={dados.hoje} onEditar={onEditar} />
+          <DayCell key={dia.data} dia={dia} hoje={dados.hoje} onEditar={onEditar} onTogglePago={onTogglePago} />
         ))}
         {Array.from({ length: blanksDepois }).map((_, i) => (
           <div key={`depois-${i}`} className={`${styles.cell} ${styles.cellBlank}`} />
@@ -350,7 +350,7 @@ function MonthGrid({ dados, mes, onEditar }) {
   );
 }
 
-function DayCell({ dia, hoje, onEditar }) {
+function DayCell({ dia, hoje, onEditar, onTogglePago }) {
   const isHoje = dia.data === hoje;
   const atrasado = dia.itens.some((i) => i.atrasado);
   const totalSaida = dia.itens
@@ -368,13 +368,33 @@ function DayCell({ dia, hoje, onEditar }) {
         {totalSaida > 0 && <span className={styles.cellDayTotal}>−{totalSaida.toFixed(2)}</span>}
       </div>
       {dia.itens.map((item, idx) => (
-        <Item key={idx} item={item} onEditar={onEditar} />
+        <Item key={idx} item={item} onEditar={onEditar} onTogglePago={onTogglePago} />
       ))}
     </div>
   );
 }
 
-function Item({ item, onEditar }) {
+function useCliqueSimplesOuDuplo(aoClicar, aoClicarDuplo) {
+  const timerRef = useRef(null);
+  useEffect(() => () => clearTimeout(timerRef.current), []);
+
+  return {
+    onClick: () => {
+      clearTimeout(timerRef.current);
+      timerRef.current = setTimeout(() => {
+        timerRef.current = null;
+        aoClicar();
+      }, 250);
+    },
+    onDoubleClick: () => {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+      aoClicarDuplo();
+    },
+  };
+}
+
+function Item({ item, onEditar, onTogglePago }) {
   const classeNome = item.statusPagamento === 'pago' ? styles.itemNamePago : '';
   const classeValor =
     item.tipo === 'renda'
@@ -387,22 +407,26 @@ function Item({ item, onEditar }) {
 
   const marca = item.tipo === 'renda' ? '+' : item.statusPagamento === 'pago' ? ' ✓' : item.atrasado ? ' !' : '';
 
-  const acionar = () => onEditar(item);
+  const { onClick, onDoubleClick } = useCliqueSimplesOuDuplo(
+    () => onEditar(item),
+    () => { if (item.tipo === 'custo') onTogglePago(item); },
+  );
   const aoTeclar = (ev) => {
     if (ev.key === 'Enter' || ev.key === ' ') {
       ev.preventDefault();
-      acionar();
+      onEditar(item);
     }
   };
 
   return (
     <div
       className={`${styles.item} ${styles.itemClickable}`}
-      onClick={acionar}
+      onClick={onClick}
+      onDoubleClick={onDoubleClick}
       onKeyDown={aoTeclar}
       role="button"
       tabIndex={0}
-      title="Editar lançamento"
+      title={item.tipo === 'custo' ? 'Clique para editar · duplo clique para marcar pago/pendente' : 'Editar lançamento'}
     >
       <span className={styles.itemDot} style={{ background: item.categoria.cor }} />
       <div className={styles.itemBody}>
@@ -423,7 +447,7 @@ function Item({ item, onEditar }) {
  * mockup original pra celular: mini-calendário só com pontinhos por
  * categoria + lista de detalhe do dia selecionado abaixo.
  */
-function MobileAgenda({ dados, mes, onEditar }) {
+function MobileAgenda({ dados, mes, onEditar, onTogglePago }) {
   const hojeNoMes = dados.dias.some((d) => d.data === dados.hoje);
   const [diaSelecionado, setDiaSelecionado] = useState(hojeNoMes ? dados.hoje : dados.dias[0]?.data);
 
@@ -439,7 +463,7 @@ function MobileAgenda({ dados, mes, onEditar }) {
   return (
     <div className={styles.mobileAgenda}>
       <MiniCalendar mes={mes} dias={dados.dias} hoje={dados.hoje} selecionado={diaAtual.data} onSelecionar={setDiaSelecionado} />
-      <DayList dia={diaAtual} hoje={dados.hoje} moeda={dados.moeda} onEditar={onEditar} />
+      <DayList dia={diaAtual} hoje={dados.hoje} moeda={dados.moeda} onEditar={onEditar} onTogglePago={onTogglePago} />
     </div>
   );
 }
@@ -502,7 +526,7 @@ function MiniCell({ dia, isHoje, isSelecionado, onSelecionar }) {
   );
 }
 
-function DayList({ dia, hoje, moeda, onEditar }) {
+function DayList({ dia, hoje, moeda, onEditar, onTogglePago }) {
   return (
     <div className={styles.dayList}>
       <div className={styles.dayListHead}>
@@ -512,13 +536,13 @@ function DayList({ dia, hoje, moeda, onEditar }) {
       {dia.itens.length === 0 ? (
         <div className={styles.dayListVazio}>Nenhum lançamento neste dia.</div>
       ) : (
-        dia.itens.map((item, idx) => <DayListRow key={idx} item={item} moeda={moeda} onEditar={onEditar} />)
+        dia.itens.map((item, idx) => <DayListRow key={idx} item={item} moeda={moeda} onEditar={onEditar} onTogglePago={onTogglePago} />)
       )}
     </div>
   );
 }
 
-function DayListRow({ item, moeda, onEditar }) {
+function DayListRow({ item, moeda, onEditar, onTogglePago }) {
   const statusLabel = item.tipo === 'renda' ? null : item.atrasado ? 'Atrasado' : item.statusPagamento === 'pago' ? 'Pago' : 'Não pago';
   const statusClasse = item.atrasado ? styles.dayListBadgeAtrasado : item.statusPagamento === 'pago' ? styles.dayListBadgePago : styles.dayListBadgePendente;
   const valorClasse =
@@ -530,18 +554,22 @@ function DayListRow({ item, moeda, onEditar }) {
           ? styles.itemAmountPago
           : styles.itemAmountPendente;
 
-  const acionar = () => onEditar(item);
+  const { onClick, onDoubleClick } = useCliqueSimplesOuDuplo(
+    () => onEditar(item),
+    () => { if (item.tipo === 'custo') onTogglePago(item); },
+  );
   const aoTeclar = (ev) => {
     if (ev.key === 'Enter' || ev.key === ' ') {
       ev.preventDefault();
-      acionar();
+      onEditar(item);
     }
   };
 
   return (
     <div
       className={`${styles.dayListRow} ${styles.itemClickable}`}
-      onClick={acionar}
+      onClick={onClick}
+      onDoubleClick={onDoubleClick}
       onKeyDown={aoTeclar}
       role="button"
       tabIndex={0}
