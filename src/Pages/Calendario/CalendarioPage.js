@@ -233,6 +233,7 @@ export default function CalendarioPage() {
 
         {painelItem && (
           <PaymentPanel
+            key={`${painelItem.modo}-${painelItem.tipo}-${painelItem.item?.linhaPlanilha ?? 'novo'}`}
             mes={mes}
             categoriasCusto={dados.categorias.filter((c) => c.nome !== 'Recebimento')}
             modo={painelItem.modo}
