@@ -1,6 +1,6 @@
 'use strict';
 
-const { categoria, legenda, OUTROS } = require('./categories');
+const { categoria, legenda, OUTROS } = require('../../lib/cal/categories');
 
 test('categorias conhecidas resolvem com ícone e cor', () => {
   expect(categoria('Moradia')).toMatchObject({ nome: 'Moradia', icone: '🏠' });

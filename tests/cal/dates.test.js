@@ -1,6 +1,6 @@
 'use strict';
 
-const d = require('./dates');
+const d = require('../../lib/cal/dates');
 
 describe('serialParaData / dataParaSerial', () => {
   test('serial do Excel vira YYYY-MM-DD (dados 2026)', () => {

@@ -1,7 +1,7 @@
 'use strict';
 
-const s = require('./schema');
-const fx = require('../../tests/cal/fixtures/planilha');
+const s = require('../../lib/cal/schema');
+const fx = require('./fixtures/planilha');
 
 describe('parseConfig', () => {
   test('extrai cliente, moeda, e-mail e data de referência', () => {

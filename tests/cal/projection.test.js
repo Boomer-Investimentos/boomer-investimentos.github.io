@@ -1,8 +1,8 @@
 'use strict';
 
-const { projetarMes } = require('./projection');
-const schema = require('./schema');
-const fx = require('../../tests/cal/fixtures/planilha');
+const { projetarMes } = require('../../lib/cal/projection');
+const schema = require('../../lib/cal/schema');
+const fx = require('./fixtures/planilha');
 
 const renda = schema.parseRenda(fx.SHEETS.RENDA);
 const custo = schema.parseCusto(fx.SHEETS.CUSTO_FIXO);

@@ -3,14 +3,14 @@
 process.env.CAL_JWT_SECRET = 'segredo-de-teste-bem-comprido-1234';
 process.env.CAL_APP_URL = 'https://cal.exemplo.com';
 
-jest.mock('../sheets');
-jest.mock('../email');
+jest.mock('../../../lib/cal/sheets');
+jest.mock('../../../lib/cal/email');
 
-const sheets = require('../sheets');
-const emailIO = require('../email');
-const auth = require('../auth');
-const fx = require('../../../tests/cal/fixtures/planilha');
-const { pedirAcesso } = require('./login');
+const sheets = require('../../../lib/cal/sheets');
+const emailIO = require('../../../lib/cal/email');
+const auth = require('../../../lib/cal/auth');
+const fx = require('../fixtures/planilha');
+const { pedirAcesso } = require('../../../lib/cal/handlers/login');
 
 beforeEach(() => {
   sheets.getValues.mockResolvedValue(fx.SHEETS.CONFIG);

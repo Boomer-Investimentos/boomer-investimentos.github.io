@@ -2,13 +2,13 @@
 
 process.env.CAL_JWT_SECRET = 'segredo-de-teste-bem-comprido-1234';
 
-jest.mock('../sheets');
+jest.mock('../../../lib/cal/sheets');
 
-const sheets = require('../sheets');
-const auth = require('../auth');
-const escrita = require('../escrita');
-const fx = require('../../../tests/cal/fixtures/planilha');
-const { atualizarPagamento } = require('./pagamento');
+const sheets = require('../../../lib/cal/sheets');
+const auth = require('../../../lib/cal/auth');
+const escrita = require('../../../lib/cal/escrita');
+const fx = require('../fixtures/planilha');
+const { atualizarPagamento } = require('../../../lib/cal/handlers/pagamento');
 
 const sessaoValida = { [auth.COOKIE_NOME]: auth.assinarSessao({ sid: fx.SPREADSHEET_ID, email: fx.EMAIL }) };
 

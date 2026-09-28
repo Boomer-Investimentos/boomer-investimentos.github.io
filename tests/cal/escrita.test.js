@@ -1,7 +1,7 @@
 'use strict';
 
-const e = require('./escrita');
-const fx = require('../../tests/cal/fixtures/planilha');
+const e = require('../../lib/cal/escrita');
+const fx = require('./fixtures/planilha');
 
 describe('colunaLetra', () => {
   test('primeiras colunas', () => {

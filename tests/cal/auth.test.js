@@ -2,7 +2,7 @@
 
 process.env.CAL_JWT_SECRET = 'segredo-de-teste-bem-comprido-1234';
 
-const a = require('./auth');
+const a = require('../../lib/cal/auth');
 
 describe('assinar / verificar', () => {
   test('round-trip preserva payload e purpose', () => {

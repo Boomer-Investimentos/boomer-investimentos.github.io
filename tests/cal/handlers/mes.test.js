@@ -2,12 +2,12 @@
 
 process.env.CAL_JWT_SECRET = 'segredo-de-teste-bem-comprido-1234';
 
-jest.mock('../sheets');
+jest.mock('../../../lib/cal/sheets');
 
-const sheets = require('../sheets');
-const auth = require('../auth');
-const fx = require('../../../tests/cal/fixtures/planilha');
-const { obterMes } = require('./mes');
+const sheets = require('../../../lib/cal/sheets');
+const auth = require('../../../lib/cal/auth');
+const fx = require('../fixtures/planilha');
+const { obterMes } = require('../../../lib/cal/handlers/mes');
 
 beforeEach(() => {
   sheets.getTabs.mockResolvedValue({

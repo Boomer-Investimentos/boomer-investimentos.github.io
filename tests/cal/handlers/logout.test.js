@@ -1,6 +1,6 @@
 'use strict';
 
-const { encerrarSessao } = require('./logout');
+const { encerrarSessao } = require('../../../lib/cal/handlers/logout');
 
 test('encerrarSessao devolve cookie com Max-Age=0', async () => {
   const r = await encerrarSessao();

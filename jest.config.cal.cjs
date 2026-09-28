@@ -5,7 +5,7 @@
  */
 module.exports = {
   testEnvironment: 'node',
-  roots: ['<rootDir>/lib/cal', '<rootDir>/tests/cal'],
+  roots: ['<rootDir>/tests/cal'],
   testMatch: ['**/*.test.js'],
   transform: {},
   clearMocks: true,

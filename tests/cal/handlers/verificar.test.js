@@ -2,8 +2,8 @@
 
 process.env.CAL_JWT_SECRET = 'segredo-de-teste-bem-comprido-1234';
 
-const auth = require('../auth');
-const { verificarAcesso } = require('./verificar');
+const auth = require('../../../lib/cal/auth');
+const { verificarAcesso } = require('../../../lib/cal/handlers/verificar');
 
 describe('verificarAcesso', () => {
   test('token magic válido -> 200 + cookie de sessão', async () => {
