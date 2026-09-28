@@ -12,6 +12,7 @@
     "axios": "^1.7.0",
     "bootstrap": "^5.3.7",
     "cors": "^2.8.5",
+    "express": "^4.22.2",
     "googleapis": "^173.0.0",
     "multer": "^1.4.5-lts.1",
     "react": "^19.1.1",
@@ -25,7 +26,12 @@
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
+    "test:cal": "jest -c jest.config.cal.cjs",
+    "test:ci": "react-scripts test --watchAll=false && jest -c jest.config.cal.cjs --ci --coverage",
     "eject": "react-scripts eject"
+  },
+  "engines": {
+    "node": "22.x"
   },
   "eslintConfig": {
     "extends": [
@@ -44,5 +50,9 @@
       "last 1 firefox version",
       "last 1 safari version"
     ]
+  },
+  "devDependencies": {
+    "jest": "^27.5.1",
+    "supertest": "^7.0.0"
   }
 }
