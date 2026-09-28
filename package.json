@@ -24,8 +24,6 @@
   },
   "scripts": {
     "start": "react-scripts start",
-    "predeploy": "npm run build",
-    "deploy": "gh-pages -d build",
     "build": "react-scripts build",
     "test": "react-scripts test",
     "test:cal": "jest -c jest.config.cal.cjs",
@@ -54,7 +52,6 @@
     ]
   },
   "devDependencies": {
-    "gh-pages": "^6.3.0",
     "jest": "^27.5.1",
     "supertest": "^7.0.0"
   }
