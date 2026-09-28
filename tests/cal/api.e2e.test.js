@@ -3,7 +3,7 @@
 /**
  * E2E leve: monta cada função de api/cal/*.js num Express só pra exercitar o
  * fio real (querystring, JSON body, Set-Cookie) — a lógica em si já é testada
- * em lib/cal/handlers/*.test.js. sheets.js e email.js seguem mockados.
+ * em tests/cal/handlers/*.test.js. sheets.js e email.js seguem mockados.
  */
 
 process.env.CAL_JWT_SECRET = 'segredo-de-teste-bem-comprido-1234';
