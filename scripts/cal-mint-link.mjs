@@ -22,7 +22,7 @@ if (!process.env.CAL_JWT_SECRET) {
   process.exit(1);
 }
 
-const base = (process.env.CAL_APP_URL || 'https://www.boomerinvestimentos.com.br').replace(/\/+$/, '');
+const base = (process.env.CAL_APP_URL || 'https://boomerinvestimentos.com.br').replace(/\/+$/, '');
 const token = auth.assinarLink(sid);
 
 console.log(`${base}/calendario?s=${token}`);
