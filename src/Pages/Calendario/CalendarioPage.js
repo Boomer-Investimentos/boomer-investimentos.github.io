@@ -32,12 +32,22 @@ function primeiroDiaDaSemana(mes) {
   return new Date(`${mes}-01T00:00:00Z`).getUTCDay();
 }
 
+const LOCALE_POR_MOEDA = { USD: 'en-US', BRL: 'pt-BR' };
+
+function localeDaMoeda(moeda) {
+  return LOCALE_POR_MOEDA[moeda] || 'pt-BR';
+}
+
 function formatarMoeda(valor, moeda) {
   try {
-    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: moeda || 'BRL' }).format(valor);
+    return new Intl.NumberFormat(localeDaMoeda(moeda), { style: 'currency', currency: moeda || 'BRL' }).format(valor);
   } catch {
     return `${moeda || 'BRL'} ${valor.toFixed(2)}`;
   }
+}
+
+function formatarNumero(valor, moeda) {
+  return new Intl.NumberFormat(localeDaMoeda(moeda), { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(valor);
 }
 
 function tituloMes(mes) {
@@ -267,7 +277,7 @@ function Topbar() {
         <img src={boomerBMark} alt="Boomer" className={styles.brandMark} />
         <span className={styles.brandName}>boomer</span>
         <span className={styles.brandDivider} />
-        <span className={styles.brandSection}>Calendário</span>
+        <span className={styles.brandSection}>Calendário Financeiro</span>
       </div>
     </header>
   );
@@ -341,7 +351,7 @@ function MonthGrid({ dados, mes, onEditar, onTogglePago }) {
           <div key={`antes-${i}`} className={`${styles.cell} ${styles.cellBlank}`} />
         ))}
         {dados.dias.map((dia) => (
-          <DayCell key={dia.data} dia={dia} hoje={dados.hoje} onEditar={onEditar} onTogglePago={onTogglePago} />
+          <DayCell key={dia.data} dia={dia} hoje={dados.hoje} moeda={dados.moeda} onEditar={onEditar} onTogglePago={onTogglePago} />
         ))}
         {Array.from({ length: blanksDepois }).map((_, i) => (
           <div key={`depois-${i}`} className={`${styles.cell} ${styles.cellBlank}`} />
@@ -351,7 +361,7 @@ function MonthGrid({ dados, mes, onEditar, onTogglePago }) {
   );
 }
 
-function DayCell({ dia, hoje, onEditar, onTogglePago }) {
+function DayCell({ dia, hoje, moeda, onEditar, onTogglePago }) {
   const isHoje = dia.data === hoje;
   const atrasado = dia.itens.some((i) => i.atrasado);
   const totalSaida = dia.itens
@@ -366,10 +376,10 @@ function DayCell({ dia, hoje, onEditar, onTogglePago }) {
     <div className={classe}>
       <div className={styles.cellHead}>
         <span className={`${styles.cellDay} ${isHoje ? styles.cellDayToday : ''}`}>{dia.dia}</span>
-        {totalSaida > 0 && <span className={styles.cellDayTotal}>−{totalSaida.toFixed(2)}</span>}
+        {totalSaida > 0 && <span className={styles.cellDayTotal}>−{formatarNumero(totalSaida, moeda)}</span>}
       </div>
       {dia.itens.map((item, idx) => (
-        <Item key={idx} item={item} onEditar={onEditar} onTogglePago={onTogglePago} />
+        <Item key={idx} item={item} moeda={moeda} onEditar={onEditar} onTogglePago={onTogglePago} />
       ))}
     </div>
   );
@@ -395,7 +405,7 @@ function useCliqueSimplesOuDuplo(aoClicar, aoClicarDuplo) {
   };
 }
 
-function Item({ item, onEditar, onTogglePago }) {
+function Item({ item, moeda, onEditar, onTogglePago }) {
   const classeNome = item.statusPagamento === 'pago' ? styles.itemNamePago : '';
   const classeValor =
     item.tipo === 'renda'
@@ -434,7 +444,7 @@ function Item({ item, onEditar, onTogglePago }) {
         <div className={`${styles.itemName} ${classeNome}`}>{item.nome}</div>
         <div className={`${styles.itemAmount} ${classeValor}`}>
           {marca === '+' ? '+' : ''}
-          {item.valor.toFixed(2)}
+          {formatarNumero(item.valor, moeda)}
           {marca !== '+' ? marca : ''}
         </div>
       </div>
