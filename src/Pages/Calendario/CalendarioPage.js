@@ -32,6 +32,8 @@ function primeiroDiaDaSemana(mes) {
   return new Date(`${mes}-01T00:00:00Z`).getUTCDay();
 }
 
+const COR_FUNDO = '#141c31'; // = --surface em CalendarioPage.module.css
+
 const LOCALE_POR_MOEDA = { USD: 'en-US', BRL: 'pt-BR' };
 
 function localeDaMoeda(moeda) {
@@ -94,6 +96,25 @@ export default function CalendarioPage() {
     } finally {
       setCarregando(false);
     }
+  }, []);
+
+  // Página dark-only: pinta html/body e a theme-color pra Safari/Chrome mobile
+  // não mostrarem faixas brancas atrás da barra do navegador. Restaura ao sair.
+  useEffect(() => {
+    const meta = document.querySelector('meta[name="theme-color"]');
+    const anterior = {
+      html: document.documentElement.style.backgroundColor,
+      body: document.body.style.backgroundColor,
+      tema: meta ? meta.getAttribute('content') : null,
+    };
+    document.documentElement.style.backgroundColor = COR_FUNDO;
+    document.body.style.backgroundColor = COR_FUNDO;
+    if (meta) meta.setAttribute('content', COR_FUNDO);
+    return () => {
+      document.documentElement.style.backgroundColor = anterior.html;
+      document.body.style.backgroundColor = anterior.body;
+      if (meta && anterior.tema !== null) meta.setAttribute('content', anterior.tema);
+    };
   }, []);
 
   useEffect(() => {
