@@ -63,6 +63,17 @@ describe('atualizarPagamento', () => {
     expect((await atualizarPagamento(pedido({ linhaPlanilha: 500 }))).status).toBe(404);
   });
 
+  test('nome duplicado na CUSTO_FIXO -> 409 pedindo para renomear, sem escrever', async () => {
+    const custo = fx.clone().CUSTO_FIXO;
+    custo.push([...custo[1]]);
+    mockPlanilha({ custo });
+    const r = await atualizarPagamento(pedido());
+    expect(r.status).toBe(409);
+    expect(r.body.error).toContain('"Aluguel 2"');
+    expect(sheets.updateCell).not.toHaveBeenCalled();
+    expect(sheets.appendRow).not.toHaveBeenCalled();
+  });
+
   test('planilha sem a aba HISTORICO_CUSTOS -> 422, sem escrever', async () => {
     sheets.getValues.mockImplementation(async (_sid, range) => {
       if (range.startsWith('HISTORICO_CUSTOS')) throw new Error('Unable to parse range: HISTORICO_CUSTOS!A1:Z2000');
