@@ -164,7 +164,7 @@ export default function CalendarioPage() {
     setErroAcao(null);
     const novoStatus = item.statusPagamento === 'pago' ? 'Pendente' : 'Pago';
     try {
-      await atualizarPagamento(item.linhaPlanilha, novoStatus);
+      await atualizarPagamento(item.linhaPlanilha, novoStatus, mes);
       carregarMes(mes, linkToken);
     } catch (e) {
       setErroAcao(e.message);
@@ -749,7 +749,7 @@ function PaymentPanel({ mes, categoriasCusto, modo, tipoInicial, item, onSalvar,
   const salvar = async () => {
     setSalvando(true);
     if (modo === 'editar' && tipo === 'custo' && statusPago !== (item.statusPagamento === 'pago')) {
-      await atualizarPagamento(item.linhaPlanilha, statusPago ? 'Pago' : 'Pendente');
+      await atualizarPagamento(item.linhaPlanilha, statusPago ? 'Pago' : 'Pendente', mes);
     }
     await onSalvar(tipo, montarForm());
     setSalvando(false);
