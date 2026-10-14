@@ -72,7 +72,13 @@ const ESTRATEGIA = [
   [4, '4º recebimento: guardar para o aluguel'],
 ];
 
-const SHEETS = { CONFIG, PARAMS, RENDA, CUSTO_FIXO, ESTRATEGIA };
+// Custo | Ano | Jan..Dez | Status | Última alteração (Aluguel pago em set/2026)
+const HISTORICO_CUSTOS = [
+  ['Custo', 'Ano', 'Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez', 'Status', 'Última alteração'],
+  ['Aluguel', 2026, '', '', '', '', '', '', '', '', 900, '', '', '', '', ''],
+];
+
+const SHEETS = { CONFIG, PARAMS, RENDA, CUSTO_FIXO, ESTRATEGIA, HISTORICO_CUSTOS };
 
 /** Cópia profunda — um teste pode mutar sem afetar os outros. */
 function clone() {
