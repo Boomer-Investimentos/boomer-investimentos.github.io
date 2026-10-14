@@ -94,6 +94,16 @@ describe('atualizarPagamento', () => {
     expect(sheets.updateCell).toHaveBeenCalledWith(fx.SPREADSHEET_ID, `HISTORICO_CUSTOS!${escrita.colunaLetra(idxOut)}2`, 900);
   });
 
+  test('cabeçalho "Última_Alteração" (com underscore) também recebe a data', async () => {
+    const hist = fx.clone().HISTORICO_CUSTOS;
+    hist[0][hist[0].length - 1] = 'Última_Alteração';
+    mockPlanilha({ historico: hist });
+    await atualizarPagamento(pedido({ mes: '2026-10' }));
+    const idxData = hist[0].length;
+    const chamadas = sheets.updateCell.mock.calls.map((c) => c[1]);
+    expect(chamadas).toContain(`HISTORICO_CUSTOS!${escrita.colunaLetra(idxData - 1)}2`);
+  });
+
   test('Pendente apaga o valor do mês no histórico', async () => {
     mockPlanilha({ historico: fx.SHEETS.HISTORICO_CUSTOS });
     const r = await atualizarPagamento(pedido({ mes: '2026-09', statusPagamento: 'Pendente' }));
