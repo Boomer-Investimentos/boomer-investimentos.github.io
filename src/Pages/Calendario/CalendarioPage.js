@@ -173,15 +173,20 @@ export default function CalendarioPage() {
 
   const abrirPainelCriar = () => {
     if (dados && !dados.autenticado) return exigirLogin();
+    setErroAcao(null);
     setPainelItem({ modo: 'criar', tipo: 'custo' });
   };
 
   const abrirPainelEditar = (item) => {
     if (!dados.autenticado) return exigirLogin();
+    setErroAcao(null);
     setPainelItem({ modo: 'editar', tipo: item.tipo, item });
   };
 
-  const fecharPainel = () => setPainelItem(null);
+  const fecharPainel = () => {
+    setErroAcao(null);
+    setPainelItem(null);
+  };
 
   const salvarPainel = async (tipo, form) => {
     setErroAcao(null);
@@ -260,13 +265,14 @@ export default function CalendarioPage() {
           {dados.semData.length > 0 && (
             <SemData itens={dados.semData} moeda={dados.moeda} onEditar={abrirPainelEditar} onTogglePago={alternarPago} />
           )}
-          {erroAcao && <div className={styles.errorText}>{erroAcao}</div>}
+          {erroAcao && !painelItem && <div className={styles.errorText}>{erroAcao}</div>}
         </main>
 
         {painelItem && (
           <PaymentPanel
             key={`${painelItem.modo}-${painelItem.tipo}-${painelItem.item?.linhaPlanilha ?? 'novo'}`}
             mes={mes}
+            erro={erroAcao}
             categoriasCusto={dados.categorias.filter((c) => c.nome !== 'Recebimento')}
             modo={painelItem.modo}
             tipoInicial={painelItem.tipo}
@@ -706,7 +712,7 @@ function diaMesInicial(item, tipo) {
   return item.data ? String(Number(item.data.slice(-2))) : '';
 }
 
-function PaymentPanel({ mes, categoriasCusto, modo, tipoInicial, item, onSalvar, onExcluir, onCancelar }) {
+function PaymentPanel({ mes, erro, categoriasCusto, modo, tipoInicial, item, onSalvar, onExcluir, onCancelar }) {
   const [tipo, setTipo] = useState(item ? item.tipo : tipoInicial);
   const [descricao, setDescricao] = useState(item?.nome || '');
   const [valor, setValor] = useState(item ? String(item.valor) : '');
@@ -905,6 +911,8 @@ function PaymentPanel({ mes, categoriasCusto, modo, tipoInicial, item, onSalvar,
         <span style={{ width: 44 }} />
         <span className={styles.switchLabel}>Repetir todo mês</span>
       </div>
+
+      {erro && <div className={styles.errorText}>{erro}</div>}
 
       <div className={styles.panelActions}>
         <button className={styles.btnPrimary} disabled={!valido || salvando} onClick={salvar}>
