@@ -88,6 +88,26 @@ describe('cabeçalho deslocado', () => {
   });
 });
 
+describe('parseHistorico', () => {
+  test('mapeia custo+ano -> valores pagos por mês (só > 0)', () => {
+    const h = s.parseHistorico(fx.SHEETS.HISTORICO_CUSTOS);
+    expect(h['aluguel|2026']).toEqual({ linhaPlanilha: 2, meses: { 9: 900 } });
+  });
+
+  test('aba vazia ou ausente -> {}', () => {
+    expect(s.parseHistorico([])).toEqual({});
+    expect(s.parseHistorico(undefined)).toEqual({});
+  });
+
+  test('chave ignora acento e caixa no nome do custo', () => {
+    const h = s.parseHistorico([
+      fx.SHEETS.HISTORICO_CUSTOS[0],
+      ['Plano de Saúde', 2026, 40, '', '', '', '', '', '', '', '', '', '', '', '', ''],
+    ]);
+    expect(h[s.chaveHistorico('plano de saude', 2026)].meses).toEqual({ 1: 40 });
+  });
+});
+
 describe('parseEstrategia', () => {
   test('ordena por Ordem e devolve só os textos', () => {
     expect(s.parseEstrategia(fx.SHEETS.ESTRATEGIA)).toEqual([

@@ -1,13 +1,3 @@
-/*
- * Tokens do Design System oficial da Boomer (brand manual, tema Escuro —
- * este produto é deliberadamente dark-only, "tom escuro sóbrio").
- * Cores/spacing/radius/shadow abaixo são os valores literais dos tokens
- * `dark` do manual; nomes batem com o checklist de design.
- *
- * Exceção documentada (aprovada): a paleta oficial (Carvão/Midnight/
- * Terracota/Cinza/Areia) não tem verde/vermelho. pago/atrasado/receita
- * usam --status-* fora da paleta, especificamente pra esses 3 estados.
- */
 .page {
   --surface: #141c31;
   --surface-raised: #1a2340;
@@ -24,9 +14,6 @@
   --accent: #da7742;
   --accent-fg: #141c31;
 
-  /* exceção de status — ver nota acima. #E17048 (não #D9603F) porque o tom
-     mais escuro só batia 4.19:1 em surface-raised — abaixo do mínimo AA de
-     4.5:1 pra texto pequeno; #E17048 fica em 4.87:1. */
   --status-atrasado: #e17048;
   --status-receita: #6fc49b;
 
@@ -52,8 +39,7 @@
   --shadow-lg: 0 8px 24px rgba(15, 16, 21, 0.16), 0 4px 8px rgba(15, 16, 21, 0.08);
   --shadow-xl: 0 16px 48px rgba(15, 16, 21, 0.22), 0 8px 16px rgba(15, 16, 21, 0.1);
 
-  /* type.families.sans/display — Comfortaa Variable é a fonte primária em
-     toda a hierarquia; Nunito Sans só entra como fallback da própria stack. */
+
   --font-sans: 'Comfortaa Variable Font wght', 'Comfortaa', 'Nunito Sans', system-ui, -apple-system, sans-serif;
 
   min-height: 100vh;
@@ -86,9 +72,6 @@
   gap: var(--space-3);
 }
 
-/* Marca "b": lettermark oficial (isotipo integrado ao "b"), formato ≤28px
-   conforme o manual — sem contêiner/fundo, cor correspondente ao fundo
-   (areia-700 sobre o surface escuro). Nunca distorcida/rotacionada/com sombra. */
 .brandMark {
   height: 26px;
   width: auto;
@@ -287,7 +270,8 @@
    Fundo surface-raised (é um "card": superfície elevada sobre a página). */
 .cell {
   min-height: 118px;
-  min-width: 0; /* grid/flex items default to min-width:auto — sem isso o
+  min-width: 0;
+  /* grid/flex items default to min-width:auto — sem isso o
                    conteúdo (nomes/valores) força a coluna a crescer além do
                    1fr e a grade de 7 colunas estoura a largura da tela. */
   border-radius: var(--radius-lg);
@@ -782,6 +766,7 @@
     min-width: 0;
     width: 100%;
   }
+
   .panel {
     width: 100%;
   }

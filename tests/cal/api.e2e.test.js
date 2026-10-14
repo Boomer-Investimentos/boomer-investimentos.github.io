@@ -18,6 +18,7 @@ const sheets = require('../../lib/cal/sheets');
 const emailIO = require('../../lib/cal/email');
 const auth = require('../../lib/cal/auth');
 const fx = require('./fixtures/planilha');
+const { hojeISO } = require('../../lib/cal/dates');
 
 function montarApp() {
   const app = express();
@@ -84,12 +85,15 @@ describe('api/cal — fio completo via HTTP', () => {
     expect(mesRes.status).toBe(200);
     expect(mesRes.body.autenticado).toBe(true);
 
-    sheets.getValues.mockResolvedValueOnce(fx.SHEETS.CUSTO_FIXO);
+    sheets.getValues.mockImplementation(async (_sid, range) => (
+      range.startsWith('HISTORICO_CUSTOS') ? [fx.SHEETS.HISTORICO_CUSTOS[0]] : fx.SHEETS.CUSTO_FIXO
+    ));
     const pagamentoRes = await request(app)
       .post('/api/cal/pagamento')
       .set('Cookie', cookiePar)
-      .send({ linhaPlanilha: 2, statusPagamento: 'Pago' });
+      .send({ linhaPlanilha: 2, statusPagamento: 'Pago', mes: hojeISO().slice(0, 7) });
     expect(pagamentoRes.status).toBe(200);
+    expect(sheets.appendRow).toHaveBeenCalledTimes(1);
     expect(sheets.updateCell).toHaveBeenCalledTimes(1);
   });
 

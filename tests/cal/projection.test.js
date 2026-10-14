@@ -78,12 +78,33 @@ describe('projetarMes — status pago não conta como atrasado mesmo se a data j
   test('custo pago no passado entra em "pago", não em "atrasado"', () => {
     const c = [{
       custo: 'Aluguel', valor: 100, categoria: 'Moradia', dia: 1, dataInicio: null, dataFim: null,
-      ativo: true, statusPagamento: 'Pago', linhaPlanilha: 2,
+      ativo: true, statusPagamento: 'Pendente', linhaPlanilha: 2,
     }];
-    const proj = projetarMes({ renda: [], custo: c, mes: '2026-09', hoje: '2026-09-20' });
+    const historico = { 'aluguel|2026': { linhaPlanilha: 2, meses: { 9: 100 } } };
+    const proj = projetarMes({ renda: [], custo: c, historico, mes: '2026-09', hoje: '2026-09-20' });
     const item = diaCom(proj, 1).itens[0];
     expect(item).toMatchObject({ statusPagamento: 'pago', atrasado: false });
     expect(proj.totals).toMatchObject({ pago: 100, pendente: 0, atrasado: 0 });
+  });
+
+  test('pago em setembro não vale para outubro (mês seguinte volta a pendente)', () => {
+    const c = [{
+      custo: 'Aluguel', valor: 100, categoria: 'Moradia', dia: 1, dataInicio: null, dataFim: null,
+      ativo: true, statusPagamento: 'Pago', linhaPlanilha: 2,
+    }];
+    const historico = { 'aluguel|2026': { linhaPlanilha: 2, meses: { 9: 100 } } };
+    const proj = projetarMes({ renda: [], custo: c, historico, mes: '2026-10', hoje: '2026-10-20' });
+    expect(diaCom(proj, 1).itens[0]).toMatchObject({ statusPagamento: 'pendente', atrasado: true });
+    expect(proj.totals).toMatchObject({ pago: 0, atrasado: 100 });
+  });
+
+  test('sem histórico, Status_Pagamento da CUSTO_FIXO é ignorado', () => {
+    const c = [{
+      custo: 'Aluguel', valor: 100, categoria: 'Moradia', dia: 1, dataInicio: null, dataFim: null,
+      ativo: true, statusPagamento: 'Pago', linhaPlanilha: 2,
+    }];
+    const proj = projetarMes({ renda: [], custo: c, mes: '2026-09', hoje: '2026-09-20' });
+    expect(diaCom(proj, 1).itens[0].statusPagamento).toBe('pendente');
   });
 });
 
