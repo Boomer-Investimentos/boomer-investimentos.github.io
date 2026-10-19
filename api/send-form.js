@@ -43,8 +43,12 @@ function getDriveClient() {
 }
 
 async function uploadToDrive(nome, file) {
+  const parentFolderId = (process.env.GOOGLE_DRIVE_FOLDER_ID || '').trim();
+  if (!parentFolderId) {
+    throw Object.assign(new Error('GOOGLE_DRIVE_FOLDER_ID is missing or empty'), { code: 'MISSING_CONFIG' });
+  }
+
   const drive = getDriveClient();
-  const parentFolderId = process.env.GOOGLE_DRIVE_FOLDER_ID;
 
   const folderRes = await drive.files.create({
     requestBody: {
@@ -97,7 +101,7 @@ module.exports = async (req, res) => {
     try {
       documentoLink = await uploadToDrive(nome, req.file);
     } catch (err) {
-      console.error('Google Drive error:', err.message);
+      console.error(err.code === 'MISSING_CONFIG' ? 'Google Drive config error:' : 'Google Drive error:', err.message);
       return res.status(502).json({ error: 'Erro ao fazer upload do documento. Tente novamente.' });
     }
   }
