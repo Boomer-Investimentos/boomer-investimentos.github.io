@@ -27,6 +27,28 @@ beforeEach(() => {
   sheets.updateRow.mockResolvedValue();
 });
 
+describe('editarCusto — nome repetido', () => {
+  test('renomear para o nome de outro custo -> 409, sem escrever', async () => {
+    const r = await editarCusto({ ...base, nome: 'Internet' });
+    expect(r.status).toBe(409);
+    expect(r.body.error).toContain('"Internet 2"');
+    expect(sheets.updateRow).not.toHaveBeenCalled();
+  });
+
+  test('manter o próprio nome (só mudar valor) segue permitido', async () => {
+    const r = await editarCusto({ ...base, nome: 'aluguel' });
+    expect(r.status).toBe(200);
+  });
+
+  test('custo já duplicado na planilha continua editável sem trocar o nome', async () => {
+    const custo = fx.clone().CUSTO_FIXO;
+    custo.push([...custo[1]]);
+    sheets.getValues.mockResolvedValue(custo);
+    const r = await editarCusto({ ...base, valor: 1000 });
+    expect(r.status).toBe(200);
+  });
+});
+
 describe('editarCusto', () => {
   test('sem sessão -> 401', async () => {
     const r = await editarCusto({ ...base, cookies: {} });

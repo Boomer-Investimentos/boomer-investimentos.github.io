@@ -28,11 +28,11 @@ export function encerrarSessao() {
   return fetch(`${BASE}/logout`, { method: 'POST' }).then(tratarResposta);
 }
 
-export function atualizarPagamento(linhaPlanilha, statusPagamento) {
+export function atualizarPagamento(linhaPlanilha, statusPagamento, mes) {
   return fetch(`${BASE}/pagamento`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ linhaPlanilha, statusPagamento }),
+    body: JSON.stringify({ linhaPlanilha, statusPagamento, mes }),
   }).then(tratarResposta);
 }
 

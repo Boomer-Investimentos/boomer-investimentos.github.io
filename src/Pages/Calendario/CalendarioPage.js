@@ -32,12 +32,24 @@ function primeiroDiaDaSemana(mes) {
   return new Date(`${mes}-01T00:00:00Z`).getUTCDay();
 }
 
+const COR_FUNDO = '#141c31'; // = --surface em CalendarioPage.module.css
+
+const LOCALE_POR_MOEDA = { USD: 'en-US', BRL: 'pt-BR' };
+
+function localeDaMoeda(moeda) {
+  return LOCALE_POR_MOEDA[moeda] || 'pt-BR';
+}
+
 function formatarMoeda(valor, moeda) {
   try {
-    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: moeda || 'BRL' }).format(valor);
+    return new Intl.NumberFormat(localeDaMoeda(moeda), { style: 'currency', currency: moeda || 'BRL' }).format(valor);
   } catch {
     return `${moeda || 'BRL'} ${valor.toFixed(2)}`;
   }
+}
+
+function formatarNumero(valor, moeda) {
+  return new Intl.NumberFormat(localeDaMoeda(moeda), { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(valor);
 }
 
 function tituloMes(mes) {
@@ -84,6 +96,25 @@ export default function CalendarioPage() {
     } finally {
       setCarregando(false);
     }
+  }, []);
+
+  // Página dark-only: pinta html/body e a theme-color pra Safari/Chrome mobile
+  // não mostrarem faixas brancas atrás da barra do navegador. Restaura ao sair.
+  useEffect(() => {
+    const meta = document.querySelector('meta[name="theme-color"]');
+    const anterior = {
+      html: document.documentElement.style.backgroundColor,
+      body: document.body.style.backgroundColor,
+      tema: meta ? meta.getAttribute('content') : null,
+    };
+    document.documentElement.style.backgroundColor = COR_FUNDO;
+    document.body.style.backgroundColor = COR_FUNDO;
+    if (meta) meta.setAttribute('content', COR_FUNDO);
+    return () => {
+      document.documentElement.style.backgroundColor = anterior.html;
+      document.body.style.backgroundColor = anterior.body;
+      if (meta && anterior.tema !== null) meta.setAttribute('content', anterior.tema);
+    };
   }, []);
 
   useEffect(() => {
@@ -133,7 +164,7 @@ export default function CalendarioPage() {
     setErroAcao(null);
     const novoStatus = item.statusPagamento === 'pago' ? 'Pendente' : 'Pago';
     try {
-      await atualizarPagamento(item.linhaPlanilha, novoStatus);
+      await atualizarPagamento(item.linhaPlanilha, novoStatus, mes);
       carregarMes(mes, linkToken);
     } catch (e) {
       setErroAcao(e.message);
@@ -142,15 +173,20 @@ export default function CalendarioPage() {
 
   const abrirPainelCriar = () => {
     if (dados && !dados.autenticado) return exigirLogin();
+    setErroAcao(null);
     setPainelItem({ modo: 'criar', tipo: 'custo' });
   };
 
   const abrirPainelEditar = (item) => {
     if (!dados.autenticado) return exigirLogin();
+    setErroAcao(null);
     setPainelItem({ modo: 'editar', tipo: item.tipo, item });
   };
 
-  const fecharPainel = () => setPainelItem(null);
+  const fecharPainel = () => {
+    setErroAcao(null);
+    setPainelItem(null);
+  };
 
   const salvarPainel = async (tipo, form) => {
     setErroAcao(null);
@@ -229,13 +265,14 @@ export default function CalendarioPage() {
           {dados.semData.length > 0 && (
             <SemData itens={dados.semData} moeda={dados.moeda} onEditar={abrirPainelEditar} onTogglePago={alternarPago} />
           )}
-          {erroAcao && <div className={styles.errorText}>{erroAcao}</div>}
+          {erroAcao && !painelItem && <div className={styles.errorText}>{erroAcao}</div>}
         </main>
 
         {painelItem && (
           <PaymentPanel
             key={`${painelItem.modo}-${painelItem.tipo}-${painelItem.item?.linhaPlanilha ?? 'novo'}`}
             mes={mes}
+            erro={erroAcao}
             categoriasCusto={dados.categorias.filter((c) => c.nome !== 'Recebimento')}
             modo={painelItem.modo}
             tipoInicial={painelItem.tipo}
@@ -267,7 +304,7 @@ function Topbar() {
         <img src={boomerBMark} alt="Boomer" className={styles.brandMark} />
         <span className={styles.brandName}>boomer</span>
         <span className={styles.brandDivider} />
-        <span className={styles.brandSection}>Calendário</span>
+        <span className={styles.brandSection}>Calendário Financeiro</span>
       </div>
     </header>
   );
@@ -341,7 +378,7 @@ function MonthGrid({ dados, mes, onEditar, onTogglePago }) {
           <div key={`antes-${i}`} className={`${styles.cell} ${styles.cellBlank}`} />
         ))}
         {dados.dias.map((dia) => (
-          <DayCell key={dia.data} dia={dia} hoje={dados.hoje} onEditar={onEditar} onTogglePago={onTogglePago} />
+          <DayCell key={dia.data} dia={dia} hoje={dados.hoje} moeda={dados.moeda} onEditar={onEditar} onTogglePago={onTogglePago} />
         ))}
         {Array.from({ length: blanksDepois }).map((_, i) => (
           <div key={`depois-${i}`} className={`${styles.cell} ${styles.cellBlank}`} />
@@ -351,7 +388,7 @@ function MonthGrid({ dados, mes, onEditar, onTogglePago }) {
   );
 }
 
-function DayCell({ dia, hoje, onEditar, onTogglePago }) {
+function DayCell({ dia, hoje, moeda, onEditar, onTogglePago }) {
   const isHoje = dia.data === hoje;
   const atrasado = dia.itens.some((i) => i.atrasado);
   const totalSaida = dia.itens
@@ -366,10 +403,10 @@ function DayCell({ dia, hoje, onEditar, onTogglePago }) {
     <div className={classe}>
       <div className={styles.cellHead}>
         <span className={`${styles.cellDay} ${isHoje ? styles.cellDayToday : ''}`}>{dia.dia}</span>
-        {totalSaida > 0 && <span className={styles.cellDayTotal}>−{totalSaida.toFixed(2)}</span>}
+        {totalSaida > 0 && <span className={styles.cellDayTotal}>−{formatarNumero(totalSaida, moeda)}</span>}
       </div>
       {dia.itens.map((item, idx) => (
-        <Item key={idx} item={item} onEditar={onEditar} onTogglePago={onTogglePago} />
+        <Item key={idx} item={item} moeda={moeda} onEditar={onEditar} onTogglePago={onTogglePago} />
       ))}
     </div>
   );
@@ -395,7 +432,7 @@ function useCliqueSimplesOuDuplo(aoClicar, aoClicarDuplo) {
   };
 }
 
-function Item({ item, onEditar, onTogglePago }) {
+function Item({ item, moeda, onEditar, onTogglePago }) {
   const classeNome = item.statusPagamento === 'pago' ? styles.itemNamePago : '';
   const classeValor =
     item.tipo === 'renda'
@@ -434,7 +471,7 @@ function Item({ item, onEditar, onTogglePago }) {
         <div className={`${styles.itemName} ${classeNome}`}>{item.nome}</div>
         <div className={`${styles.itemAmount} ${classeValor}`}>
           {marca === '+' ? '+' : ''}
-          {item.valor.toFixed(2)}
+          {formatarNumero(item.valor, moeda)}
           {marca !== '+' ? marca : ''}
         </div>
       </div>
@@ -675,7 +712,7 @@ function diaMesInicial(item, tipo) {
   return item.data ? String(Number(item.data.slice(-2))) : '';
 }
 
-function PaymentPanel({ mes, categoriasCusto, modo, tipoInicial, item, onSalvar, onExcluir, onCancelar }) {
+function PaymentPanel({ mes, erro, categoriasCusto, modo, tipoInicial, item, onSalvar, onExcluir, onCancelar }) {
   const [tipo, setTipo] = useState(item ? item.tipo : tipoInicial);
   const [descricao, setDescricao] = useState(item?.nome || '');
   const [valor, setValor] = useState(item ? String(item.valor) : '');
@@ -718,7 +755,7 @@ function PaymentPanel({ mes, categoriasCusto, modo, tipoInicial, item, onSalvar,
   const salvar = async () => {
     setSalvando(true);
     if (modo === 'editar' && tipo === 'custo' && statusPago !== (item.statusPagamento === 'pago')) {
-      await atualizarPagamento(item.linhaPlanilha, statusPago ? 'Pago' : 'Pendente');
+      await atualizarPagamento(item.linhaPlanilha, statusPago ? 'Pago' : 'Pendente', mes);
     }
     await onSalvar(tipo, montarForm());
     setSalvando(false);
@@ -874,6 +911,8 @@ function PaymentPanel({ mes, categoriasCusto, modo, tipoInicial, item, onSalvar,
         <span style={{ width: 44 }} />
         <span className={styles.switchLabel}>Repetir todo mês</span>
       </div>
+
+      {erro && <div className={styles.errorText}>{erro}</div>}
 
       <div className={styles.panelActions}>
         <button className={styles.btnPrimary} disabled={!valido || salvando} onClick={salvar}>
