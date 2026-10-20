@@ -24,7 +24,7 @@ function Main() {
                 <span>Rua da Bahia, 905, Sala 1507 - Belo Horizonte - MG</span>
                 <br />
                 <br />
-                <span>Telefone: (38) 98411 3536</span>
+                <span>Telefone: (31) 98479 7865</span>
                 <br />
                 <br />
                 <span>boomer@boomerinvestimentos.com.br</span>
