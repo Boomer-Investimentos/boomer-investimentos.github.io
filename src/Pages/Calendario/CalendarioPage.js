@@ -855,41 +855,6 @@ function PaymentPanel({ mes, erro, categoriasCusto, modo, tipoInicial, item, onS
         </div>
       </div>
 
-      {ehRenda ? (
-        <>
-          <label className={styles.fieldLabel}>Frequência</label>
-          <div className={styles.chipsRow}>
-            {FREQUENCIAS_RENDA.map((f) => (
-              <button
-                key={f}
-                type="button"
-                className={`${styles.chip} ${frequencia === f ? styles.chipActive : ''}`}
-                onClick={() => setFrequencia(f)}
-              >
-                {f}
-              </button>
-            ))}
-          </div>
-        </>
-      ) : (
-        <>
-          <label className={styles.fieldLabel}>Categoria</label>
-          <div className={styles.chipsRow}>
-            {categoriasCusto.map((c) => (
-              <button
-                key={c.nome}
-                type="button"
-                className={`${styles.chip} ${categoria === c.nome ? styles.chipActive : ''}`}
-                onClick={() => setCategoria(c.nome)}
-              >
-                <span className={styles.chipDot} style={{ background: c.cor }} />
-                {c.icone} {c.nome}
-              </button>
-            ))}
-          </div>
-        </>
-      )}
-
       {modo === 'criar' && !ehRenda && (
         <label className={styles.checkRow}>
           <input type="checkbox" checked={parcelado} onChange={(e) => setParcelado(e.target.checked)} />
@@ -926,6 +891,41 @@ function PaymentPanel({ mes, erro, categoriasCusto, modo, tipoInicial, item, onS
             />
           </div>
         </div>
+      )}
+
+      {ehRenda ? (
+        <>
+          <label className={styles.fieldLabel}>Frequência</label>
+          <div className={styles.chipsRow}>
+            {FREQUENCIAS_RENDA.map((f) => (
+              <button
+                key={f}
+                type="button"
+                className={`${styles.chip} ${frequencia === f ? styles.chipActive : ''}`}
+                onClick={() => setFrequencia(f)}
+              >
+                {f}
+              </button>
+            ))}
+          </div>
+        </>
+      ) : (
+        <>
+          <label className={styles.fieldLabel}>Categoria</label>
+          <div className={styles.chipsRow}>
+            {categoriasCusto.map((c) => (
+              <button
+                key={c.nome}
+                type="button"
+                className={`${styles.chip} ${categoria === c.nome ? styles.chipActive : ''}`}
+                onClick={() => setCategoria(c.nome)}
+              >
+                <span className={styles.chipDot} style={{ background: c.cor }} />
+                {c.icone} {c.nome}
+              </button>
+            ))}
+          </div>
+        </>
       )}
 
       {modo === 'editar' && !ehRenda && (
