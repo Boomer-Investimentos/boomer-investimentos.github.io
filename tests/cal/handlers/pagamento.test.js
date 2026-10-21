@@ -157,6 +157,17 @@ describe('atualizarPagamento', () => {
     expect(linhaHist.some((v) => v === escreveuId[2])).toBe(true);
   });
 
+  test('CUSTO_FIXO com ID mas HISTORICO sem ID -> chave por nome (legado), desmarcar limpa a célula', async () => {
+    const custo = [CUSTO_ID, ['Aluguel', 900, 1, 'Ativo', 'Pendente', 'c-xxxx1234']];
+    const historico = [HEADER_HIST, ['Aluguel', 2026, '', '', '', '', '', '', '', '', 900, '', '', '', '', '']];
+    mockPlanilha({ custo, historico });
+    const r = await atualizarPagamento(pedido({ mes: '2026-09', statusPagamento: 'Pendente' }));
+    expect(r.status).toBe(200);
+    const idxSet = schema.MESES_ROTULOS.indexOf('Set') + 2;
+    expect(sheets.updateCell).toHaveBeenCalledWith(fx.SPREADSHEET_ID, `HISTORICO_CUSTOS!${escrita.colunaLetra(idxSet)}2`, '');
+    expect(sheets.appendRow).not.toHaveBeenCalled();
+  });
+
   test('adota linha antiga por nome (nome único) carimbando o ID, sem criar linha', async () => {
     const custo = [CUSTO_ID, ['Internet', 75, 10, 'Ativo', 'Pendente', 'c-fixo1111']];
     const historico = [HIST_ID, ['Internet', 2026, '', '', '', '', '', '', '', '', '', '', '', '', '', '']];
