@@ -650,6 +650,21 @@
 }
 
 /* body-sm */
+.checkRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+  cursor: pointer;
+}
+
+.checkRow input {
+  accent-color: var(--accent);
+  width: 16px;
+  height: 16px;
+  margin: 0;
+}
+
 .switchLabel {
   font-size: 13px;
   line-height: 20px;

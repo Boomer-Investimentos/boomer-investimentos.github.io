@@ -7,10 +7,10 @@ module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   const cookies = auth.parseCookies(req.headers.cookie);
-  const { linhaPlanilha, nome, valor, categoria, dia, mes, repetirTodoMes, status } = req.body || {};
+  const { linhaPlanilha, nome, valor, categoria, dia, mes, repetirTodoMes, status, parcelas, parcelaAtual } = req.body || {};
 
   try {
-    const r = await editarCusto({ cookies, linhaPlanilha, nome, valor, categoria, dia, mes, repetirTodoMes, status });
+    const r = await editarCusto({ cookies, linhaPlanilha, nome, valor, categoria, dia, mes, repetirTodoMes, status, parcelas, parcelaAtual });
     return res.status(r.status).json(r.body);
   } catch (err) {
     console.error('cal/custo-editar error:', err.message);

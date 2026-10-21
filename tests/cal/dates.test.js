@@ -64,6 +64,24 @@ describe('mesesEntre', () => {
   });
 });
 
+describe('numeroParcela', () => {
+  test('mês de início é a parcela 1 e avança um por mês', () => {
+    expect(d.numeroParcela('2026-09-15', '2026-09')).toBe(1);
+    expect(d.numeroParcela('2026-09-15', '2026-10')).toBe(2);
+    expect(d.numeroParcela('2026-09-01', '2027-03')).toBe(7);
+  });
+
+  test('vira o ano', () => {
+    expect(d.numeroParcela('2026-11-10', '2026-12')).toBe(2);
+    expect(d.numeroParcela('2026-11-10', '2027-01')).toBe(3);
+  });
+
+  test('fora da janela devolve valor sem limite (<1 antes, >total depois)', () => {
+    expect(d.numeroParcela('2026-09-01', '2026-08')).toBe(0);
+    expect(d.numeroParcela('2026-09-01', '2027-09')).toBe(13);
+  });
+});
+
 describe('parseDiaVencimento', () => {
   test('extrai o primeiro dia válido de texto livre', () => {
     expect(d.parseDiaVencimento('1 a 5')).toBe(1);

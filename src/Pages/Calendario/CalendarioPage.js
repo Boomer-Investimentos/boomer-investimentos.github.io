@@ -388,6 +388,10 @@ function MonthGrid({ dados, mes, onEditar, onTogglePago }) {
   );
 }
 
+function nomeComParcela(item) {
+  return item.parcela ? `${item.nome} (${item.parcela.atual}/${item.parcela.total})` : item.nome;
+}
+
 function DayCell({ dia, hoje, moeda, onEditar, onTogglePago }) {
   const isHoje = dia.data === hoje;
   const atrasado = dia.itens.some((i) => i.atrasado);
@@ -468,7 +472,7 @@ function Item({ item, moeda, onEditar, onTogglePago }) {
     >
       <span className={styles.itemDot} style={{ background: item.categoria.cor }} />
       <div className={styles.itemBody}>
-        <div className={`${styles.itemName} ${classeNome}`}>{item.nome}</div>
+        <div className={`${styles.itemName} ${classeNome}`}>{nomeComParcela(item)}</div>
         <div className={`${styles.itemAmount} ${classeValor}`}>
           {marca === '+' ? '+' : ''}
           {formatarNumero(item.valor, moeda)}
@@ -614,7 +618,7 @@ function DayListRow({ item, moeda, onEditar, onTogglePago }) {
     >
       <span className={styles.itemDot} style={{ background: item.categoria.cor }} />
       <div className={styles.itemBody} style={{ flex: 1 }}>
-        <div className={styles.itemName}>{item.nome}</div>
+        <div className={styles.itemName}>{nomeComParcela(item)}</div>
         {item.tipo === 'custo' && <div className={styles.semDataMeta}>{item.categoria.nome}</div>}
       </div>
       {statusLabel && <span className={`${styles.dayListBadgeBase} ${statusClasse}`}>{statusLabel}</span>}
@@ -669,7 +673,7 @@ function SemData({ itens, moeda, onEditar, onTogglePago }) {
         >
           <span className={styles.itemDot} style={{ background: item.categoria.cor }} />
           <div className={styles.itemBody} style={{ flex: 1 }}>
-            <div className={styles.itemName}>{item.nome}</div>
+            <div className={styles.itemName}>{nomeComParcela(item)}</div>
             <div className={styles.semDataMeta}>{item.diaTexto}</div>
           </div>
           <button
@@ -722,6 +726,9 @@ function PaymentPanel({ mes, erro, categoriasCusto, modo, tipoInicial, item, onS
   const [diaSemana, setDiaSemana] = useState(item?.tipo === 'renda' ? diaSemanaInicial(item.diaRecebimento) : DIAS_SEMANA_OPCOES[5]);
   const [repetirTodoMes, setRepetirTodoMes] = useState(item ? !!item.repete : true);
   const [statusPago, setStatusPago] = useState(item?.statusPagamento === 'pago');
+  const [parcelado, setParcelado] = useState(!!item?.parcela);
+  const [parcelas, setParcelas] = useState(item?.parcela ? String(item.parcela.total) : '');
+  const [parcelaAtual, setParcelaAtual] = useState(item?.parcela ? String(item.parcela.atual) : '1');
   const [salvando, setSalvando] = useState(false);
   const [excluindo, setExcluindo] = useState(false);
   const panelRef = useRef(null);
@@ -731,9 +738,14 @@ function PaymentPanel({ mes, erro, categoriasCusto, modo, tipoInicial, item, onS
 
   const ehRenda = tipo === 'renda';
   const ehSemanal = ehRenda && frequencia === 'Semanal';
-  const valido = descricao.trim() && Number(valor) > 0 && (ehSemanal ? !!diaSemana : Number(diaMes) >= 1 && Number(diaMes) <= 31);
+  const comParcelas = !ehRenda && parcelado;
+  const parcelasValidas =
+    !comParcelas ||
+    (Number.isInteger(Number(parcelas)) && Number(parcelas) >= 2 && Number(parcelas) <= 120 &&
+      Number.isInteger(Number(parcelaAtual)) && Number(parcelaAtual) >= 1 && Number(parcelaAtual) <= Number(parcelas));
+  const valido = descricao.trim() && Number(valor) > 0 && (ehSemanal ? !!diaSemana : Number(diaMes) >= 1 && Number(diaMes) <= 31) && parcelasValidas;
 
-  const montarForm = () => {
+  const montarForm = ({ incluirParcelas = true } = {}) => {
     if (ehRenda) {
       return {
         fonte: descricao,
@@ -749,6 +761,7 @@ function PaymentPanel({ mes, erro, categoriasCusto, modo, tipoInicial, item, onS
       categoria,
       dia: Number(diaMes),
       repetirTodoMes,
+      ...(comParcelas && incluirParcelas && { parcelas: Number(parcelas), parcelaAtual: Number(parcelaAtual) }),
     };
   };
 
@@ -763,7 +776,7 @@ function PaymentPanel({ mes, erro, categoriasCusto, modo, tipoInicial, item, onS
 
   const excluir = async () => {
     setExcluindo(true);
-    await onExcluir(tipo, montarForm());
+    await onExcluir(tipo, montarForm({ incluirParcelas: false }));
     setExcluindo(false);
   };
 
@@ -795,7 +808,7 @@ function PaymentPanel({ mes, erro, categoriasCusto, modo, tipoInicial, item, onS
 
       <div className={styles.fieldRow}>
         <div style={{ flex: 1.3 }}>
-          <label className={styles.fieldLabel}>Valor</label>
+          <label className={styles.fieldLabel}>{comParcelas ? 'Valor da parcela' : 'Valor'}</label>
           <input
             className={styles.fieldInput}
             style={{ marginBottom: 0 }}
@@ -841,6 +854,44 @@ function PaymentPanel({ mes, erro, categoriasCusto, modo, tipoInicial, item, onS
           )}
         </div>
       </div>
+
+      {modo === 'criar' && !ehRenda && (
+        <label className={styles.checkRow}>
+          <input type="checkbox" checked={parcelado} onChange={(e) => setParcelado(e.target.checked)} />
+          <span className={styles.switchLabel}>Parcelado</span>
+        </label>
+      )}
+
+      {comParcelas && (
+        <div className={styles.fieldRow}>
+          <div style={{ flex: 1 }}>
+            <label className={styles.fieldLabel}>Parcelas</label>
+            <input
+              className={styles.fieldInput}
+              style={{ marginBottom: 0 }}
+              type="number"
+              min="2"
+              max="120"
+              value={parcelas}
+              onChange={(e) => setParcelas(e.target.value)}
+              placeholder="10"
+            />
+          </div>
+          <div style={{ flex: 1 }}>
+            <label className={styles.fieldLabel}>Parcela atual</label>
+            <input
+              className={styles.fieldInput}
+              style={{ marginBottom: 0 }}
+              type="number"
+              min="1"
+              max={parcelas || undefined}
+              value={parcelaAtual}
+              onChange={(e) => setParcelaAtual(e.target.value)}
+              placeholder="1"
+            />
+          </div>
+        </div>
+      )}
 
       {ehRenda ? (
         <>
@@ -899,18 +950,22 @@ function PaymentPanel({ mes, erro, categoriasCusto, modo, tipoInicial, item, onS
         </>
       )}
 
-      <button
-        type="button"
-        className={`${styles.switchTrack} ${repetirTodoMes ? styles.switchTrackOn : ''}`}
-        onClick={() => setRepetirTodoMes((v) => !v)}
-        aria-pressed={repetirTodoMes}
-      >
-        <span className={styles.switchThumb} />
-      </button>
-      <div className={styles.switchRow} style={{ marginTop: -22 }}>
-        <span style={{ width: 44 }} />
-        <span className={styles.switchLabel}>Repetir todo mês</span>
-      </div>
+      {!comParcelas && (
+        <>
+          <button
+            type="button"
+            className={`${styles.switchTrack} ${repetirTodoMes ? styles.switchTrackOn : ''}`}
+            onClick={() => setRepetirTodoMes((v) => !v)}
+            aria-pressed={repetirTodoMes}
+          >
+            <span className={styles.switchThumb} />
+          </button>
+          <div className={styles.switchRow} style={{ marginTop: -22 }}>
+            <span style={{ width: 44 }} />
+            <span className={styles.switchLabel}>Repetir todo mês</span>
+          </div>
+        </>
+      )}
 
       {erro && <div className={styles.errorText}>{erro}</div>}
 

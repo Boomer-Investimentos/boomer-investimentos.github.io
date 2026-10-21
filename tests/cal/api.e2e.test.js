@@ -113,6 +113,19 @@ describe('api/cal — fio completo via HTTP', () => {
     expect(sheets.appendRow).toHaveBeenCalledTimes(1);
   });
 
+  test('POST /api/cal/lancamento repassa parcelas e parcelaAtual', async () => {
+    const token = auth.assinarSessao({ sid: fx.SPREADSHEET_ID, email: fx.EMAIL });
+    sheets.getValues.mockResolvedValueOnce(fx.SHEETS.CUSTO_FIXO);
+    const res = await request(app)
+      .post('/api/cal/lancamento')
+      .set('Cookie', `${auth.COOKIE_NOME}=${token}`)
+      .send({ nome: 'Notebook', valor: 120, categoria: 'Tecnologia', dia: 10, mes: '2026-09', parcelas: 3, parcelaAtual: 2 });
+    expect(res.status).toBe(201);
+    const [, , linha] = sheets.appendRow.mock.calls[0];
+    expect(linha).toContain(3);
+    expect(linha).toContain('01/08/2026');
+  });
+
   test('POST /api/cal/custo-editar com sessão edita a linha', async () => {
     const token = auth.assinarSessao({ sid: fx.SPREADSHEET_ID, email: fx.EMAIL });
     sheets.getValues.mockResolvedValueOnce(fx.SHEETS.CUSTO_FIXO);
@@ -122,6 +135,20 @@ describe('api/cal — fio completo via HTTP', () => {
       .send({ linhaPlanilha: 2, nome: 'Aluguel', valor: 950, categoria: 'Moradia', dia: 1, mes: '2026-09', repetirTodoMes: true });
     expect(res.status).toBe(200);
     expect(sheets.updateRow).toHaveBeenCalledTimes(1);
+  });
+
+  test('POST /api/cal/custo-editar repassa parcelas num parcelado', async () => {
+    const token = auth.assinarSessao({ sid: fx.SPREADSHEET_ID, email: fx.EMAIL });
+    const custo = fx.clone().CUSTO_FIXO;
+    const h = custo[0].map((c) => String(c).toLowerCase());
+    custo[1][h.indexOf('total_parcelas')] = 3;
+    sheets.getValues.mockResolvedValueOnce(custo);
+    const res = await request(app)
+      .post('/api/cal/custo-editar')
+      .set('Cookie', `${auth.COOKIE_NOME}=${token}`)
+      .send({ linhaPlanilha: 2, nome: 'Aluguel', valor: 950, categoria: 'Moradia', dia: 1, mes: '2026-09', parcelas: 4, parcelaAtual: 1 });
+    expect(res.status).toBe(200);
+    expect(sheets.updateRow.mock.calls[0][3]).toContain(4);
   });
 
   test('POST /api/cal/custo-editar sem sessão -> 401', async () => {
