@@ -28,11 +28,10 @@ beforeEach(() => {
 });
 
 describe('editarCusto — nome repetido', () => {
-  test('renomear para o nome de outro custo -> 409, sem escrever', async () => {
+  test('renomear para o nome de outro custo -> 200 (sem 409; aviso fica no front)', async () => {
     const r = await editarCusto({ ...base, nome: 'Internet' });
-    expect(r.status).toBe(409);
-    expect(r.body.error).toContain('"Internet 2"');
-    expect(sheets.updateRow).not.toHaveBeenCalled();
+    expect(r.status).toBe(200);
+    expect(sheets.updateRow).toHaveBeenCalled();
   });
 
   test('manter o próprio nome (só mudar valor) segue permitido', async () => {

@@ -277,6 +277,7 @@ export default function CalendarioPage() {
             key={`${painelItem.modo}-${painelItem.tipo}-${painelItem.item?.linhaPlanilha ?? 'novo'}`}
             mes={mes}
             erro={erroAcao}
+            nomesCusto={dados.nomesCusto || []}
             categoriasCusto={dados.categorias.filter((c) => c.nome !== 'Recebimento')}
             modo={painelItem.modo}
             tipoInicial={painelItem.tipo}
@@ -716,7 +717,11 @@ function diaMesInicial(item, tipo) {
   return item.data ? String(Number(item.data.slice(-2))) : '';
 }
 
-function PaymentPanel({ mes, erro, categoriasCusto, modo, tipoInicial, item, onSalvar, onExcluir, onCancelar }) {
+function normalizarNome(s) {
+  return String(s == null ? '' : s).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
+}
+
+function PaymentPanel({ mes, erro, nomesCusto = [], categoriasCusto, modo, tipoInicial, item, onSalvar, onExcluir, onCancelar }) {
   const [tipo, setTipo] = useState(item ? item.tipo : tipoInicial);
   const [descricao, setDescricao] = useState(item?.nome || '');
   const [valor, setValor] = useState(item ? String(item.valor) : '');
@@ -757,6 +762,13 @@ function PaymentPanel({ mes, erro, categoriasCusto, modo, tipoInicial, item, onS
   };
 
   const salvar = async () => {
+    if (tipo === 'custo') {
+      const alvo = normalizarNome(descricao);
+      const renomeou = modo === 'editar' && alvo !== normalizarNome(item?.nome);
+      if ((modo === 'criar' || renomeou) && nomesCusto.some((n) => normalizarNome(n) === alvo)) {
+        if (!window.confirm('Já existe um custo com esse nome. Continuar?')) return;
+      }
+    }
     setSalvando(true);
     const statusPagamento =
       modo === 'editar' && tipo === 'custo' && statusPago !== (item.statusPagamento === 'pago')
