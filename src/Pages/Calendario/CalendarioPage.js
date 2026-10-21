@@ -388,6 +388,10 @@ function MonthGrid({ dados, mes, onEditar, onTogglePago }) {
   );
 }
 
+function nomeComParcela(item) {
+  return item.parcela ? `${item.nome} (${item.parcela.atual}/${item.parcela.total})` : item.nome;
+}
+
 function DayCell({ dia, hoje, moeda, onEditar, onTogglePago }) {
   const isHoje = dia.data === hoje;
   const atrasado = dia.itens.some((i) => i.atrasado);
@@ -468,7 +472,7 @@ function Item({ item, moeda, onEditar, onTogglePago }) {
     >
       <span className={styles.itemDot} style={{ background: item.categoria.cor }} />
       <div className={styles.itemBody}>
-        <div className={`${styles.itemName} ${classeNome}`}>{item.nome}</div>
+        <div className={`${styles.itemName} ${classeNome}`}>{nomeComParcela(item)}</div>
         <div className={`${styles.itemAmount} ${classeValor}`}>
           {marca === '+' ? '+' : ''}
           {formatarNumero(item.valor, moeda)}
@@ -614,7 +618,7 @@ function DayListRow({ item, moeda, onEditar, onTogglePago }) {
     >
       <span className={styles.itemDot} style={{ background: item.categoria.cor }} />
       <div className={styles.itemBody} style={{ flex: 1 }}>
-        <div className={styles.itemName}>{item.nome}</div>
+        <div className={styles.itemName}>{nomeComParcela(item)}</div>
         {item.tipo === 'custo' && <div className={styles.semDataMeta}>{item.categoria.nome}</div>}
       </div>
       {statusLabel && <span className={`${styles.dayListBadgeBase} ${statusClasse}`}>{statusLabel}</span>}
@@ -669,7 +673,7 @@ function SemData({ itens, moeda, onEditar, onTogglePago }) {
         >
           <span className={styles.itemDot} style={{ background: item.categoria.cor }} />
           <div className={styles.itemBody} style={{ flex: 1 }}>
-            <div className={styles.itemName}>{item.nome}</div>
+            <div className={styles.itemName}>{nomeComParcela(item)}</div>
             <div className={styles.semDataMeta}>{item.diaTexto}</div>
           </div>
           <button
