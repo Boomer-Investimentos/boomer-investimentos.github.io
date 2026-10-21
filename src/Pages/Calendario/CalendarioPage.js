@@ -188,7 +188,7 @@ export default function CalendarioPage() {
     setPainelItem(null);
   };
 
-  const salvarPainel = async (tipo, form) => {
+  const salvarPainel = async (tipo, form, statusPagamento) => {
     setErroAcao(null);
     try {
       if (painelItem.modo === 'criar') {
@@ -196,8 +196,12 @@ export default function CalendarioPage() {
         else await criarRenda({ ...form, mes });
       } else {
         const linhaPlanilha = painelItem.item.linhaPlanilha;
-        if (tipo === 'custo') await editarCusto({ ...form, linhaPlanilha, mes });
-        else await editarRenda({ ...form, linhaPlanilha, mes });
+        if (tipo === 'custo') {
+          await editarCusto({ ...form, linhaPlanilha, mes });
+          if (statusPagamento) await atualizarPagamento(linhaPlanilha, statusPagamento, mes);
+        } else {
+          await editarRenda({ ...form, linhaPlanilha, mes });
+        }
       }
       fecharPainel();
       carregarMes(mes, linkToken);
@@ -273,6 +277,7 @@ export default function CalendarioPage() {
             key={`${painelItem.modo}-${painelItem.tipo}-${painelItem.item?.linhaPlanilha ?? 'novo'}`}
             mes={mes}
             erro={erroAcao}
+            nomesCusto={dados.nomesCusto || []}
             categoriasCusto={dados.categorias.filter((c) => c.nome !== 'Recebimento')}
             modo={painelItem.modo}
             tipoInicial={painelItem.tipo}
@@ -712,7 +717,11 @@ function diaMesInicial(item, tipo) {
   return item.data ? String(Number(item.data.slice(-2))) : '';
 }
 
-function PaymentPanel({ mes, erro, categoriasCusto, modo, tipoInicial, item, onSalvar, onExcluir, onCancelar }) {
+function normalizarNome(s) {
+  return String(s == null ? '' : s).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
+}
+
+function PaymentPanel({ mes, erro, nomesCusto = [], categoriasCusto, modo, tipoInicial, item, onSalvar, onExcluir, onCancelar }) {
   const [tipo, setTipo] = useState(item ? item.tipo : tipoInicial);
   const [descricao, setDescricao] = useState(item?.nome || '');
   const [valor, setValor] = useState(item ? String(item.valor) : '');
@@ -753,18 +762,32 @@ function PaymentPanel({ mes, erro, categoriasCusto, modo, tipoInicial, item, onS
   };
 
   const salvar = async () => {
-    setSalvando(true);
-    if (modo === 'editar' && tipo === 'custo' && statusPago !== (item.statusPagamento === 'pago')) {
-      await atualizarPagamento(item.linhaPlanilha, statusPago ? 'Pago' : 'Pendente', mes);
+    if (tipo === 'custo') {
+      const alvo = normalizarNome(descricao);
+      const renomeou = modo === 'editar' && alvo !== normalizarNome(item?.nome);
+      if ((modo === 'criar' || renomeou) && nomesCusto.some((n) => normalizarNome(n) === alvo)) {
+        if (!window.confirm('Já existe um custo com esse nome. Continuar?')) return;
+      }
     }
-    await onSalvar(tipo, montarForm());
-    setSalvando(false);
+    setSalvando(true);
+    const statusPagamento =
+      modo === 'editar' && tipo === 'custo' && statusPago !== (item.statusPagamento === 'pago')
+        ? statusPago ? 'Pago' : 'Pendente'
+        : null;
+    try {
+      await onSalvar(tipo, montarForm(), statusPagamento);
+    } finally {
+      setSalvando(false);
+    }
   };
 
   const excluir = async () => {
     setExcluindo(true);
-    await onExcluir(tipo, montarForm());
-    setExcluindo(false);
+    try {
+      await onExcluir(tipo, montarForm());
+    } finally {
+      setExcluindo(false);
+    }
   };
 
   const titulo = modo === 'criar' ? (ehRenda ? 'Nova renda' : 'Novo pagamento') : ehRenda ? 'Editar renda' : 'Editar pagamento';
@@ -899,16 +922,15 @@ function PaymentPanel({ mes, erro, categoriasCusto, modo, tipoInicial, item, onS
         </>
       )}
 
-      <button
-        type="button"
-        className={`${styles.switchTrack} ${repetirTodoMes ? styles.switchTrackOn : ''}`}
-        onClick={() => setRepetirTodoMes((v) => !v)}
-        aria-pressed={repetirTodoMes}
-      >
-        <span className={styles.switchThumb} />
-      </button>
-      <div className={styles.switchRow} style={{ marginTop: -22 }}>
-        <span style={{ width: 44 }} />
+      <div className={styles.switchRow}>
+        <button
+          type="button"
+          className={`${styles.switchTrack} ${repetirTodoMes ? styles.switchTrackOn : ''}`}
+          onClick={() => setRepetirTodoMes((v) => !v)}
+          aria-pressed={repetirTodoMes}
+        >
+          <span className={styles.switchThumb} />
+        </button>
         <span className={styles.switchLabel}>Repetir todo mês</span>
       </div>
 
