@@ -142,3 +142,80 @@ describe('editarCusto', () => {
     expect(r.status).toBe(200);
   });
 });
+
+describe('editarCusto — parcelado', () => {
+  // Aluguel (linha 2) vira um parcelado 3x que começou em ago/2026 (parcela 2 em set).
+  const planilhaParcelada = () => {
+    const custo = fx.clone().CUSTO_FIXO;
+    const h = escrita.cabecalhoCusto(custo);
+    custo[1][h.indexOf('total_parcelas')] = 3;
+    custo[1][h.indexOf('data_inicio')] = '01/08/2026';
+    custo[1][h.indexOf('data_fim')] = '31/10/2026';
+    return { custo, h };
+  };
+  const editada = () => sheets.updateRow.mock.calls[0][3];
+
+  test('editar o valor sem parcelas não trunca Data_Fim nem mexe nas datas', async () => {
+    const { custo, h } = planilhaParcelada();
+    sheets.getValues.mockResolvedValue(custo);
+    const r = await editarCusto({ ...base, repetirTodoMes: false });
+    expect(r.status).toBe(200);
+    expect(editada()[h.indexOf('data_fim')]).toBe('31/10/2026');
+    expect(editada()[h.indexOf('data_inicio')]).toBe('01/08/2026');
+    expect(editada()[h.indexOf('total_parcelas')]).toBe(3);
+  });
+
+  test('repetirTodoMes=true também não apaga Data_Fim de parcelado', async () => {
+    const { custo, h } = planilhaParcelada();
+    sheets.getValues.mockResolvedValue(custo);
+    await editarCusto({ ...base, repetirTodoMes: true });
+    expect(editada()[h.indexOf('data_fim')]).toBe('31/10/2026');
+  });
+
+  test('alterar parcelas recalcula Total_Parcelas, Data_Início e Data_Fim', async () => {
+    const { custo, h } = planilhaParcelada();
+    sheets.getValues.mockResolvedValue(custo);
+    const r = await editarCusto({ ...base, parcelas: 5, parcelaAtual: 2 });
+    expect(r.status).toBe(200);
+    expect(editada()[h.indexOf('total_parcelas')]).toBe(5);
+    expect(editada()[h.indexOf('data_inicio')]).toBe('01/08/2026');
+    expect(editada()[h.indexOf('data_fim')]).toBe('31/12/2026');
+  });
+
+  test('parcelaAtual omitida mantém a parcela do mês aberto (deriva de Data_Início)', async () => {
+    const { custo, h } = planilhaParcelada();
+    sheets.getValues.mockResolvedValue(custo);
+    await editarCusto({ ...base, parcelas: 6 });
+    expect(editada()[h.indexOf('data_inicio')]).toBe('01/08/2026');
+    expect(editada()[h.indexOf('data_fim')]).toBe('31/01/2027');
+  });
+
+  test('parcelaAtual maior que parcelas -> 400 sem escrever', async () => {
+    const { custo } = planilhaParcelada();
+    sheets.getValues.mockResolvedValue(custo);
+    const r = await editarCusto({ ...base, parcelas: 3, parcelaAtual: 4 });
+    expect(r.status).toBe(400);
+    expect(sheets.updateRow).not.toHaveBeenCalled();
+  });
+
+  test('reduzir parcelas abaixo da parcela atual -> 400', async () => {
+    const { custo } = planilhaParcelada();
+    sheets.getValues.mockResolvedValue(custo);
+    const r = await editarCusto({ ...base, parcelas: 2, mes: '2026-10' });
+    expect(r.status).toBe(400);
+    expect(sheets.updateRow).not.toHaveBeenCalled();
+  });
+
+  test('custo normal não vira parcelado pela edição -> 400', async () => {
+    const r = await editarCusto({ ...base, parcelas: 3 });
+    expect(r.status).toBe(400);
+    expect(sheets.updateRow).not.toHaveBeenCalled();
+  });
+
+  test('custo normal segue com Total_Parcelas vazio e Data_Início intacta', async () => {
+    await editarCusto(base);
+    const h = escrita.cabecalhoCusto(fx.SHEETS.CUSTO_FIXO);
+    expect(editada()[h.indexOf('total_parcelas')]).toBe('');
+  });
+});
+

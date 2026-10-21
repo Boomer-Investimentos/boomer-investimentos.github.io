@@ -137,6 +137,20 @@ describe('api/cal — fio completo via HTTP', () => {
     expect(sheets.updateRow).toHaveBeenCalledTimes(1);
   });
 
+  test('POST /api/cal/custo-editar repassa parcelas num parcelado', async () => {
+    const token = auth.assinarSessao({ sid: fx.SPREADSHEET_ID, email: fx.EMAIL });
+    const custo = fx.clone().CUSTO_FIXO;
+    const h = custo[0].map((c) => String(c).toLowerCase());
+    custo[1][h.indexOf('total_parcelas')] = 3;
+    sheets.getValues.mockResolvedValueOnce(custo);
+    const res = await request(app)
+      .post('/api/cal/custo-editar')
+      .set('Cookie', `${auth.COOKIE_NOME}=${token}`)
+      .send({ linhaPlanilha: 2, nome: 'Aluguel', valor: 950, categoria: 'Moradia', dia: 1, mes: '2026-09', parcelas: 4, parcelaAtual: 1 });
+    expect(res.status).toBe(200);
+    expect(sheets.updateRow.mock.calls[0][3]).toContain(4);
+  });
+
   test('POST /api/cal/custo-editar sem sessão -> 401', async () => {
     const res = await request(app)
       .post('/api/cal/custo-editar')
