@@ -899,16 +899,15 @@ function PaymentPanel({ mes, erro, categoriasCusto, modo, tipoInicial, item, onS
         </>
       )}
 
-      <button
-        type="button"
-        className={`${styles.switchTrack} ${repetirTodoMes ? styles.switchTrackOn : ''}`}
-        onClick={() => setRepetirTodoMes((v) => !v)}
-        aria-pressed={repetirTodoMes}
-      >
-        <span className={styles.switchThumb} />
-      </button>
-      <div className={styles.switchRow} style={{ marginTop: -22 }}>
-        <span style={{ width: 44 }} />
+      <div className={styles.switchRow}>
+        <button
+          type="button"
+          className={`${styles.switchTrack} ${repetirTodoMes ? styles.switchTrackOn : ''}`}
+          onClick={() => setRepetirTodoMes((v) => !v)}
+          aria-pressed={repetirTodoMes}
+        >
+          <span className={styles.switchThumb} />
+        </button>
         <span className={styles.switchLabel}>Repetir todo mês</span>
       </div>
 
