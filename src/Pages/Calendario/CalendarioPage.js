@@ -188,7 +188,7 @@ export default function CalendarioPage() {
     setPainelItem(null);
   };
 
-  const salvarPainel = async (tipo, form) => {
+  const salvarPainel = async (tipo, form, statusPagamento) => {
     setErroAcao(null);
     try {
       if (painelItem.modo === 'criar') {
@@ -196,8 +196,12 @@ export default function CalendarioPage() {
         else await criarRenda({ ...form, mes });
       } else {
         const linhaPlanilha = painelItem.item.linhaPlanilha;
-        if (tipo === 'custo') await editarCusto({ ...form, linhaPlanilha, mes });
-        else await editarRenda({ ...form, linhaPlanilha, mes });
+        if (tipo === 'custo') {
+          await editarCusto({ ...form, linhaPlanilha, mes });
+          if (statusPagamento) await atualizarPagamento(linhaPlanilha, statusPagamento, mes);
+        } else {
+          await editarRenda({ ...form, linhaPlanilha, mes });
+        }
       }
       fecharPainel();
       carregarMes(mes, linkToken);
@@ -754,17 +758,24 @@ function PaymentPanel({ mes, erro, categoriasCusto, modo, tipoInicial, item, onS
 
   const salvar = async () => {
     setSalvando(true);
-    if (modo === 'editar' && tipo === 'custo' && statusPago !== (item.statusPagamento === 'pago')) {
-      await atualizarPagamento(item.linhaPlanilha, statusPago ? 'Pago' : 'Pendente', mes);
+    const statusPagamento =
+      modo === 'editar' && tipo === 'custo' && statusPago !== (item.statusPagamento === 'pago')
+        ? statusPago ? 'Pago' : 'Pendente'
+        : null;
+    try {
+      await onSalvar(tipo, montarForm(), statusPagamento);
+    } finally {
+      setSalvando(false);
     }
-    await onSalvar(tipo, montarForm());
-    setSalvando(false);
   };
 
   const excluir = async () => {
     setExcluindo(true);
-    await onExcluir(tipo, montarForm());
-    setExcluindo(false);
+    try {
+      await onExcluir(tipo, montarForm());
+    } finally {
+      setExcluindo(false);
+    }
   };
 
   const titulo = modo === 'criar' ? (ehRenda ? 'Nova renda' : 'Novo pagamento') : ehRenda ? 'Editar renda' : 'Editar pagamento';
