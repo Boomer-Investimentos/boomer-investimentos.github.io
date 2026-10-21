@@ -18,6 +18,34 @@ beforeEach(() => {
   });
 });
 
+describe('obterMes — HISTORICO_CUSTOS', () => {
+  const link = () => auth.assinarLink(fx.SPREADSHEET_ID);
+  const base = {
+    CONFIG: fx.SHEETS.CONFIG, PARAMS: fx.SHEETS.PARAMS, RENDA: fx.SHEETS.RENDA, CUSTO_FIXO: fx.SHEETS.CUSTO_FIXO,
+  };
+
+  test('valor do mês no histórico marca o custo como pago só naquele mês', async () => {
+    sheets.getTabs.mockImplementation(async (_sid, tabs) => (
+      tabs[0] === 'HISTORICO_CUSTOS' ? { HISTORICO_CUSTOS: fx.SHEETS.HISTORICO_CUSTOS } : base
+    ));
+    const set = await obterMes({ cookies: {}, linkToken: link(), mes: '2026-09' });
+    const out = await obterMes({ cookies: {}, linkToken: link(), mes: '2026-10' });
+    const aluguel = (r) => r.body.dias.flatMap((d) => d.itens).find((i) => i.nome === 'Aluguel');
+    expect(aluguel(set)).toMatchObject({ statusPagamento: 'pago' });
+    expect(aluguel(out)).toMatchObject({ statusPagamento: 'pendente' });
+  });
+
+  test('planilha sem a aba HISTORICO_CUSTOS segue funcionando (nada pago)', async () => {
+    sheets.getTabs.mockImplementation(async (_sid, tabs) => {
+      if (tabs[0] === 'HISTORICO_CUSTOS') throw new Error('Unable to parse range: HISTORICO_CUSTOS!A1:Z2000');
+      return base;
+    });
+    const r = await obterMes({ cookies: {}, linkToken: link(), mes: '2026-09' });
+    expect(r.status).toBe(200);
+    expect(r.body.totals.pago).toBe(0);
+  });
+});
+
 describe('obterMes', () => {
   test('mes fora do formato YYYY-MM -> 400', async () => {
     const r = await obterMes({ cookies: {}, linkToken: null, mes: '09-2026' });

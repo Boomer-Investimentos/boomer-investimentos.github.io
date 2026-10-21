@@ -18,6 +18,26 @@ beforeEach(() => {
   sheets.appendRow.mockResolvedValue();
 });
 
+describe('criarLancamento — nome repetido', () => {
+  test('nome já existente (ignora caixa/acento) -> 409 com sugestão, sem escrever', async () => {
+    const r = await criarLancamento({ ...base, nome: 'aluguel' });
+    expect(r.status).toBe(409);
+    expect(r.body.error).toContain('Você já adicionou "aluguel"');
+    expect(r.body.error).toContain('"aluguel 2"');
+    expect(sheets.appendRow).not.toHaveBeenCalled();
+  });
+
+  test('sugestão pula números já usados (Aluguel 2 existe -> Aluguel 3)', async () => {
+    const custo = fx.clone().CUSTO_FIXO;
+    custo.push([...custo[1]]);
+    custo[custo.length - 1][0] = 'Aluguel 2';
+    sheets.getValues.mockResolvedValue(custo);
+    const r = await criarLancamento({ ...base, nome: 'Aluguel' });
+    expect(r.status).toBe(409);
+    expect(r.body.error).toContain('"Aluguel 3"');
+  });
+});
+
 describe('criarLancamento', () => {
   test('sem sessão -> 401', async () => {
     const r = await criarLancamento({ ...base, cookies: {} });

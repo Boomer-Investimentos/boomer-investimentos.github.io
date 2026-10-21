@@ -7,10 +7,10 @@ module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   const cookies = auth.parseCookies(req.headers.cookie);
-  const { linhaPlanilha, statusPagamento } = req.body || {};
+  const { linhaPlanilha, statusPagamento, mes } = req.body || {};
 
   try {
-    const r = await atualizarPagamento({ cookies, linhaPlanilha, statusPagamento });
+    const r = await atualizarPagamento({ cookies, linhaPlanilha, statusPagamento, mes });
     return res.status(r.status).json(r.body);
   } catch (err) {
     console.error('cal/pagamento error:', err.message);
