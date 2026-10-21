@@ -113,6 +113,19 @@ describe('api/cal — fio completo via HTTP', () => {
     expect(sheets.appendRow).toHaveBeenCalledTimes(1);
   });
 
+  test('POST /api/cal/lancamento repassa parcelas e parcelaAtual', async () => {
+    const token = auth.assinarSessao({ sid: fx.SPREADSHEET_ID, email: fx.EMAIL });
+    sheets.getValues.mockResolvedValueOnce(fx.SHEETS.CUSTO_FIXO);
+    const res = await request(app)
+      .post('/api/cal/lancamento')
+      .set('Cookie', `${auth.COOKIE_NOME}=${token}`)
+      .send({ nome: 'Notebook', valor: 120, categoria: 'Tecnologia', dia: 10, mes: '2026-09', parcelas: 3, parcelaAtual: 2 });
+    expect(res.status).toBe(201);
+    const [, , linha] = sheets.appendRow.mock.calls[0];
+    expect(linha).toContain(3);
+    expect(linha).toContain('01/08/2026');
+  });
+
   test('POST /api/cal/custo-editar com sessão edita a linha', async () => {
     const token = auth.assinarSessao({ sid: fx.SPREADSHEET_ID, email: fx.EMAIL });
     sheets.getValues.mockResolvedValueOnce(fx.SHEETS.CUSTO_FIXO);
