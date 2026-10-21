@@ -91,7 +91,7 @@ describe('cabeçalho deslocado', () => {
 describe('parseHistorico', () => {
   test('mapeia custo+ano -> valores pagos por mês (só > 0)', () => {
     const h = s.parseHistorico(fx.SHEETS.HISTORICO_CUSTOS);
-    expect(h['aluguel|2026']).toEqual({ linhaPlanilha: 2, meses: { 9: 900 } });
+    expect(h['aluguel|2026']).toEqual({ linhaPlanilha: 2, meses: { 9: 900 }, custo: 'Aluguel', id: '', idKeyed: false });
   });
 
   test('aba vazia ou ausente -> {}', () => {
