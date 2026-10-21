@@ -223,3 +223,42 @@ describe('projetarMes — custo/renda inativos são ignorados', () => {
     expect(proj.dias.flatMap((d) => d.itens)).toHaveLength(0);
   });
 });
+
+const HEADER_ID = [
+  'Custo', 'Valor', 'Categoria', 'Dia_Vencimento', 'Frequência', 'Total_Parcelas',
+  'Data_Início', 'Data_Fim', 'Status', 'Status_Pagamento', 'ID',
+];
+const HEADER_HIST_ID = [
+  'Custo', 'Ano', 'Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez', 'ID',
+];
+const custoNoDia = (proj, dia) => proj.dias.find((d) => d.dia === dia).itens.find((i) => i.tipo === 'custo');
+
+describe('projetarMes — pago por ID', () => {
+  test('mesmo nome, IDs diferentes: só o custo com registro id-keyed fica pago', () => {
+    const custo = schema.parseCusto([
+      HEADER_ID,
+      ['Guardar (Aluguel)', 100, '', 9, 'Mensal', '', '', '', 'Ativo', 'Pendente', 'c-aaaa1111'],
+      ['Guardar (Aluguel)', 100, '', 16, 'Mensal', '', '', '', 'Ativo', 'Pendente', 'c-bbbb2222'],
+    ]);
+    const historico = schema.parseHistorico([
+      HEADER_HIST_ID,
+      ['Guardar (Aluguel)', 2026, '', '', '', '', '', '', '', '', 100, '', '', '', 'c-aaaa1111'],
+    ]);
+    const proj = projetarMes({ renda: [], custo, historico, mes: '2026-09', hoje: '2026-09-08' });
+    expect(custoNoDia(proj, 9).statusPagamento).toBe('pago');
+    expect(custoNoDia(proj, 16).statusPagamento).toBe('pendente');
+  });
+
+  test('fallback: custo com ID mas histórico ainda por nome (nome único) conta como pago', () => {
+    const custo = schema.parseCusto([
+      HEADER_ID,
+      ['Internet', 75, '', 10, 'Mensal', '', '', '', 'Ativo', 'Pendente', 'c-cccc3333'],
+    ]);
+    const historico = schema.parseHistorico([
+      HEADER_HIST_ID,
+      ['Internet', 2026, '', '', '', '', '', '', '', '', 75, '', '', '', ''],
+    ]);
+    const proj = projetarMes({ renda: [], custo, historico, mes: '2026-09', hoje: '2026-09-08' });
+    expect(custoNoDia(proj, 10).statusPagamento).toBe('pago');
+  });
+});

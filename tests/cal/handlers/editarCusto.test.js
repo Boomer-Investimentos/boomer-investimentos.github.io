@@ -46,6 +46,17 @@ describe('editarCusto — nome repetido', () => {
     const r = await editarCusto({ ...base, valor: 1000 });
     expect(r.status).toBe(200);
   });
+
+  test('preserva o ID da linha ao editar', async () => {
+    const custo = [
+      ['Custo', 'Valor', 'Categoria', 'Dia_Vencimento', 'Frequência', 'Total_Parcelas', 'Data_Início', 'Data_Fim', 'Status', 'Status_Pagamento', 'ID'],
+      ['Aluguel', 900, 'Moradia', 1, 'Mensal', '', '', '', 'Ativo', 'Pendente', 'c-keep4242'],
+    ];
+    sheets.getValues.mockResolvedValue(custo);
+    await editarCusto({ ...base, valor: 1000 });
+    const row = sheets.updateRow.mock.calls[0][3];
+    expect(row[10]).toBe('c-keep4242');
+  });
 });
 
 describe('editarCusto', () => {

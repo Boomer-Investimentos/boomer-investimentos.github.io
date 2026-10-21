@@ -142,4 +142,28 @@ describe('atualizarPagamento', () => {
     const chamadas = sheets.updateCell.mock.calls.map((c) => c[1]);
     expect(chamadas.some((a1) => a1.startsWith('CUSTO_FIXO!'))).toBe(false);
   });
+
+  const CUSTO_ID = ['Custo', 'Valor', 'Dia_Vencimento', 'Status', 'Status_Pagamento', 'ID'];
+  const HIST_ID = ['Custo', 'Ano', 'Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez', 'Última alteração', 'ID'];
+
+  test('coluna ID presente, linha sem ID -> gera ID na CUSTO_FIXO e grava histórico com ele', async () => {
+    const custo = [CUSTO_ID, ['Guardar', 100, 9, 'Ativo', 'Pendente', '']];
+    mockPlanilha({ custo, historico: [HIST_ID] });
+    const r = await atualizarPagamento(pedido({ mes: '2026-09' }));
+    expect(r.status).toBe(200);
+    const escreveuId = sheets.updateCell.mock.calls.find((c) => c[1] === 'CUSTO_FIXO!F2');
+    expect(escreveuId[2]).toMatch(/^c-[0-9a-f]{8}$/);
+    const linhaHist = sheets.appendRow.mock.calls[0][2];
+    expect(linhaHist.some((v) => v === escreveuId[2])).toBe(true);
+  });
+
+  test('adota linha antiga por nome (nome único) carimbando o ID, sem criar linha', async () => {
+    const custo = [CUSTO_ID, ['Internet', 75, 10, 'Ativo', 'Pendente', 'c-fixo1111']];
+    const historico = [HIST_ID, ['Internet', 2026, '', '', '', '', '', '', '', '', '', '', '', '', '', '']];
+    mockPlanilha({ custo, historico });
+    const r = await atualizarPagamento(pedido({ mes: '2026-09' }));
+    expect(r.status).toBe(200);
+    expect(sheets.updateCell).toHaveBeenCalledWith(fx.SPREADSHEET_ID, 'HISTORICO_CUSTOS!P2', 'c-fixo1111');
+    expect(sheets.appendRow).not.toHaveBeenCalled();
+  });
 });
