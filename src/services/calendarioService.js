@@ -67,3 +67,27 @@ export function editarRenda(dados) {
     body: JSON.stringify(dados),
   }).then(tratarResposta);
 }
+
+export function criarReserva(dados) {
+  return fetch(`${BASE}/reserva-lancamento`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(dados),
+  }).then(tratarResposta);
+}
+
+export function editarReserva(dados) {
+  return fetch(`${BASE}/reserva-editar`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(dados),
+  }).then(tratarResposta);
+}
+
+export function atualizarReserva(linhaPlanilha, statusReserva, mes) {
+  return fetch(`${BASE}/reserva-guardado`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ linhaPlanilha, statusReserva, mes }),
+  }).then(tratarResposta);
+}

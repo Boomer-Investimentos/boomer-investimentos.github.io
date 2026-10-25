@@ -10,6 +10,9 @@ import {
   editarCusto,
   criarRenda,
   editarRenda,
+  criarReserva,
+  editarReserva,
+  atualizarReserva,
 } from '../../services/calendarioService';
 
 const LINK_TOKEN_KEY = 'cal_link_token';
@@ -162,9 +165,14 @@ export default function CalendarioPage() {
   const alternarPago = async (item) => {
     if (!dados.autenticado) return exigirLogin();
     setErroAcao(null);
-    const novoStatus = item.statusPagamento === 'pago' ? 'Pendente' : 'Pago';
     try {
-      await atualizarPagamento(item.linhaPlanilha, novoStatus, mes);
+      if (item.tipo === 'reserva') {
+        const novoStatus = item.statusReserva === 'guardado' ? 'Pendente' : 'Guardado';
+        await atualizarReserva(item.linhaPlanilha, novoStatus, mes);
+      } else {
+        const novoStatus = item.statusPagamento === 'pago' ? 'Pendente' : 'Pago';
+        await atualizarPagamento(item.linhaPlanilha, novoStatus, mes);
+      }
       carregarMes(mes, linkToken);
     } catch (e) {
       setErroAcao(e.message);
@@ -193,12 +201,16 @@ export default function CalendarioPage() {
     try {
       if (painelItem.modo === 'criar') {
         if (tipo === 'custo') await criarLancamento({ ...form, mes });
+        else if (tipo === 'reserva') await criarReserva({ ...form, mes });
         else await criarRenda({ ...form, mes });
       } else {
         const linhaPlanilha = painelItem.item.linhaPlanilha;
         if (tipo === 'custo') {
           await editarCusto({ ...form, linhaPlanilha, mes });
           if (statusPagamento) await atualizarPagamento(linhaPlanilha, statusPagamento, mes);
+        } else if (tipo === 'reserva') {
+          await editarReserva({ ...form, linhaPlanilha, mes });
+          if (statusPagamento) await atualizarReserva(linhaPlanilha, statusPagamento, mes);
         } else {
           await editarRenda({ ...form, linhaPlanilha, mes });
         }
@@ -216,6 +228,7 @@ export default function CalendarioPage() {
     try {
       const linhaPlanilha = painelItem.item.linhaPlanilha;
       if (tipo === 'custo') await editarCusto({ ...form, linhaPlanilha, mes, status: 'Inativo' });
+      else if (tipo === 'reserva') await editarReserva({ ...form, linhaPlanilha, mes, status: 'Inativo' });
       else await editarRenda({ ...form, linhaPlanilha, mes, status: 'Inativo' });
       fecharPainel();
       carregarMes(mes, linkToken);
@@ -278,7 +291,7 @@ export default function CalendarioPage() {
             mes={mes}
             erro={erroAcao}
             nomesCusto={dados.nomesCusto || []}
-            categoriasCusto={dados.categorias.filter((c) => c.nome !== 'Recebimento')}
+            categoriasCusto={dados.categorias.filter((c) => c.nome !== 'Recebimento' && c.nome !== 'Reserva')}
             modo={painelItem.modo}
             tipoInicial={painelItem.tipo}
             item={painelItem.item}
@@ -349,6 +362,7 @@ function SummaryCards({ totals, moeda }) {
       <SummaryCard label="A pagar" valor={totals.pendente} moeda={moeda} cor="var(--ink)" />
       <SummaryCard label="Em atraso" valor={totals.atrasado} moeda={moeda} cor="var(--status-atrasado)" />
       <SummaryCard label="Entradas" valor={totals.receita} moeda={moeda} cor="var(--status-receita)" receita />
+      <SummaryCard label="Guardado no mês" valor={totals.reservado || 0} moeda={moeda} cor="#7c3aed" />
     </div>
   );
 }
@@ -437,22 +451,28 @@ function useCliqueSimplesOuDuplo(aoClicar, aoClicarDuplo) {
   };
 }
 
+function itemConcluido(item) {
+  return item.tipo === 'reserva' ? item.statusReserva === 'guardado' : item.statusPagamento === 'pago';
+}
+
 function Item({ item, moeda, onEditar, onTogglePago }) {
-  const classeNome = item.statusPagamento === 'pago' ? styles.itemNamePago : '';
+  const concluido = itemConcluido(item);
+  const alternavel = item.tipo === 'custo' || item.tipo === 'reserva';
+  const classeNome = concluido ? styles.itemNamePago : '';
   const classeValor =
     item.tipo === 'renda'
       ? styles.itemAmountReceita
       : item.atrasado
         ? styles.itemAmountAtrasado
-        : item.statusPagamento === 'pago'
+        : concluido
           ? styles.itemAmountPago
           : styles.itemAmountPendente;
 
-  const marca = item.tipo === 'renda' ? '+' : item.statusPagamento === 'pago' ? ' ✓' : item.atrasado ? ' !' : '';
+  const marca = item.tipo === 'renda' ? '+' : concluido ? ' ✓' : item.atrasado ? ' !' : '';
 
   const { onClick, onDoubleClick } = useCliqueSimplesOuDuplo(
     () => onEditar(item),
-    () => { if (item.tipo === 'custo') onTogglePago(item); },
+    () => { if (alternavel) onTogglePago(item); },
   );
   const aoTeclar = (ev) => {
     if (ev.key === 'Enter' || ev.key === ' ') {
@@ -460,6 +480,12 @@ function Item({ item, moeda, onEditar, onTogglePago }) {
       onEditar(item);
     }
   };
+
+  const titulo = item.tipo === 'reserva'
+    ? 'Clique para editar · duplo clique para marcar guardado/pendente'
+    : item.tipo === 'custo'
+      ? 'Clique para editar · duplo clique para marcar pago/pendente'
+      : 'Editar lançamento';
 
   return (
     <div
@@ -469,7 +495,7 @@ function Item({ item, moeda, onEditar, onTogglePago }) {
       onKeyDown={aoTeclar}
       role="button"
       tabIndex={0}
-      title={item.tipo === 'custo' ? 'Clique para editar · duplo clique para marcar pago/pendente' : 'Editar lançamento'}
+      title={titulo}
     >
       <span className={styles.itemDot} style={{ background: item.categoria.cor }} />
       <div className={styles.itemBody}>
@@ -586,20 +612,27 @@ function DayList({ dia, hoje, moeda, onEditar, onTogglePago }) {
 }
 
 function DayListRow({ item, moeda, onEditar, onTogglePago }) {
-  const statusLabel = item.tipo === 'renda' ? null : item.atrasado ? 'Atrasado' : item.statusPagamento === 'pago' ? 'Pago' : 'Não pago';
-  const statusClasse = item.atrasado ? styles.dayListBadgeAtrasado : item.statusPagamento === 'pago' ? styles.dayListBadgePago : styles.dayListBadgePendente;
+  const concluido = itemConcluido(item);
+  const alternavel = item.tipo === 'custo' || item.tipo === 'reserva';
+  const statusLabel =
+    item.tipo === 'renda'
+      ? null
+      : item.tipo === 'reserva'
+        ? concluido ? 'Guardado' : 'A guardar'
+        : item.atrasado ? 'Atrasado' : concluido ? 'Pago' : 'Não pago';
+  const statusClasse = item.atrasado ? styles.dayListBadgeAtrasado : concluido ? styles.dayListBadgePago : styles.dayListBadgePendente;
   const valorClasse =
     item.tipo === 'renda'
       ? styles.itemAmountReceita
       : item.atrasado
         ? styles.itemAmountAtrasado
-        : item.statusPagamento === 'pago'
+        : concluido
           ? styles.itemAmountPago
           : styles.itemAmountPendente;
 
   const { onClick, onDoubleClick } = useCliqueSimplesOuDuplo(
     () => onEditar(item),
-    () => { if (item.tipo === 'custo') onTogglePago(item); },
+    () => { if (alternavel) onTogglePago(item); },
   );
   const aoTeclar = (ev) => {
     if (ev.key === 'Enter' || ev.key === ' ') {
@@ -620,7 +653,7 @@ function DayListRow({ item, moeda, onEditar, onTogglePago }) {
       <span className={styles.itemDot} style={{ background: item.categoria.cor }} />
       <div className={styles.itemBody} style={{ flex: 1 }}>
         <div className={styles.itemName}>{item.nome}</div>
-        {item.tipo === 'custo' && <div className={styles.semDataMeta}>{item.categoria.nome}</div>}
+        {item.tipo !== 'renda' && <div className={styles.semDataMeta}>{item.categoria.nome}</div>}
       </div>
       {statusLabel && <span className={`${styles.dayListBadgeBase} ${statusClasse}`}>{statusLabel}</span>}
       <span className={`${styles.dayListAmount} ${valorClasse}`}>
@@ -694,6 +727,7 @@ function SemData({ itens, moeda, onEditar, onTogglePago }) {
 }
 
 const FREQUENCIAS_RENDA = ['Mensal', 'Semanal', 'Única'];
+const FREQUENCIAS_RESERVA = ['Mensal', 'Única'];
 const DIAS_SEMANA_OPCOES = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'];
 
 function semAcentoLocal(s) {
@@ -731,6 +765,7 @@ function PaymentPanel({ mes, erro, nomesCusto = [], categoriasCusto, modo, tipoI
   const [diaSemana, setDiaSemana] = useState(item?.tipo === 'renda' ? diaSemanaInicial(item.diaRecebimento) : DIAS_SEMANA_OPCOES[5]);
   const [repetirTodoMes, setRepetirTodoMes] = useState(item ? !!item.repete : true);
   const [statusPago, setStatusPago] = useState(item?.statusPagamento === 'pago');
+  const [statusGuardado, setStatusGuardado] = useState(item?.statusReserva === 'guardado');
   const [salvando, setSalvando] = useState(false);
   const [excluindo, setExcluindo] = useState(false);
   const panelRef = useRef(null);
@@ -739,6 +774,7 @@ function PaymentPanel({ mes, erro, nomesCusto = [], categoriasCusto, modo, tipoI
   }, []);
 
   const ehRenda = tipo === 'renda';
+  const ehReserva = tipo === 'reserva';
   const ehSemanal = ehRenda && frequencia === 'Semanal';
   const valido = descricao.trim() && Number(valor) > 0 && (ehSemanal ? !!diaSemana : Number(diaMes) >= 1 && Number(diaMes) <= 31);
 
@@ -749,6 +785,15 @@ function PaymentPanel({ mes, erro, nomesCusto = [], categoriasCusto, modo, tipoI
         valor: Number(valor),
         frequencia,
         diaRecebimento: ehSemanal ? diaSemana : Number(diaMes),
+        repetirTodoMes,
+      };
+    }
+    if (ehReserva) {
+      return {
+        nome: descricao,
+        valor: Number(valor),
+        frequencia,
+        dia: Number(diaMes),
         repetirTodoMes,
       };
     }
@@ -770,12 +815,14 @@ function PaymentPanel({ mes, erro, nomesCusto = [], categoriasCusto, modo, tipoI
       }
     }
     setSalvando(true);
-    const statusPagamento =
-      modo === 'editar' && tipo === 'custo' && statusPago !== (item.statusPagamento === 'pago')
-        ? statusPago ? 'Pago' : 'Pendente'
-        : null;
+    let statusExtra = null;
+    if (modo === 'editar' && tipo === 'custo' && statusPago !== (item.statusPagamento === 'pago')) {
+      statusExtra = statusPago ? 'Pago' : 'Pendente';
+    } else if (modo === 'editar' && tipo === 'reserva' && statusGuardado !== (item.statusReserva === 'guardado')) {
+      statusExtra = statusGuardado ? 'Guardado' : 'Pendente';
+    }
     try {
-      await onSalvar(tipo, montarForm(), statusPagamento);
+      await onSalvar(tipo, montarForm(), statusExtra);
     } finally {
       setSalvando(false);
     }
@@ -790,7 +837,10 @@ function PaymentPanel({ mes, erro, nomesCusto = [], categoriasCusto, modo, tipoI
     }
   };
 
-  const titulo = modo === 'criar' ? (ehRenda ? 'Nova renda' : 'Novo pagamento') : ehRenda ? 'Editar renda' : 'Editar pagamento';
+  const substantivo = ehRenda ? 'renda' : ehReserva ? 'reserva' : 'pagamento';
+  const titulo = modo === 'criar'
+    ? (ehRenda ? 'Nova renda' : ehReserva ? 'Nova reserva' : 'Novo pagamento')
+    : `Editar ${substantivo}`;
 
   return (
     <aside className={styles.panel} ref={panelRef}>
@@ -799,11 +849,14 @@ function PaymentPanel({ mes, erro, nomesCusto = [], categoriasCusto, modo, tipoI
 
       {modo === 'criar' && (
         <div className={styles.chipsRow}>
-          <button type="button" className={`${styles.chip} ${!ehRenda ? styles.chipActive : ''}`} onClick={() => setTipo('custo')}>
+          <button type="button" className={`${styles.chip} ${tipo === 'custo' ? styles.chipActive : ''}`} onClick={() => setTipo('custo')}>
             Custo
           </button>
-          <button type="button" className={`${styles.chip} ${ehRenda ? styles.chipActive : ''}`} onClick={() => setTipo('renda')}>
+          <button type="button" className={`${styles.chip} ${tipo === 'renda' ? styles.chipActive : ''}`} onClick={() => setTipo('renda')}>
             Renda
+          </button>
+          <button type="button" className={`${styles.chip} ${tipo === 'reserva' ? styles.chipActive : ''}`} onClick={() => setTipo('reserva')}>
+            Reserva
           </button>
         </div>
       )}
@@ -813,7 +866,7 @@ function PaymentPanel({ mes, erro, nomesCusto = [], categoriasCusto, modo, tipoI
         className={styles.fieldInput}
         value={descricao}
         onChange={(e) => setDescricao(e.target.value)}
-        placeholder={ehRenda ? 'Salário' : 'Assinatura de streaming'}
+        placeholder={ehRenda ? 'Salário' : ehReserva ? 'Reserva de emergência' : 'Assinatura de streaming'}
       />
 
       <div className={styles.fieldRow}>
@@ -865,11 +918,11 @@ function PaymentPanel({ mes, erro, nomesCusto = [], categoriasCusto, modo, tipoI
         </div>
       </div>
 
-      {ehRenda ? (
+      {ehRenda || ehReserva ? (
         <>
           <label className={styles.fieldLabel}>Frequência</label>
           <div className={styles.chipsRow}>
-            {FREQUENCIAS_RENDA.map((f) => (
+            {(ehReserva ? FREQUENCIAS_RESERVA : FREQUENCIAS_RENDA).map((f) => (
               <button
                 key={f}
                 type="button"
@@ -900,7 +953,7 @@ function PaymentPanel({ mes, erro, nomesCusto = [], categoriasCusto, modo, tipoI
         </>
       )}
 
-      {modo === 'editar' && !ehRenda && (
+      {modo === 'editar' && !ehRenda && !ehReserva && (
         <>
           <label className={styles.fieldLabel}>Status</label>
           <div className={styles.statusToggle}>
@@ -917,6 +970,28 @@ function PaymentPanel({ mes, erro, nomesCusto = [], categoriasCusto, modo, tipoI
               onClick={() => setStatusPago(true)}
             >
               Pago
+            </button>
+          </div>
+        </>
+      )}
+
+      {modo === 'editar' && ehReserva && (
+        <>
+          <label className={styles.fieldLabel}>Status</label>
+          <div className={styles.statusToggle}>
+            <button
+              type="button"
+              className={`${styles.statusOption} ${!statusGuardado ? styles.statusOptionActive : ''}`}
+              onClick={() => setStatusGuardado(false)}
+            >
+              Não guardado
+            </button>
+            <button
+              type="button"
+              className={`${styles.statusOption} ${statusGuardado ? styles.statusOptionActive : ''}`}
+              onClick={() => setStatusGuardado(true)}
+            >
+              Guardado
             </button>
           </div>
         </>
