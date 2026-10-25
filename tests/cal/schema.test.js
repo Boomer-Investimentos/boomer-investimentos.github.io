@@ -108,6 +108,40 @@ describe('parseHistorico', () => {
   });
 });
 
+describe('parseReserva', () => {
+  const reservas = s.parseReserva(fx.SHEETS.RESERVAS);
+  const por = (nome) => reservas.find((r) => r.nome === nome);
+
+  test('ignora linhas em branco/parciais', () => {
+    expect(reservas).toHaveLength(3);
+  });
+
+  test('campos normalizados (dia, frequência, ID)', () => {
+    expect(por('Reserva de emergência')).toMatchObject({
+      valor: 300,
+      dia: 10,
+      frequencia: 'mensal',
+      ativo: true,
+      id: 'r-aaaa1111',
+    });
+  });
+
+  test('linha inativa -> ativo:false', () => {
+    expect(por('Reserva antiga').ativo).toBe(false);
+  });
+
+  test('guarda o número da linha na planilha', () => {
+    expect(por('Reserva de emergência').linhaPlanilha).toBe(2);
+  });
+});
+
+describe('parseHistorico (reservas, rótulo "Reserva")', () => {
+  test('mapeia reserva+ano por ID -> valores guardados por mês', () => {
+    const h = s.parseHistorico(fx.SHEETS.HISTORICO_RESERVAS, 'Reserva');
+    expect(h[s.chaveHistorico('r-aaaa1111', 2026)]).toMatchObject({ meses: { 9: 300 }, idKeyed: true });
+  });
+});
+
 describe('parseEstrategia', () => {
   test('ordena por Ordem e devolve só os textos', () => {
     expect(s.parseEstrategia(fx.SHEETS.ESTRATEGIA)).toEqual([

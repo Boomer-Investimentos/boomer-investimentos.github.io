@@ -123,3 +123,36 @@ describe('obterMes — backfill de ID', () => {
     expect(sheets.updateColumn).not.toHaveBeenCalled();
   });
 });
+
+describe('obterMes — reservas', () => {
+  const link = () => auth.assinarLink(fx.SPREADSHEET_ID);
+  const base = { CONFIG: fx.SHEETS.CONFIG, PARAMS: fx.SHEETS.PARAMS, RENDA: fx.SHEETS.RENDA, CUSTO_FIXO: fx.SHEETS.CUSTO_FIXO };
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    sheets.getTabs.mockResolvedValue(base);
+  });
+
+  test('totals.reservado soma só o que foi guardado no mês', async () => {
+    sheets.getValues.mockImplementation(async (_sid, range) => (
+      range.startsWith('HISTORICO_RESERVAS') ? fx.SHEETS.HISTORICO_RESERVAS
+        : range.startsWith('RESERVAS') ? fx.SHEETS.RESERVAS
+          : []
+    ));
+    const r = await obterMes({ cookies: {}, linkToken: link(), mes: '2026-09' });
+    expect(r.status).toBe(200);
+    expect(r.body.totals.reservado).toBe(300);
+  });
+
+  test('planilha sem as abas de reserva -> reservado 0', async () => {
+    sheets.getValues.mockImplementation(async (_sid, range) => {
+      if (range.startsWith('RESERVAS') || range.startsWith('HISTORICO_RESERVAS')) {
+        throw new Error(`Unable to parse range: ${range}`);
+      }
+      return [];
+    });
+    const r = await obterMes({ cookies: {}, linkToken: link(), mes: '2026-09' });
+    expect(r.status).toBe(200);
+    expect(r.body.totals.reservado).toBe(0);
+  });
+});

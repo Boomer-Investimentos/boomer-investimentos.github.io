@@ -65,6 +65,7 @@ describe('projetarMes — fixture "template cliente internacional"', () => {
       pendente: 1010.74,
       atrasado: 916.89,
       receita: 3200,
+      reservado: 0,
     });
   });
 
@@ -260,5 +261,42 @@ describe('projetarMes — pago por ID', () => {
     ]);
     const proj = projetarMes({ renda: [], custo, historico, mes: '2026-09', hoje: '2026-09-08' });
     expect(custoNoDia(proj, 10).statusPagamento).toBe('pago');
+  });
+});
+
+describe('projetarMes — reservas', () => {
+  const reservas = schema.parseReserva(fx.SHEETS.RESERVAS);
+  const historicoReservas = schema.parseHistorico(fx.SHEETS.HISTORICO_RESERVAS, 'Reserva');
+
+  test('guardada no mês entra em reservado; não guardada fica pendente e não soma', () => {
+    const proj = projetarMes({ renda, custo, reservas, historicoReservas, mes: '2026-09', hoje: '2026-09-08' });
+    expect(proj.totals.reservado).toBe(300);
+    const emerg = diaCom(proj, 10).itens.find((i) => i.nome === 'Reserva de emergência');
+    expect(emerg).toMatchObject({ tipo: 'reserva', statusReserva: 'guardado', atrasado: false });
+    const viagem = diaCom(proj, 20).itens.find((i) => i.nome === 'Viagem');
+    expect(viagem).toMatchObject({ tipo: 'reserva', statusReserva: 'pendente' });
+  });
+
+  test('reserva nunca fica atrasada, mesmo com data vencida e sem marcação', () => {
+    const proj = projetarMes({ renda, custo, reservas, historicoReservas, mes: '2026-09', hoje: '2026-09-30' });
+    expect(diaCom(proj, 20).itens.find((i) => i.nome === 'Viagem').atrasado).toBe(false);
+  });
+
+  test('não mexe nos totais de custo (pago/pendente/atrasado)', () => {
+    const sem = projetarMes({ renda, custo, mes: '2026-09', hoje: '2026-09-08' });
+    const com = projetarMes({ renda, custo, reservas, historicoReservas, mes: '2026-09', hoje: '2026-09-08' });
+    expect(com.totals.pago).toBe(sem.totals.pago);
+    expect(com.totals.pendente).toBe(sem.totals.pendente);
+    expect(com.totals.atrasado).toBe(sem.totals.atrasado);
+  });
+
+  test('mês sem marcação de guardado: reservado = 0', () => {
+    const proj = projetarMes({ renda, custo, reservas, historicoReservas, mes: '2026-10', hoje: '2026-10-15' });
+    expect(proj.totals.reservado).toBe(0);
+  });
+
+  test('reserva inativa não aparece', () => {
+    const proj = projetarMes({ renda, custo, reservas, historicoReservas, mes: '2026-09', hoje: '2026-09-08' });
+    expect(proj.dias.flatMap((d) => d.itens.map((i) => i.nome))).not.toContain('Reserva antiga');
   });
 });

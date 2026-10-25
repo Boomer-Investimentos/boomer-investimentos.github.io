@@ -64,6 +64,21 @@ const CUSTO_FIXO = [
   ['teste'],
 ];
 
+// Reserva | Valor | Frequência | Dia | Data_Início | Data_Fim | Status | ID | Observações
+const RESERVAS = [
+  ['Reserva', 'Valor', 'Frequência', 'Dia', 'Data_Início', 'Data_Fim', 'Status', 'ID', 'Observações'],
+  ['Reserva de emergência', 300, 'Mensal', 10, H, '', 'Ativo', 'r-aaaa1111', ''],
+  ['Viagem', 150, 'Mensal', 20, H, '', 'Ativo', 'r-bbbb2222', ''],
+  ['Reserva antiga', 50, 'Mensal', 5, 45900, 46020, 'Inativo', 'r-cccc3333', 'fora da janela + inativa'],
+  ['', '', 'Mensal', '', H, '', 'Ativo', '', 'linha parcial sem nome'],
+];
+
+// Reserva | Ano | Jan..Dez | ID | Última alteração (Reserva de emergência guardada em set/2026)
+const HISTORICO_RESERVAS = [
+  ['Reserva', 'Ano', 'Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez', 'ID', 'Última alteração'],
+  ['Reserva de emergência', 2026, '', '', '', '', '', '', '', '', 300, '', '', '', 'r-aaaa1111', ''],
+];
+
 const ESTRATEGIA = [
   ['Ordem', 'Item', 'Observações'],
   [1, '1º recebimento: separar parte para investimento'],
@@ -78,7 +93,7 @@ const HISTORICO_CUSTOS = [
   ['Aluguel', 2026, '', '', '', '', '', '', '', '', 900, '', '', '', '', ''],
 ];
 
-const SHEETS = { CONFIG, PARAMS, RENDA, CUSTO_FIXO, ESTRATEGIA, HISTORICO_CUSTOS };
+const SHEETS = { CONFIG, PARAMS, RENDA, CUSTO_FIXO, RESERVAS, HISTORICO_RESERVAS, ESTRATEGIA, HISTORICO_CUSTOS };
 
 /** Cópia profunda — um teste pode mutar sem afetar os outros. */
 function clone() {
