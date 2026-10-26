@@ -87,3 +87,72 @@ describe('obterMes', () => {
     expect(r.body.autenticado).toBe(true);
   });
 });
+
+describe('obterMes — backfill de ID', () => {
+  const sessao = { [auth.COOKIE_NOME]: auth.assinarSessao({ sid: fx.SPREADSHEET_ID, email: fx.EMAIL }) };
+  const link = () => auth.assinarLink(fx.SPREADSHEET_ID);
+  const custoSemId = [
+    ['Custo', 'Valor', 'Dia_Vencimento', 'Frequência', 'Data_Início', 'Data_Fim', 'Status', 'Status_Pagamento', 'ID'],
+    ['Guardar', 100, 9, 'Mensal', '', '', 'Ativo', 'Pendente', ''],
+  ];
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    sheets.getTabs.mockImplementation(async (_sid, tabs) => (
+      tabs[0] === 'HISTORICO_CUSTOS'
+        ? { HISTORICO_CUSTOS: [fx.SHEETS.HISTORICO_CUSTOS[0]] }
+        : { CONFIG: fx.SHEETS.CONFIG, PARAMS: fx.SHEETS.PARAMS, RENDA: fx.SHEETS.RENDA, CUSTO_FIXO: custoSemId }
+    ));
+    sheets.updateColumn.mockResolvedValue();
+  });
+
+  test('com sessão: preenche IDs faltando numa única escrita de coluna', async () => {
+    const r = await obterMes({ cookies: sessao, mes: '2026-09' });
+    expect(r.status).toBe(200);
+    expect(sheets.updateColumn).toHaveBeenCalledTimes(1);
+    const [, aba, colLetra, linhaInicio, valores] = sheets.updateColumn.mock.calls[0];
+    expect(aba).toBe('CUSTO_FIXO');
+    expect(colLetra).toBe('I');
+    expect(linhaInicio).toBe(2);
+    expect(valores[0]).toMatch(/^c-[0-9a-f]{8}$/);
+  });
+
+  test('por link (sem sessão): não escreve ID', async () => {
+    const r = await obterMes({ cookies: {}, linkToken: link(), mes: '2026-09' });
+    expect(r.status).toBe(200);
+    expect(sheets.updateColumn).not.toHaveBeenCalled();
+  });
+});
+
+describe('obterMes — reservas', () => {
+  const link = () => auth.assinarLink(fx.SPREADSHEET_ID);
+  const base = { CONFIG: fx.SHEETS.CONFIG, PARAMS: fx.SHEETS.PARAMS, RENDA: fx.SHEETS.RENDA, CUSTO_FIXO: fx.SHEETS.CUSTO_FIXO };
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    sheets.getTabs.mockResolvedValue(base);
+  });
+
+  test('totals.reservado soma só o que foi guardado no mês', async () => {
+    sheets.getValues.mockImplementation(async (_sid, range) => (
+      range.startsWith('HISTORICO_RESERVAS') ? fx.SHEETS.HISTORICO_RESERVAS
+        : range.startsWith('RESERVAS') ? fx.SHEETS.RESERVAS
+          : []
+    ));
+    const r = await obterMes({ cookies: {}, linkToken: link(), mes: '2026-09' });
+    expect(r.status).toBe(200);
+    expect(r.body.totals.reservado).toBe(300);
+  });
+
+  test('planilha sem as abas de reserva -> reservado 0', async () => {
+    sheets.getValues.mockImplementation(async (_sid, range) => {
+      if (range.startsWith('RESERVAS') || range.startsWith('HISTORICO_RESERVAS')) {
+        throw new Error(`Unable to parse range: ${range}`);
+      }
+      return [];
+    });
+    const r = await obterMes({ cookies: {}, linkToken: link(), mes: '2026-09' });
+    expect(r.status).toBe(200);
+    expect(r.body.totals.reservado).toBe(0);
+  });
+});

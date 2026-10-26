@@ -40,6 +40,7 @@ app.all('/api/cal/lancamento', (req, res) => require('../api/cal/lancamento')(re
 app.all('/api/cal/custo-editar', (req, res) => require('../api/cal/custo-editar')(req, res));
 app.all('/api/cal/renda-lancamento', (req, res) => require('../api/cal/renda-lancamento')(req, res));
 app.all('/api/cal/renda-editar', (req, res) => require('../api/cal/renda-editar')(req, res));
+app.all('/api/cal/reserva', (req, res) => require('../api/cal/reserva')(req, res));
 
 function getDriveClient() {
   const raw = process.env.GOOGLE_SERVICE_ACCOUNT_JSON.replace(/^['"]|['"]$/g, '');

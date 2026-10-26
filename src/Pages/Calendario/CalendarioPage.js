@@ -10,6 +10,9 @@ import {
   editarCusto,
   criarRenda,
   editarRenda,
+  criarReserva,
+  editarReserva,
+  atualizarReserva,
 } from '../../services/calendarioService';
 
 const LINK_TOKEN_KEY = 'cal_link_token';
@@ -162,9 +165,14 @@ export default function CalendarioPage() {
   const alternarPago = async (item) => {
     if (!dados.autenticado) return exigirLogin();
     setErroAcao(null);
-    const novoStatus = item.statusPagamento === 'pago' ? 'Pendente' : 'Pago';
     try {
-      await atualizarPagamento(item.linhaPlanilha, novoStatus, mes);
+      if (item.tipo === 'reserva') {
+        const novoStatus = item.statusReserva === 'guardado' ? 'Pendente' : 'Guardado';
+        await atualizarReserva(item.linhaPlanilha, novoStatus, mes);
+      } else {
+        const novoStatus = item.statusPagamento === 'pago' ? 'Pendente' : 'Pago';
+        await atualizarPagamento(item.linhaPlanilha, novoStatus, mes);
+      }
       carregarMes(mes, linkToken);
     } catch (e) {
       setErroAcao(e.message);
@@ -188,16 +196,24 @@ export default function CalendarioPage() {
     setPainelItem(null);
   };
 
-  const salvarPainel = async (tipo, form) => {
+  const salvarPainel = async (tipo, form, statusPagamento) => {
     setErroAcao(null);
     try {
       if (painelItem.modo === 'criar') {
         if (tipo === 'custo') await criarLancamento({ ...form, mes });
+        else if (tipo === 'reserva') await criarReserva({ ...form, mes });
         else await criarRenda({ ...form, mes });
       } else {
         const linhaPlanilha = painelItem.item.linhaPlanilha;
-        if (tipo === 'custo') await editarCusto({ ...form, linhaPlanilha, mes });
-        else await editarRenda({ ...form, linhaPlanilha, mes });
+        if (tipo === 'custo') {
+          await editarCusto({ ...form, linhaPlanilha, mes });
+          if (statusPagamento) await atualizarPagamento(linhaPlanilha, statusPagamento, mes);
+        } else if (tipo === 'reserva') {
+          await editarReserva({ ...form, linhaPlanilha, mes });
+          if (statusPagamento) await atualizarReserva(linhaPlanilha, statusPagamento, mes);
+        } else {
+          await editarRenda({ ...form, linhaPlanilha, mes });
+        }
       }
       fecharPainel();
       carregarMes(mes, linkToken);
@@ -212,6 +228,7 @@ export default function CalendarioPage() {
     try {
       const linhaPlanilha = painelItem.item.linhaPlanilha;
       if (tipo === 'custo') await editarCusto({ ...form, linhaPlanilha, mes, status: 'Inativo' });
+      else if (tipo === 'reserva') await editarReserva({ ...form, linhaPlanilha, mes, status: 'Inativo' });
       else await editarRenda({ ...form, linhaPlanilha, mes, status: 'Inativo' });
       fecharPainel();
       carregarMes(mes, linkToken);
@@ -273,7 +290,8 @@ export default function CalendarioPage() {
             key={`${painelItem.modo}-${painelItem.tipo}-${painelItem.item?.linhaPlanilha ?? 'novo'}`}
             mes={mes}
             erro={erroAcao}
-            categoriasCusto={dados.categorias.filter((c) => c.nome !== 'Recebimento')}
+            nomesCusto={dados.nomesCusto || []}
+            categoriasCusto={dados.categorias.filter((c) => c.nome !== 'Recebimento' && c.nome !== 'Reserva')}
             modo={painelItem.modo}
             tipoInicial={painelItem.tipo}
             item={painelItem.item}
@@ -344,6 +362,7 @@ function SummaryCards({ totals, moeda }) {
       <SummaryCard label="A pagar" valor={totals.pendente} moeda={moeda} cor="var(--ink)" />
       <SummaryCard label="Em atraso" valor={totals.atrasado} moeda={moeda} cor="var(--status-atrasado)" />
       <SummaryCard label="Entradas" valor={totals.receita} moeda={moeda} cor="var(--status-receita)" receita />
+      <SummaryCard label="Guardado no mês" valor={totals.reservado || 0} moeda={moeda} cor="#7c3aed" />
     </div>
   );
 }
@@ -436,22 +455,28 @@ function useCliqueSimplesOuDuplo(aoClicar, aoClicarDuplo) {
   };
 }
 
+function itemConcluido(item) {
+  return item.tipo === 'reserva' ? item.statusReserva === 'guardado' : item.statusPagamento === 'pago';
+}
+
 function Item({ item, moeda, onEditar, onTogglePago }) {
-  const classeNome = item.statusPagamento === 'pago' ? styles.itemNamePago : '';
+  const concluido = itemConcluido(item);
+  const alternavel = item.tipo === 'custo' || item.tipo === 'reserva';
+  const classeNome = concluido ? styles.itemNamePago : '';
   const classeValor =
     item.tipo === 'renda'
       ? styles.itemAmountReceita
       : item.atrasado
         ? styles.itemAmountAtrasado
-        : item.statusPagamento === 'pago'
+        : concluido
           ? styles.itemAmountPago
           : styles.itemAmountPendente;
 
-  const marca = item.tipo === 'renda' ? '+' : item.statusPagamento === 'pago' ? ' ✓' : item.atrasado ? ' !' : '';
+  const marca = item.tipo === 'renda' ? '+' : concluido ? ' ✓' : item.atrasado ? ' !' : '';
 
   const { onClick, onDoubleClick } = useCliqueSimplesOuDuplo(
     () => onEditar(item),
-    () => { if (item.tipo === 'custo') onTogglePago(item); },
+    () => { if (alternavel) onTogglePago(item); },
   );
   const aoTeclar = (ev) => {
     if (ev.key === 'Enter' || ev.key === ' ') {
@@ -459,6 +484,12 @@ function Item({ item, moeda, onEditar, onTogglePago }) {
       onEditar(item);
     }
   };
+
+  const titulo = item.tipo === 'reserva'
+    ? 'Clique para editar · duplo clique para marcar guardado/pendente'
+    : item.tipo === 'custo'
+      ? 'Clique para editar · duplo clique para marcar pago/pendente'
+      : 'Editar lançamento';
 
   return (
     <div
@@ -468,7 +499,7 @@ function Item({ item, moeda, onEditar, onTogglePago }) {
       onKeyDown={aoTeclar}
       role="button"
       tabIndex={0}
-      title={item.tipo === 'custo' ? 'Clique para editar · duplo clique para marcar pago/pendente' : 'Editar lançamento'}
+      title={titulo}
     >
       <span className={styles.itemDot} style={{ background: item.categoria.cor }} />
       <div className={styles.itemBody}>
@@ -585,20 +616,27 @@ function DayList({ dia, hoje, moeda, onEditar, onTogglePago }) {
 }
 
 function DayListRow({ item, moeda, onEditar, onTogglePago }) {
-  const statusLabel = item.tipo === 'renda' ? null : item.atrasado ? 'Atrasado' : item.statusPagamento === 'pago' ? 'Pago' : 'Não pago';
-  const statusClasse = item.atrasado ? styles.dayListBadgeAtrasado : item.statusPagamento === 'pago' ? styles.dayListBadgePago : styles.dayListBadgePendente;
+  const concluido = itemConcluido(item);
+  const alternavel = item.tipo === 'custo' || item.tipo === 'reserva';
+  const statusLabel =
+    item.tipo === 'renda'
+      ? null
+      : item.tipo === 'reserva'
+        ? concluido ? 'Guardado' : 'A guardar'
+        : item.atrasado ? 'Atrasado' : concluido ? 'Pago' : 'Não pago';
+  const statusClasse = item.atrasado ? styles.dayListBadgeAtrasado : concluido ? styles.dayListBadgePago : styles.dayListBadgePendente;
   const valorClasse =
     item.tipo === 'renda'
       ? styles.itemAmountReceita
       : item.atrasado
         ? styles.itemAmountAtrasado
-        : item.statusPagamento === 'pago'
+        : concluido
           ? styles.itemAmountPago
           : styles.itemAmountPendente;
 
   const { onClick, onDoubleClick } = useCliqueSimplesOuDuplo(
     () => onEditar(item),
-    () => { if (item.tipo === 'custo') onTogglePago(item); },
+    () => { if (alternavel) onTogglePago(item); },
   );
   const aoTeclar = (ev) => {
     if (ev.key === 'Enter' || ev.key === ' ') {
@@ -619,7 +657,7 @@ function DayListRow({ item, moeda, onEditar, onTogglePago }) {
       <span className={styles.itemDot} style={{ background: item.categoria.cor }} />
       <div className={styles.itemBody} style={{ flex: 1 }}>
         <div className={styles.itemName}>{nomeComParcela(item)}</div>
-        {item.tipo === 'custo' && <div className={styles.semDataMeta}>{item.categoria.nome}</div>}
+        {item.tipo !== 'renda' && <div className={styles.semDataMeta}>{item.categoria.nome}</div>}
       </div>
       {statusLabel && <span className={`${styles.dayListBadgeBase} ${statusClasse}`}>{statusLabel}</span>}
       <span className={`${styles.dayListAmount} ${valorClasse}`}>
@@ -693,6 +731,7 @@ function SemData({ itens, moeda, onEditar, onTogglePago }) {
 }
 
 const FREQUENCIAS_RENDA = ['Mensal', 'Semanal', 'Única'];
+const FREQUENCIAS_RESERVA = ['Mensal', 'Única'];
 const DIAS_SEMANA_OPCOES = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'];
 
 function semAcentoLocal(s) {
@@ -716,7 +755,11 @@ function diaMesInicial(item, tipo) {
   return item.data ? String(Number(item.data.slice(-2))) : '';
 }
 
-function PaymentPanel({ mes, erro, categoriasCusto, modo, tipoInicial, item, onSalvar, onExcluir, onCancelar }) {
+function normalizarNome(s) {
+  return String(s == null ? '' : s).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
+}
+
+function PaymentPanel({ mes, erro, nomesCusto = [], categoriasCusto, modo, tipoInicial, item, onSalvar, onExcluir, onCancelar }) {
   const [tipo, setTipo] = useState(item ? item.tipo : tipoInicial);
   const [descricao, setDescricao] = useState(item?.nome || '');
   const [valor, setValor] = useState(item ? String(item.valor) : '');
@@ -729,6 +772,7 @@ function PaymentPanel({ mes, erro, categoriasCusto, modo, tipoInicial, item, onS
   const [parcelado, setParcelado] = useState(!!item?.parcela);
   const [parcelas, setParcelas] = useState(item?.parcela ? String(item.parcela.total) : '');
   const [parcelaAtual, setParcelaAtual] = useState(item?.parcela ? String(item.parcela.atual) : '1');
+  const [statusGuardado, setStatusGuardado] = useState(item?.statusReserva === 'guardado');
   const [salvando, setSalvando] = useState(false);
   const [excluindo, setExcluindo] = useState(false);
   const panelRef = useRef(null);
@@ -737,8 +781,9 @@ function PaymentPanel({ mes, erro, categoriasCusto, modo, tipoInicial, item, onS
   }, []);
 
   const ehRenda = tipo === 'renda';
+  const ehReserva = tipo === 'reserva';
   const ehSemanal = ehRenda && frequencia === 'Semanal';
-  const comParcelas = !ehRenda && parcelado;
+  const comParcelas = !ehRenda && !ehReserva && parcelado;
   const parcelasValidas =
     !comParcelas ||
     (Number.isInteger(Number(parcelas)) && Number(parcelas) >= 2 && Number(parcelas) <= 120 &&
@@ -755,6 +800,15 @@ function PaymentPanel({ mes, erro, categoriasCusto, modo, tipoInicial, item, onS
         repetirTodoMes,
       };
     }
+    if (ehReserva) {
+      return {
+        nome: descricao,
+        valor: Number(valor),
+        frequencia,
+        dia: Number(diaMes),
+        repetirTodoMes,
+      };
+    }
     return {
       nome: descricao,
       valor: Number(valor),
@@ -766,21 +820,40 @@ function PaymentPanel({ mes, erro, categoriasCusto, modo, tipoInicial, item, onS
   };
 
   const salvar = async () => {
-    setSalvando(true);
-    if (modo === 'editar' && tipo === 'custo' && statusPago !== (item.statusPagamento === 'pago')) {
-      await atualizarPagamento(item.linhaPlanilha, statusPago ? 'Pago' : 'Pendente', mes);
+    if (tipo === 'custo') {
+      const alvo = normalizarNome(descricao);
+      const renomeou = modo === 'editar' && alvo !== normalizarNome(item?.nome);
+      if ((modo === 'criar' || renomeou) && nomesCusto.some((n) => normalizarNome(n) === alvo)) {
+        if (!window.confirm('Já existe um custo com esse nome. Continuar?')) return;
+      }
     }
-    await onSalvar(tipo, montarForm());
-    setSalvando(false);
+    setSalvando(true);
+    let statusExtra = null;
+    if (modo === 'editar' && tipo === 'custo' && statusPago !== (item.statusPagamento === 'pago')) {
+      statusExtra = statusPago ? 'Pago' : 'Pendente';
+    } else if (modo === 'editar' && tipo === 'reserva' && statusGuardado !== (item.statusReserva === 'guardado')) {
+      statusExtra = statusGuardado ? 'Guardado' : 'Pendente';
+    }
+    try {
+      await onSalvar(tipo, montarForm(), statusExtra);
+    } finally {
+      setSalvando(false);
+    }
   };
 
   const excluir = async () => {
     setExcluindo(true);
-    await onExcluir(tipo, montarForm({ incluirParcelas: false }));
-    setExcluindo(false);
+    try {
+      await onExcluir(tipo, montarForm({ incluirParcelas: false }));
+    } finally {
+      setExcluindo(false);
+    }
   };
 
-  const titulo = modo === 'criar' ? (ehRenda ? 'Nova renda' : 'Novo pagamento') : ehRenda ? 'Editar renda' : 'Editar pagamento';
+  const substantivo = ehRenda ? 'renda' : ehReserva ? 'reserva' : 'pagamento';
+  const titulo = modo === 'criar'
+    ? (ehRenda ? 'Nova renda' : ehReserva ? 'Nova reserva' : 'Novo pagamento')
+    : `Editar ${substantivo}`;
 
   return (
     <aside className={styles.panel} ref={panelRef}>
@@ -789,11 +862,38 @@ function PaymentPanel({ mes, erro, categoriasCusto, modo, tipoInicial, item, onS
 
       {modo === 'criar' && (
         <div className={styles.chipsRow}>
-          <button type="button" className={`${styles.chip} ${!ehRenda ? styles.chipActive : ''}`} onClick={() => setTipo('custo')}>
+          <button
+            type="button"
+            className={`${styles.chip} ${tipo === 'custo' ? styles.chipActive : ''}`}
+            onClick={() => {
+              setTipo('custo');
+              setFrequencia('Mensal');
+              setRepetirTodoMes(true);
+            }}
+          >
             Custo
           </button>
-          <button type="button" className={`${styles.chip} ${ehRenda ? styles.chipActive : ''}`} onClick={() => setTipo('renda')}>
+          <button
+            type="button"
+            className={`${styles.chip} ${tipo === 'renda' ? styles.chipActive : ''}`}
+            onClick={() => {
+              setTipo('renda');
+              setFrequencia('Mensal');
+              setRepetirTodoMes(true);
+            }}
+          >
             Renda
+          </button>
+          <button
+            type="button"
+            className={`${styles.chip} ${tipo === 'reserva' ? styles.chipActive : ''}`}
+            onClick={() => {
+              setTipo('reserva');
+              setFrequencia('Mensal');
+              setRepetirTodoMes(true);
+            }}
+          >
+            Reserva
           </button>
         </div>
       )}
@@ -803,7 +903,7 @@ function PaymentPanel({ mes, erro, categoriasCusto, modo, tipoInicial, item, onS
         className={styles.fieldInput}
         value={descricao}
         onChange={(e) => setDescricao(e.target.value)}
-        placeholder={ehRenda ? 'Salário' : 'Assinatura de streaming'}
+        placeholder={ehRenda ? 'Salário' : ehReserva ? 'Reserva de emergência' : 'Assinatura de streaming'}
       />
 
       <div className={styles.fieldRow}>
@@ -855,7 +955,7 @@ function PaymentPanel({ mes, erro, categoriasCusto, modo, tipoInicial, item, onS
         </div>
       </div>
 
-      {modo === 'criar' && !ehRenda && (
+      {modo === 'criar' && !ehRenda && !ehReserva && (
         <label className={styles.checkRow}>
           <input type="checkbox" checked={parcelado} onChange={(e) => setParcelado(e.target.checked)} />
           <span className={styles.switchLabel}>Parcelado</span>
@@ -893,16 +993,19 @@ function PaymentPanel({ mes, erro, categoriasCusto, modo, tipoInicial, item, onS
         </div>
       )}
 
-      {ehRenda ? (
+      {ehRenda || ehReserva ? (
         <>
           <label className={styles.fieldLabel}>Frequência</label>
           <div className={styles.chipsRow}>
-            {FREQUENCIAS_RENDA.map((f) => (
+            {(ehReserva ? FREQUENCIAS_RESERVA : FREQUENCIAS_RENDA).map((f) => (
               <button
                 key={f}
                 type="button"
                 className={`${styles.chip} ${frequencia === f ? styles.chipActive : ''}`}
-                onClick={() => setFrequencia(f)}
+                onClick={() => {
+                  setFrequencia(f);
+                  setRepetirTodoMes(f !== 'Única');
+                }}
               >
                 {f}
               </button>
@@ -928,7 +1031,7 @@ function PaymentPanel({ mes, erro, categoriasCusto, modo, tipoInicial, item, onS
         </>
       )}
 
-      {modo === 'editar' && !ehRenda && (
+      {modo === 'editar' && !ehRenda && !ehReserva && (
         <>
           <label className={styles.fieldLabel}>Status</label>
           <div className={styles.statusToggle}>
@@ -950,8 +1053,30 @@ function PaymentPanel({ mes, erro, categoriasCusto, modo, tipoInicial, item, onS
         </>
       )}
 
-      {!comParcelas && (
+      {modo === 'editar' && ehReserva && (
         <>
+          <label className={styles.fieldLabel}>Status</label>
+          <div className={styles.statusToggle}>
+            <button
+              type="button"
+              className={`${styles.statusOption} ${!statusGuardado ? styles.statusOptionActive : ''}`}
+              onClick={() => setStatusGuardado(false)}
+            >
+              Não guardado
+            </button>
+            <button
+              type="button"
+              className={`${styles.statusOption} ${statusGuardado ? styles.statusOptionActive : ''}`}
+              onClick={() => setStatusGuardado(true)}
+            >
+              Guardado
+            </button>
+          </div>
+        </>
+      )}
+
+      {!comParcelas && (
+        <div className={styles.switchRow}>
           <button
             type="button"
             className={`${styles.switchTrack} ${repetirTodoMes ? styles.switchTrackOn : ''}`}
@@ -960,11 +1085,8 @@ function PaymentPanel({ mes, erro, categoriasCusto, modo, tipoInicial, item, onS
           >
             <span className={styles.switchThumb} />
           </button>
-          <div className={styles.switchRow} style={{ marginTop: -22 }}>
-            <span style={{ width: 44 }} />
-            <span className={styles.switchLabel}>Repetir todo mês</span>
-          </div>
-        </>
+          <span className={styles.switchLabel}>Repetir todo mês</span>
+        </div>
       )}
 
       {erro && <div className={styles.errorText}>{erro}</div>}

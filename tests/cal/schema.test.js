@@ -91,7 +91,7 @@ describe('cabeçalho deslocado', () => {
 describe('parseHistorico', () => {
   test('mapeia custo+ano -> valores pagos por mês (só > 0)', () => {
     const h = s.parseHistorico(fx.SHEETS.HISTORICO_CUSTOS);
-    expect(h['aluguel|2026']).toEqual({ linhaPlanilha: 2, meses: { 9: 900 } });
+    expect(h['aluguel|2026']).toEqual({ linhaPlanilha: 2, meses: { 9: 900 }, custo: 'Aluguel', id: '', idKeyed: false });
   });
 
   test('aba vazia ou ausente -> {}', () => {
@@ -105,6 +105,40 @@ describe('parseHistorico', () => {
       ['Plano de Saúde', 2026, 40, '', '', '', '', '', '', '', '', '', '', '', '', ''],
     ]);
     expect(h[s.chaveHistorico('plano de saude', 2026)].meses).toEqual({ 1: 40 });
+  });
+});
+
+describe('parseReserva', () => {
+  const reservas = s.parseReserva(fx.SHEETS.RESERVAS);
+  const por = (nome) => reservas.find((r) => r.nome === nome);
+
+  test('ignora linhas em branco/parciais', () => {
+    expect(reservas).toHaveLength(3);
+  });
+
+  test('campos normalizados (dia, frequência, ID)', () => {
+    expect(por('Reserva de emergência')).toMatchObject({
+      valor: 300,
+      dia: 10,
+      frequencia: 'mensal',
+      ativo: true,
+      id: 'r-aaaa1111',
+    });
+  });
+
+  test('linha inativa -> ativo:false', () => {
+    expect(por('Reserva antiga').ativo).toBe(false);
+  });
+
+  test('guarda o número da linha na planilha', () => {
+    expect(por('Reserva de emergência').linhaPlanilha).toBe(2);
+  });
+});
+
+describe('parseHistorico (reservas, rótulo "Reserva")', () => {
+  test('mapeia reserva+ano por ID -> valores guardados por mês', () => {
+    const h = s.parseHistorico(fx.SHEETS.HISTORICO_RESERVAS, 'Reserva');
+    expect(h[s.chaveHistorico('r-aaaa1111', 2026)]).toMatchObject({ meses: { 9: 300 }, idKeyed: true });
   });
 });
 
