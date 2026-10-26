@@ -953,7 +953,7 @@ function PaymentPanel({ mes, erro, nomesCusto = [], categoriasCusto, modo, tipoI
                 className={`${styles.chip} ${frequencia === f ? styles.chipActive : ''}`}
                 onClick={() => {
                   setFrequencia(f);
-                  if (f === 'Única') setRepetirTodoMes(false);
+                  setRepetirTodoMes(f !== 'Única');
                 }}
               >
                 {f}
