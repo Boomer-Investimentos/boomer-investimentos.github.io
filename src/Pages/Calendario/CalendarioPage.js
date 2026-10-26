@@ -849,13 +849,37 @@ function PaymentPanel({ mes, erro, nomesCusto = [], categoriasCusto, modo, tipoI
 
       {modo === 'criar' && (
         <div className={styles.chipsRow}>
-          <button type="button" className={`${styles.chip} ${tipo === 'custo' ? styles.chipActive : ''}`} onClick={() => setTipo('custo')}>
+          <button
+            type="button"
+            className={`${styles.chip} ${tipo === 'custo' ? styles.chipActive : ''}`}
+            onClick={() => {
+              setTipo('custo');
+              setFrequencia('Mensal');
+              setRepetirTodoMes(true);
+            }}
+          >
             Custo
           </button>
-          <button type="button" className={`${styles.chip} ${tipo === 'renda' ? styles.chipActive : ''}`} onClick={() => setTipo('renda')}>
+          <button
+            type="button"
+            className={`${styles.chip} ${tipo === 'renda' ? styles.chipActive : ''}`}
+            onClick={() => {
+              setTipo('renda');
+              setFrequencia('Mensal');
+              setRepetirTodoMes(true);
+            }}
+          >
             Renda
           </button>
-          <button type="button" className={`${styles.chip} ${tipo === 'reserva' ? styles.chipActive : ''}`} onClick={() => setTipo('reserva')}>
+          <button
+            type="button"
+            className={`${styles.chip} ${tipo === 'reserva' ? styles.chipActive : ''}`}
+            onClick={() => {
+              setTipo('reserva');
+              setFrequencia('Mensal');
+              setRepetirTodoMes(true);
+            }}
+          >
             Reserva
           </button>
         </div>
@@ -927,7 +951,10 @@ function PaymentPanel({ mes, erro, nomesCusto = [], categoriasCusto, modo, tipoI
                 key={f}
                 type="button"
                 className={`${styles.chip} ${frequencia === f ? styles.chipActive : ''}`}
-                onClick={() => setFrequencia(f)}
+                onClick={() => {
+                  setFrequencia(f);
+                  if (f === 'Única') setRepetirTodoMes(false);
+                }}
               >
                 {f}
               </button>
