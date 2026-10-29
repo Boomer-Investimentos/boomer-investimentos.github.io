@@ -377,21 +377,23 @@ function SummaryCards({ totals, moeda }) {
       <SummaryCard label="Pago no mês" valor={totals.pago} moeda={moeda} cor="var(--ink-subtle)" />
       <SummaryCard label="A pagar" valor={totals.pendente} moeda={moeda} cor="var(--ink)" />
       <SummaryCard label="Em atraso" valor={totals.atrasado} moeda={moeda} cor="var(--status-atrasado)" />
-      <SummaryCard label="Entradas" valor={totals.receita} moeda={moeda} cor="var(--status-receita)" receita />
+      <SummaryCard label="Entradas" valor={totals.receita} moeda={moeda} cor="var(--status-receita)" destaque />
       <SummaryCard label="Guardado no mês" valor={totals.reservado || 0} moeda={moeda} cor="#7c3aed" />
+      <div className={styles.summaryDivider} aria-hidden="true" />
       <SummaryCard
-        label="Saldo"
+        label="Disponível"
         valor={totals.saldo || 0}
         moeda={moeda}
         cor={(totals.saldo || 0) >= 0 ? 'var(--status-receita)' : 'var(--status-atrasado)'}
+        destaque
       />
     </div>
   );
 }
 
-function SummaryCard({ label, valor, moeda, cor, receita }) {
+function SummaryCard({ label, valor, moeda, cor, destaque }) {
   return (
-    <div className={`${styles.summaryCard} ${receita ? styles.summaryCardReceita : ''}`}>
+    <div className={`${styles.summaryCard} ${destaque ? styles.summaryCardDestaque : ''}`}>
       <div className={styles.summaryLabel}>{label}</div>
       <div className={styles.summaryValue} style={{ color: cor }}>
         {formatarMoeda(valor, moeda)}

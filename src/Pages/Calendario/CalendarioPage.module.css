@@ -215,8 +215,14 @@
   box-shadow: var(--shadow-sm);
 }
 
-.summaryCardReceita {
+.summaryCardDestaque {
   border-color: var(--border-strong);
+}
+
+.summaryDivider {
+  align-self: stretch;
+  width: 1px;
+  background: var(--border-strong);
 }
 
 /* label-sm */
@@ -827,6 +833,10 @@
     flex: 1 1 calc(50% - 4px);
     min-width: 0;
     padding: var(--space-3);
+  }
+
+  .summaryDivider {
+    display: none;
   }
 
   .summaryValue {
