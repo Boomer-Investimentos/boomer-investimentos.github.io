@@ -86,6 +86,7 @@ export default function CalendarioPage() {
   const [emailLogin, setEmailLogin] = useState('');
   const [mensagemLogin, setMensagemLogin] = useState(null);
   const [painelItem, setPainelItem] = useState(null); // null | { modo: 'criar'|'editar', tipo: 'custo'|'renda', item? }
+  const [confirmExcluir, setConfirmExcluir] = useState(null); // null | { tipo, form }
 
   const carregarMes = useCallback(async (mesAlvo, token) => {
     setCarregando(true);
@@ -222,8 +223,13 @@ export default function CalendarioPage() {
     }
   };
 
-  const excluirPainel = async (tipo, form) => {
-    if (!window.confirm('Excluir este lançamento?')) return;
+  const excluirPainel = (tipo, form) => {
+    setConfirmExcluir({ tipo, form });
+  };
+
+  const confirmarExclusao = async () => {
+    const { tipo, form } = confirmExcluir;
+    setConfirmExcluir(null);
     setErroAcao(null);
     try {
       const linhaPlanilha = painelItem.item.linhaPlanilha;
@@ -309,6 +315,16 @@ export default function CalendarioPage() {
           mensagem={mensagemLogin}
           onEnviar={enviarPedidoAcesso}
           onFechar={() => setMostrarLogin(false)}
+        />
+      )}
+
+      {confirmExcluir && (
+        <ConfirmModal
+          titulo="Excluir lançamento"
+          mensagem="Excluir este lançamento?"
+          confirmarLabel="Excluir"
+          onConfirmar={confirmarExclusao}
+          onCancelar={() => setConfirmExcluir(null)}
         />
       )}
     </div>
@@ -775,6 +791,7 @@ function PaymentPanel({ mes, erro, nomesCusto = [], categoriasCusto, modo, tipoI
   const [statusGuardado, setStatusGuardado] = useState(item?.statusReserva === 'guardado');
   const [salvando, setSalvando] = useState(false);
   const [excluindo, setExcluindo] = useState(false);
+  const [confirmDuplicado, setConfirmDuplicado] = useState(false);
   const panelRef = useRef(null);
   useEffect(() => {
     panelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -819,14 +836,7 @@ function PaymentPanel({ mes, erro, nomesCusto = [], categoriasCusto, modo, tipoI
     };
   };
 
-  const salvar = async () => {
-    if (tipo === 'custo') {
-      const alvo = normalizarNome(descricao);
-      const renomeou = modo === 'editar' && alvo !== normalizarNome(item?.nome);
-      if ((modo === 'criar' || renomeou) && nomesCusto.some((n) => normalizarNome(n) === alvo)) {
-        if (!window.confirm('Já existe um custo com esse nome. Continuar?')) return;
-      }
-    }
+  const executarSalvar = async () => {
     setSalvando(true);
     let statusExtra = null;
     if (modo === 'editar' && tipo === 'custo' && statusPago !== (item.statusPagamento === 'pago')) {
@@ -839,6 +849,23 @@ function PaymentPanel({ mes, erro, nomesCusto = [], categoriasCusto, modo, tipoI
     } finally {
       setSalvando(false);
     }
+  };
+
+  const salvar = () => {
+    if (tipo === 'custo') {
+      const alvo = normalizarNome(descricao);
+      const renomeou = modo === 'editar' && alvo !== normalizarNome(item?.nome);
+      if ((modo === 'criar' || renomeou) && nomesCusto.some((n) => normalizarNome(n) === alvo)) {
+        setConfirmDuplicado(true);
+        return;
+      }
+    }
+    executarSalvar();
+  };
+
+  const confirmarDuplicado = () => {
+    setConfirmDuplicado(false);
+    executarSalvar();
   };
 
   const excluir = async () => {
@@ -1110,6 +1137,16 @@ function PaymentPanel({ mes, erro, nomesCusto = [], categoriasCusto, modo, tipoI
           {excluindo ? 'Excluindo…' : 'Excluir'}
         </button>
       )}
+
+      {confirmDuplicado && (
+        <ConfirmModal
+          titulo="Nome duplicado"
+          mensagem="Já existe um custo com esse nome. Continuar?"
+          confirmarLabel="Continuar"
+          onConfirmar={confirmarDuplicado}
+          onCancelar={() => setConfirmDuplicado(false)}
+        />
+      )}
     </aside>
   );
 }
@@ -1153,6 +1190,40 @@ function LoginModal({ email, onEmailChange, mensagem, onEnviar, onFechar }) {
         <button className={styles.btnGhost} style={{ marginTop: 16 }} onClick={onFechar}>
           Fechar
         </button>
+      </div>
+    </div>
+  );
+}
+
+function ConfirmModal({ titulo, mensagem, confirmarLabel = 'Confirmar', cancelarLabel = 'Cancelar', onConfirmar, onCancelar }) {
+  return (
+    <div
+      style={{
+        position: 'fixed',
+        inset: 0,
+        background: 'rgba(0,0,0,.55)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 50,
+      }}
+      onClick={onCancelar}
+    >
+      <div
+        className={`${styles.panel} ${styles.modalPanel}`}
+        style={{ width: 320, maxWidth: '90vw' }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className={styles.panelTitle}>{titulo}</div>
+        <div className={styles.panelSubtitle}>{mensagem}</div>
+        <div style={{ display: 'flex', gap: 'var(--space-3)' }}>
+          <button className={styles.btnGhost} style={{ flex: 1 }} onClick={onCancelar}>
+            {cancelarLabel}
+          </button>
+          <button className={styles.btnPrimary} style={{ flex: 1 }} onClick={onConfirmar}>
+            {confirmarLabel}
+          </button>
+        </div>
       </div>
     </div>
   );
