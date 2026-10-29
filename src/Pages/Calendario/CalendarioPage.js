@@ -378,7 +378,7 @@ function SummaryCards({ totals, moeda }) {
       <SummaryCard label="A pagar" valor={totals.pendente} moeda={moeda} cor="var(--ink)" />
       <SummaryCard label="Em atraso" valor={totals.atrasado} moeda={moeda} cor="var(--status-atrasado)" />
       <SummaryCard label="Entradas" valor={totals.receita} moeda={moeda} cor="var(--status-receita)" destaque />
-      <SummaryCard label="Guardado no mês" valor={totals.reservado || 0} moeda={moeda} cor="#7c3aed" />
+      <SummaryCard label="Reservas" valor={totals.reservado || 0} moeda={moeda} cor="#7c3aed" />
       <div className={styles.summaryDivider} aria-hidden="true" />
       <SummaryCard
         label="Disponível"
