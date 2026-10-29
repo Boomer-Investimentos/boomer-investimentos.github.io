@@ -379,6 +379,12 @@ function SummaryCards({ totals, moeda }) {
       <SummaryCard label="Em atraso" valor={totals.atrasado} moeda={moeda} cor="var(--status-atrasado)" />
       <SummaryCard label="Entradas" valor={totals.receita} moeda={moeda} cor="var(--status-receita)" receita />
       <SummaryCard label="Guardado no mês" valor={totals.reservado || 0} moeda={moeda} cor="#7c3aed" />
+      <SummaryCard
+        label="Saldo"
+        valor={totals.saldo || 0}
+        moeda={moeda}
+        cor={(totals.saldo || 0) >= 0 ? 'var(--status-receita)' : 'var(--status-atrasado)'}
+      />
     </div>
   );
 }

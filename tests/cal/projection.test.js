@@ -66,6 +66,7 @@ describe('projetarMes — fixture "template cliente internacional"', () => {
       atrasado: 916.89,
       receita: 3200,
       reservado: 0,
+      saldo: 1272.37,
     });
   });
 
