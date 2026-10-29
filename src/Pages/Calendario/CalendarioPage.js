@@ -86,6 +86,7 @@ export default function CalendarioPage() {
   const [emailLogin, setEmailLogin] = useState('');
   const [mensagemLogin, setMensagemLogin] = useState(null);
   const [painelItem, setPainelItem] = useState(null); // null | { modo: 'criar'|'editar', tipo: 'custo'|'renda', item? }
+  const [confirmExcluir, setConfirmExcluir] = useState(null); // null | { tipo, form }
 
   const carregarMes = useCallback(async (mesAlvo, token) => {
     setCarregando(true);
@@ -222,8 +223,13 @@ export default function CalendarioPage() {
     }
   };
 
-  const excluirPainel = async (tipo, form) => {
-    if (!window.confirm('Excluir este lançamento?')) return;
+  const excluirPainel = (tipo, form) => {
+    setConfirmExcluir({ tipo, form });
+  };
+
+  const confirmarExclusao = async () => {
+    const { tipo, form } = confirmExcluir;
+    setConfirmExcluir(null);
     setErroAcao(null);
     try {
       const linhaPlanilha = painelItem.item.linhaPlanilha;
@@ -311,6 +317,16 @@ export default function CalendarioPage() {
           onFechar={() => setMostrarLogin(false)}
         />
       )}
+
+      {confirmExcluir && (
+        <ConfirmModal
+          titulo="Excluir lançamento"
+          mensagem="Excluir este lançamento?"
+          confirmarLabel="Excluir"
+          onConfirmar={confirmarExclusao}
+          onCancelar={() => setConfirmExcluir(null)}
+        />
+      )}
     </div>
   );
 }
@@ -361,15 +377,23 @@ function SummaryCards({ totals, moeda }) {
       <SummaryCard label="Pago no mês" valor={totals.pago} moeda={moeda} cor="var(--ink-subtle)" />
       <SummaryCard label="A pagar" valor={totals.pendente} moeda={moeda} cor="var(--ink)" />
       <SummaryCard label="Em atraso" valor={totals.atrasado} moeda={moeda} cor="var(--status-atrasado)" />
-      <SummaryCard label="Entradas" valor={totals.receita} moeda={moeda} cor="var(--status-receita)" receita />
-      <SummaryCard label="Guardado no mês" valor={totals.reservado || 0} moeda={moeda} cor="#7c3aed" />
+      <SummaryCard label="Entradas" valor={totals.receita} moeda={moeda} cor="var(--status-receita)" destaque />
+      <SummaryCard label="Reservas" valor={totals.reservado || 0} moeda={moeda} cor="#7c3aed" />
+      <div className={styles.summaryDivider} aria-hidden="true" />
+      <SummaryCard
+        label="Disponível"
+        valor={totals.saldo || 0}
+        moeda={moeda}
+        cor={(totals.saldo || 0) >= 0 ? 'var(--status-receita)' : 'var(--status-atrasado)'}
+        destaque
+      />
     </div>
   );
 }
 
-function SummaryCard({ label, valor, moeda, cor, receita }) {
+function SummaryCard({ label, valor, moeda, cor, destaque }) {
   return (
-    <div className={`${styles.summaryCard} ${receita ? styles.summaryCardReceita : ''}`}>
+    <div className={`${styles.summaryCard} ${destaque ? styles.summaryCardDestaque : ''}`}>
       <div className={styles.summaryLabel}>{label}</div>
       <div className={styles.summaryValue} style={{ color: cor }}>
         {formatarMoeda(valor, moeda)}
@@ -405,6 +429,10 @@ function MonthGrid({ dados, mes, onEditar, onTogglePago }) {
       </div>
     </>
   );
+}
+
+function nomeComParcela(item) {
+  return item.parcela ? `${item.nome} (${item.parcela.atual}/${item.parcela.total})` : item.nome;
 }
 
 function DayCell({ dia, hoje, moeda, onEditar, onTogglePago }) {
@@ -499,7 +527,7 @@ function Item({ item, moeda, onEditar, onTogglePago }) {
     >
       <span className={styles.itemDot} style={{ background: item.categoria.cor }} />
       <div className={styles.itemBody}>
-        <div className={`${styles.itemName} ${classeNome}`}>{item.nome}</div>
+        <div className={`${styles.itemName} ${classeNome}`}>{nomeComParcela(item)}</div>
         <div className={`${styles.itemAmount} ${classeValor}`}>
           {marca === '+' ? '+' : ''}
           {formatarNumero(item.valor, moeda)}
@@ -652,7 +680,7 @@ function DayListRow({ item, moeda, onEditar, onTogglePago }) {
     >
       <span className={styles.itemDot} style={{ background: item.categoria.cor }} />
       <div className={styles.itemBody} style={{ flex: 1 }}>
-        <div className={styles.itemName}>{item.nome}</div>
+        <div className={styles.itemName}>{nomeComParcela(item)}</div>
         {item.tipo !== 'renda' && <div className={styles.semDataMeta}>{item.categoria.nome}</div>}
       </div>
       {statusLabel && <span className={`${styles.dayListBadgeBase} ${statusClasse}`}>{statusLabel}</span>}
@@ -707,7 +735,7 @@ function SemData({ itens, moeda, onEditar, onTogglePago }) {
         >
           <span className={styles.itemDot} style={{ background: item.categoria.cor }} />
           <div className={styles.itemBody} style={{ flex: 1 }}>
-            <div className={styles.itemName}>{item.nome}</div>
+            <div className={styles.itemName}>{nomeComParcela(item)}</div>
             <div className={styles.semDataMeta}>{item.diaTexto}</div>
           </div>
           <button
@@ -765,9 +793,13 @@ function PaymentPanel({ mes, erro, nomesCusto = [], categoriasCusto, modo, tipoI
   const [diaSemana, setDiaSemana] = useState(item?.tipo === 'renda' ? diaSemanaInicial(item.diaRecebimento) : DIAS_SEMANA_OPCOES[5]);
   const [repetirTodoMes, setRepetirTodoMes] = useState(item ? !!item.repete : true);
   const [statusPago, setStatusPago] = useState(item?.statusPagamento === 'pago');
+  const [parcelado, setParcelado] = useState(!!item?.parcela);
+  const [parcelas, setParcelas] = useState(item?.parcela ? String(item.parcela.total) : '');
+  const [parcelaAtual, setParcelaAtual] = useState(item?.parcela ? String(item.parcela.atual) : '1');
   const [statusGuardado, setStatusGuardado] = useState(item?.statusReserva === 'guardado');
   const [salvando, setSalvando] = useState(false);
   const [excluindo, setExcluindo] = useState(false);
+  const [confirmDuplicado, setConfirmDuplicado] = useState(false);
   const panelRef = useRef(null);
   useEffect(() => {
     panelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -776,9 +808,14 @@ function PaymentPanel({ mes, erro, nomesCusto = [], categoriasCusto, modo, tipoI
   const ehRenda = tipo === 'renda';
   const ehReserva = tipo === 'reserva';
   const ehSemanal = ehRenda && frequencia === 'Semanal';
-  const valido = descricao.trim() && Number(valor) > 0 && (ehSemanal ? !!diaSemana : Number(diaMes) >= 1 && Number(diaMes) <= 31);
+  const comParcelas = !ehRenda && !ehReserva && parcelado;
+  const parcelasValidas =
+    !comParcelas ||
+    (Number.isInteger(Number(parcelas)) && Number(parcelas) >= 2 && Number(parcelas) <= 120 &&
+      Number.isInteger(Number(parcelaAtual)) && Number(parcelaAtual) >= 1 && Number(parcelaAtual) <= Number(parcelas));
+  const valido = descricao.trim() && Number(valor) > 0 && (ehSemanal ? !!diaSemana : Number(diaMes) >= 1 && Number(diaMes) <= 31) && parcelasValidas;
 
-  const montarForm = () => {
+  const montarForm = ({ incluirParcelas = true } = {}) => {
     if (ehRenda) {
       return {
         fonte: descricao,
@@ -803,17 +840,11 @@ function PaymentPanel({ mes, erro, nomesCusto = [], categoriasCusto, modo, tipoI
       categoria,
       dia: Number(diaMes),
       repetirTodoMes,
+      ...(comParcelas && incluirParcelas && { parcelas: Number(parcelas), parcelaAtual: Number(parcelaAtual) }),
     };
   };
 
-  const salvar = async () => {
-    if (tipo === 'custo') {
-      const alvo = normalizarNome(descricao);
-      const renomeou = modo === 'editar' && alvo !== normalizarNome(item?.nome);
-      if ((modo === 'criar' || renomeou) && nomesCusto.some((n) => normalizarNome(n) === alvo)) {
-        if (!window.confirm('Já existe um custo com esse nome. Continuar?')) return;
-      }
-    }
+  const executarSalvar = async () => {
     setSalvando(true);
     let statusExtra = null;
     if (modo === 'editar' && tipo === 'custo' && statusPago !== (item.statusPagamento === 'pago')) {
@@ -828,10 +859,27 @@ function PaymentPanel({ mes, erro, nomesCusto = [], categoriasCusto, modo, tipoI
     }
   };
 
+  const salvar = () => {
+    if (tipo === 'custo') {
+      const alvo = normalizarNome(descricao);
+      const renomeou = modo === 'editar' && alvo !== normalizarNome(item?.nome);
+      if ((modo === 'criar' || renomeou) && nomesCusto.some((n) => normalizarNome(n) === alvo)) {
+        setConfirmDuplicado(true);
+        return;
+      }
+    }
+    executarSalvar();
+  };
+
+  const confirmarDuplicado = () => {
+    setConfirmDuplicado(false);
+    executarSalvar();
+  };
+
   const excluir = async () => {
     setExcluindo(true);
     try {
-      await onExcluir(tipo, montarForm());
+      await onExcluir(tipo, montarForm({ incluirParcelas: false }));
     } finally {
       setExcluindo(false);
     }
@@ -895,7 +943,7 @@ function PaymentPanel({ mes, erro, nomesCusto = [], categoriasCusto, modo, tipoI
 
       <div className={styles.fieldRow}>
         <div style={{ flex: 1.3 }}>
-          <label className={styles.fieldLabel}>Valor</label>
+          <label className={styles.fieldLabel}>{comParcelas ? 'Valor da parcela' : 'Valor'}</label>
           <input
             className={styles.fieldInput}
             style={{ marginBottom: 0 }}
@@ -941,6 +989,44 @@ function PaymentPanel({ mes, erro, nomesCusto = [], categoriasCusto, modo, tipoI
           )}
         </div>
       </div>
+
+      {modo === 'criar' && !ehRenda && !ehReserva && (
+        <label className={styles.checkRow}>
+          <input type="checkbox" checked={parcelado} onChange={(e) => setParcelado(e.target.checked)} />
+          <span className={styles.switchLabel}>Parcelado</span>
+        </label>
+      )}
+
+      {comParcelas && (
+        <div className={styles.fieldRow}>
+          <div style={{ flex: 1 }}>
+            <label className={styles.fieldLabel}>Parcelas</label>
+            <input
+              className={styles.fieldInput}
+              style={{ marginBottom: 0 }}
+              type="number"
+              min="2"
+              max="120"
+              value={parcelas}
+              onChange={(e) => setParcelas(e.target.value)}
+              placeholder="10"
+            />
+          </div>
+          <div style={{ flex: 1 }}>
+            <label className={styles.fieldLabel}>Parcela atual</label>
+            <input
+              className={styles.fieldInput}
+              style={{ marginBottom: 0 }}
+              type="number"
+              min="1"
+              max={parcelas || undefined}
+              value={parcelaAtual}
+              onChange={(e) => setParcelaAtual(e.target.value)}
+              placeholder="1"
+            />
+          </div>
+        </div>
+      )}
 
       {ehRenda || ehReserva ? (
         <>
@@ -1024,17 +1110,19 @@ function PaymentPanel({ mes, erro, nomesCusto = [], categoriasCusto, modo, tipoI
         </>
       )}
 
-      <div className={styles.switchRow}>
-        <button
-          type="button"
-          className={`${styles.switchTrack} ${repetirTodoMes ? styles.switchTrackOn : ''}`}
-          onClick={() => setRepetirTodoMes((v) => !v)}
-          aria-pressed={repetirTodoMes}
-        >
-          <span className={styles.switchThumb} />
-        </button>
-        <span className={styles.switchLabel}>Repetir todo mês</span>
-      </div>
+      {!comParcelas && (
+        <div className={styles.switchRow}>
+          <button
+            type="button"
+            className={`${styles.switchTrack} ${repetirTodoMes ? styles.switchTrackOn : ''}`}
+            onClick={() => setRepetirTodoMes((v) => !v)}
+            aria-pressed={repetirTodoMes}
+          >
+            <span className={styles.switchThumb} />
+          </button>
+          <span className={styles.switchLabel}>Repetir todo mês</span>
+        </div>
+      )}
 
       {erro && <div className={styles.errorText}>{erro}</div>}
 
@@ -1056,6 +1144,16 @@ function PaymentPanel({ mes, erro, nomesCusto = [], categoriasCusto, modo, tipoI
         >
           {excluindo ? 'Excluindo…' : 'Excluir'}
         </button>
+      )}
+
+      {confirmDuplicado && (
+        <ConfirmModal
+          titulo="Nome duplicado"
+          mensagem="Já existe um custo com esse nome. Continuar?"
+          confirmarLabel="Continuar"
+          onConfirmar={confirmarDuplicado}
+          onCancelar={() => setConfirmDuplicado(false)}
+        />
       )}
     </aside>
   );
@@ -1100,6 +1198,40 @@ function LoginModal({ email, onEmailChange, mensagem, onEnviar, onFechar }) {
         <button className={styles.btnGhost} style={{ marginTop: 16 }} onClick={onFechar}>
           Fechar
         </button>
+      </div>
+    </div>
+  );
+}
+
+function ConfirmModal({ titulo, mensagem, confirmarLabel = 'Confirmar', cancelarLabel = 'Cancelar', onConfirmar, onCancelar }) {
+  return (
+    <div
+      style={{
+        position: 'fixed',
+        inset: 0,
+        background: 'rgba(0,0,0,.55)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 50,
+      }}
+      onClick={onCancelar}
+    >
+      <div
+        className={`${styles.panel} ${styles.modalPanel}`}
+        style={{ width: 320, maxWidth: '90vw' }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className={styles.panelTitle}>{titulo}</div>
+        <div className={styles.panelSubtitle}>{mensagem}</div>
+        <div style={{ display: 'flex', gap: 'var(--space-3)' }}>
+          <button className={styles.btnGhost} style={{ flex: 1 }} onClick={onCancelar}>
+            {cancelarLabel}
+          </button>
+          <button className={styles.btnPrimary} style={{ flex: 1 }} onClick={onConfirmar}>
+            {confirmarLabel}
+          </button>
+        </div>
       </div>
     </div>
   );

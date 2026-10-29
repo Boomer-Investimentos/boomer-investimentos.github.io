@@ -66,6 +66,7 @@ describe('projetarMes — fixture "template cliente internacional"', () => {
       atrasado: 916.89,
       receita: 3200,
       reservado: 0,
+      saldo: 1272.37,
     });
   });
 
@@ -207,6 +208,49 @@ describe('projetarMes — Frequência "Única" sem parcelamento não recorre al�
 
     const emOutubro = projetarMes({ renda: r, custo: [], mes: '2026-10', hoje: '2026-09-08' });
     expect(emOutubro.dias.flatMap((d) => d.itens)).toHaveLength(0);
+  });
+});
+
+describe('projetarMes — número da parcela em custo parcelado', () => {
+  const parcelado = (extra = {}) => ({
+    custo: 'Notebook', valor: 120, categoria: 'Tecnologia', dia: 10, totalParcelas: 12,
+    dataInicio: '2026-09-01', dataFim: '2027-08-31',
+    frequencia: 'unica', ativo: true, statusPagamento: 'Pendente', linhaPlanilha: 4,
+    ...extra,
+  });
+  const itemDe = (c, mes) => projetarMes({ renda: [], custo: [c], mes, hoje: '2026-09-08' })
+    .dias.flatMap((d) => d.itens).find((i) => i.nome === 'Notebook');
+
+  test('1/12 no mês de início e 2/12 no seguinte', () => {
+    expect(itemDe(parcelado(), '2026-09').parcela).toEqual({ atual: 1, total: 12 });
+    expect(itemDe(parcelado(), '2026-10').parcela).toEqual({ atual: 2, total: 12 });
+  });
+
+  test('última parcela atravessando o ano', () => {
+    expect(itemDe(parcelado(), '2027-08').parcela).toEqual({ atual: 12, total: 12 });
+  });
+
+  test('fora da janela o custo não aparece (nem antes nem depois)', () => {
+    expect(itemDe(parcelado(), '2026-08')).toBeUndefined();
+    expect(itemDe(parcelado(), '2027-09')).toBeUndefined();
+  });
+
+  test('Data_Fim incoerente com o total: número fora de 1..total é omitido', () => {
+    const legado = parcelado({ totalParcelas: 3, dataFim: '2027-08-31' });
+    expect(itemDe(legado, '2026-11').parcela).toEqual({ atual: 3, total: 3 });
+    expect(itemDe(legado, '2026-12')).toBeDefined();
+    expect(itemDe(legado, '2026-12').parcela).toBeUndefined();
+  });
+
+  test('custo sem Total_Parcelas não ganha parcela', () => {
+    const normal = parcelado({ totalParcelas: null, frequencia: 'mensal', dataFim: null });
+    expect(itemDe(normal, '2026-10').parcela).toBeUndefined();
+  });
+
+  test('também em semData (custo sem dia parseável)', () => {
+    const c = parcelado({ dia: null, diaTexto: 'sem dia' });
+    const proj = projetarMes({ renda: [], custo: [c], mes: '2026-10', hoje: '2026-09-08' });
+    expect(proj.semData[0].parcela).toEqual({ atual: 2, total: 12 });
   });
 });
 

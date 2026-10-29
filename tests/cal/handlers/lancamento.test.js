@@ -83,3 +83,61 @@ describe('criarLancamento', () => {
     expect(r.status).toBe(201);
   });
 });
+
+describe('criarLancamento — parcelado', () => {
+  const header = escrita.cabecalhoCusto(fx.SHEETS.CUSTO_FIXO);
+  const linhaGravada = () => sheets.appendRow.mock.calls[0][2];
+
+  test('3 parcelas, parcela atual 1: começa no mês aberto e termina 2 meses depois', async () => {
+    const r = await criarLancamento({ ...base, parcelas: 3 });
+    expect(r.status).toBe(201);
+    const linha = linhaGravada();
+    expect(linha[header.indexOf('total_parcelas')]).toBe(3);
+    expect(linha[header.indexOf('data_inicio')]).toBe('01/09/2026');
+    expect(linha[header.indexOf('data_fim')]).toBe('30/11/2026');
+    expect(linha[header.indexOf('frequencia')]).toBe('Mensal');
+  });
+
+  test('parcela atual 2: Data_Início recua um mês', async () => {
+    await criarLancamento({ ...base, parcelas: 3, parcelaAtual: 2 });
+    const linha = linhaGravada();
+    expect(linha[header.indexOf('data_inicio')]).toBe('01/08/2026');
+    expect(linha[header.indexOf('data_fim')]).toBe('31/10/2026');
+  });
+
+  test('recuo atravessa o ano (parcela 3 em janeiro começa em novembro)', async () => {
+    await criarLancamento({ ...base, mes: '2027-01', parcelas: 6, parcelaAtual: 3 });
+    const linha = linhaGravada();
+    expect(linha[header.indexOf('data_inicio')]).toBe('01/11/2026');
+    expect(linha[header.indexOf('data_fim')]).toBe('30/04/2027');
+  });
+
+  test('repetirTodoMes é ignorado quando parcelado', async () => {
+    await criarLancamento({ ...base, parcelas: 2, repetirTodoMes: true });
+    expect(linhaGravada()[header.indexOf('data_fim')]).toBe('31/10/2026');
+  });
+
+  test('sem parcelas não preenche Total_Parcelas', async () => {
+    await criarLancamento(base);
+    expect(linhaGravada()[header.indexOf('total_parcelas')]).toBe('');
+  });
+
+  test.each([
+    ['parcelas menor que 2', { parcelas: 1 }],
+    ['parcelas acima de 120', { parcelas: 121 }],
+    ['parcelas não inteiro', { parcelas: 2.5 }],
+    ['parcelas não numérico', { parcelas: 'abc' }],
+    ['parcela atual maior que parcelas', { parcelas: 3, parcelaAtual: 4 }],
+    ['parcela atual menor que 1', { parcelas: 3, parcelaAtual: 0 }],
+  ])('%s -> 400 sem escrever', async (_, extra) => {
+    const r = await criarLancamento({ ...base, ...extra });
+    expect(r.status).toBe(400);
+    expect(sheets.appendRow).not.toHaveBeenCalled();
+  });
+
+  test('nome repetido continua barrando parcelado (409)', async () => {
+    const r = await criarLancamento({ ...base, nome: 'Aluguel', parcelas: 3 });
+    expect(r.status).toBe(409);
+    expect(sheets.appendRow).not.toHaveBeenCalled();
+  });
+});
