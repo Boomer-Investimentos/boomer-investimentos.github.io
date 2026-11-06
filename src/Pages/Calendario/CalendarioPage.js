@@ -102,6 +102,14 @@ export default function CalendarioPage() {
     }
   }, []);
 
+  useEffect(() => {
+    const anterior = document.title;
+    document.title = 'Boomer Investimentos - Calendário Financeiro';
+    return () => {
+      document.title = anterior;
+    };
+  }, []);
+
   // Página dark-only: pinta html/body e a theme-color pra Safari/Chrome mobile
   // não mostrarem faixas brancas atrás da barra do navegador. Restaura ao sair.
   useEffect(() => {
