@@ -321,6 +321,11 @@ describe('projetarMes — reservas', () => {
     expect(viagem).toMatchObject({ tipo: 'reserva', statusReserva: 'pendente' });
   });
 
+  test('reservado guardado sai do disponível (saldo desconta reservado)', () => {
+    const proj = projetarMes({ renda, custo, reservas, historicoReservas, mes: '2026-09', hoje: '2026-09-08' });
+    expect(proj.totals.saldo).toBe(972.37);
+  });
+
   test('reserva nunca fica atrasada, mesmo com data vencida e sem marcação', () => {
     const proj = projetarMes({ renda, custo, reservas, historicoReservas, mes: '2026-09', hoje: '2026-09-30' });
     expect(diaCom(proj, 20).itens.find((i) => i.nome === 'Viagem').atrasado).toBe(false);
