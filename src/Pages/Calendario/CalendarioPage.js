@@ -711,9 +711,7 @@ function Legend({ categorias }) {
       {categorias.map((c) => (
         <div key={c.nome} className={styles.legendItem}>
           <span className={styles.legendDot} style={{ background: c.cor }} />
-          <span>
-            {c.icone} {c.nome}
-          </span>
+          <span>{c.nome}</span>
         </div>
       ))}
       <div className={styles.legendItem}>
