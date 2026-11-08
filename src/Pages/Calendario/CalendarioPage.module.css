@@ -14,7 +14,7 @@
   --accent: #da7742;
   --accent-fg: #141c31;
 
-  --status-atrasado: #e17048;
+  --status-atrasado: #e5484d;
   --status-receita: #6fc49b;
 
   --space-1: 4px;
@@ -296,9 +296,12 @@
 }
 
 /* Hoje/atrasado se diferenciam pela borda (accent/status-atrasado) + cor do
-   número do dia — não por um 3º tom de fundo que o design system não define. */
+   número do dia. Hoje ganha também um preenchimento sutil (anel), já que
+   accent e status-atrasado são tons próximos de laranja/vermelho — sem o
+   preenchimento, a borda sozinha não distingue bem os dois. */
 .cellToday {
   border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, var(--surface-raised));
 }
 
 .cellLate {
