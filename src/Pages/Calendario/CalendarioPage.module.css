@@ -518,6 +518,21 @@
 /* Modais/drawers usam shadow-lg (mais elevação que um card em repouso). */
 .modalPanel {
   box-shadow: var(--shadow-lg);
+  scrollbar-width: thin;
+  scrollbar-color: var(--ink-disabled) transparent;
+}
+
+.modalPanel::-webkit-scrollbar {
+  width: 8px;
+}
+
+.modalPanel::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.modalPanel::-webkit-scrollbar-thumb {
+  background: var(--ink-disabled);
+  border-radius: var(--radius-full);
 }
 
 /* heading-md */
