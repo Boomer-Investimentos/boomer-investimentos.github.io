@@ -1,7 +1,7 @@
 {
   "name": "boomer-investimentos.github.io",
   "version": "0.1.0",
-  "homepage": "https://www.boomerinvestimentos.com.br",
+  "homepage": "https://boomerinvestimentos.com.br",
   "private": true,
   "proxy": "http://localhost:3001",
   "dependencies": {

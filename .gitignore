@@ -162,3 +162,5 @@ yarn-debug.log*
 yarn-error.log*
 .claude/
 FORMULARIO_SPEC.md
+skills-lock.json
+.agents/
