@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
+import { CircleCheck, Clock, TriangleAlert, TrendingUp, PiggyBank, Wallet } from 'lucide-react';
 import styles from './CalendarioPage.module.css';
 import boomerBMark from '../../assets/imgs/boomer-b-mark.png';
 import {
@@ -382,14 +383,15 @@ function Toolbar({ mes, dados, onNav, onAdicionar, carregando }) {
 function SummaryCards({ totals, moeda }) {
   return (
     <div className={styles.summaryRow}>
-      <SummaryCard label="Pago" valor={totals.pago} moeda={moeda} cor="var(--ink-subtle)" />
-      <SummaryCard label="A pagar" valor={totals.pendente} moeda={moeda} cor="var(--ink)" />
-      <SummaryCard label="Em atraso" valor={totals.atrasado} moeda={moeda} cor="var(--status-atrasado)" />
-      <SummaryCard label="Entradas" valor={totals.receita} moeda={moeda} cor="var(--status-receita)" destaque />
-      <SummaryCard label="Reservas" valor={totals.reservado || 0} moeda={moeda} cor="#7c3aed" />
+      <SummaryCard label="Pago" icone={CircleCheck} valor={totals.pago} moeda={moeda} cor="var(--ink-subtle)" />
+      <SummaryCard label="A pagar" icone={Clock} valor={totals.pendente} moeda={moeda} cor="var(--ink)" />
+      <SummaryCard label="Em atraso" icone={TriangleAlert} valor={totals.atrasado} moeda={moeda} cor="var(--status-atrasado)" />
+      <SummaryCard label="Entradas" icone={TrendingUp} valor={totals.receita} moeda={moeda} cor="var(--status-receita)" destaque />
+      <SummaryCard label="Reservas" icone={PiggyBank} valor={totals.reservado || 0} moeda={moeda} cor="#7c3aed" />
       <div className={styles.summaryDivider} aria-hidden="true" />
       <SummaryCard
         label="Disponível"
+        icone={Wallet}
         valor={totals.saldo || 0}
         moeda={moeda}
         cor={(totals.saldo || 0) >= 0 ? 'var(--status-receita)' : 'var(--status-atrasado)'}
@@ -399,10 +401,13 @@ function SummaryCards({ totals, moeda }) {
   );
 }
 
-function SummaryCard({ label, valor, moeda, cor, destaque }) {
+function SummaryCard({ label, icone: Icone, valor, moeda, cor, destaque }) {
   return (
     <div className={`${styles.summaryCard} ${destaque ? styles.summaryCardDestaque : ''}`}>
-      <div className={styles.summaryLabel}>{label}</div>
+      <div className={styles.summaryLabel}>
+        <span>{label}</span>
+        {Icone && <Icone />}
+      </div>
       <div className={styles.summaryValue} style={{ color: cor }}>
         {formatarMoeda(valor, moeda)}
       </div>
@@ -706,9 +711,7 @@ function Legend({ categorias }) {
       {categorias.map((c) => (
         <div key={c.nome} className={styles.legendItem}>
           <span className={styles.legendDot} style={{ background: c.cor }} />
-          <span>
-            {c.icone} {c.nome}
-          </span>
+          <span>{c.nome}</span>
         </div>
       ))}
       <div className={styles.legendItem}>
@@ -808,10 +811,6 @@ function PaymentPanel({ mes, erro, nomesCusto = [], categoriasCusto, modo, tipoI
   const [salvando, setSalvando] = useState(false);
   const [excluindo, setExcluindo] = useState(false);
   const [confirmDuplicado, setConfirmDuplicado] = useState(false);
-  const panelRef = useRef(null);
-  useEffect(() => {
-    panelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-  }, []);
 
   const ehRenda = tipo === 'renda';
   const ehReserva = tipo === 'reserva';
@@ -899,7 +898,29 @@ function PaymentPanel({ mes, erro, nomesCusto = [], categoriasCusto, modo, tipoI
     : `Editar ${substantivo}`;
 
   return (
-    <aside className={styles.panel} ref={panelRef}>
+    <div
+      style={{
+        position: 'fixed',
+        inset: 0,
+        background: 'rgba(0,0,0,.55)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 50,
+      }}
+      onClick={onCancelar}
+    >
+      <div
+        className={`${styles.panel} ${styles.modalPanel}`}
+        style={{
+          width: 440,
+          maxWidth: '90vw',
+          maxHeight: '90vh',
+          overflowY: 'auto',
+          boxSizing: 'border-box',
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
       <div className={styles.panelTitle}>{titulo}</div>
       <div className={styles.panelSubtitle}>{tituloMes(mes)}</div>
 
@@ -1163,7 +1184,8 @@ function PaymentPanel({ mes, erro, nomesCusto = [], categoriasCusto, modo, tipoI
           onCancelar={() => setConfirmDuplicado(false)}
         />
       )}
-    </aside>
+      </div>
+    </div>
   );
 }
 

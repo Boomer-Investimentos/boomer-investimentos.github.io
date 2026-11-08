@@ -14,7 +14,7 @@
   --accent: #da7742;
   --accent-fg: #141c31;
 
-  --status-atrasado: #e17048;
+  --status-atrasado: #e5484d;
   --status-receita: #6fc49b;
 
   --space-1: 4px;
@@ -227,6 +227,9 @@
 
 /* label-sm */
 .summaryLabel {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
   font-size: 11px;
   line-height: 16px;
   font-weight: 700;
@@ -235,13 +238,22 @@
   text-transform: uppercase;
 }
 
+.summaryLabel svg {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  /* texto maiúsculo não tem descendentes — o "centro óptico" dele fica mais
+     alto que o centro geométrico da line-box; sem isso o ícone (que ocupa a
+     caixa inteira) parece mais baixo que o texto mesmo centralizado por flex. */
+  transform: translateY(-1.5px);
+}
+
 /* heading-xl */
 .summaryValue {
   font-size: 24px;
   line-height: 32px;
   font-weight: 700;
   margin-top: var(--space-1);
-  white-space: nowrap;
 }
 
 /* dowRow e grid compartilham grid-template-columns: o gap tem que ser
@@ -297,9 +309,12 @@
 }
 
 /* Hoje/atrasado se diferenciam pela borda (accent/status-atrasado) + cor do
-   número do dia — não por um 3º tom de fundo que o design system não define. */
+   número do dia. Hoje ganha também um preenchimento sutil (anel), já que
+   accent e status-atrasado são tons próximos de laranja/vermelho — sem o
+   preenchimento, a borda sozinha não distingue bem os dois. */
 .cellToday {
   border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, var(--surface-raised));
 }
 
 .cellLate {
@@ -376,7 +391,8 @@
 }
 
 .itemNamePago {
-  color: var(--ink-subtle);
+  color: var(--ink-disabled);
+  text-decoration: line-through;
 }
 
 /* caption-strong */
@@ -392,7 +408,8 @@
 }
 
 .itemAmountPago {
-  color: var(--ink-subtle);
+  color: var(--ink-disabled);
+  text-decoration: line-through;
 }
 
 .itemAmountAtrasado {
@@ -501,6 +518,21 @@
 /* Modais/drawers usam shadow-lg (mais elevação que um card em repouso). */
 .modalPanel {
   box-shadow: var(--shadow-lg);
+  scrollbar-width: thin;
+  scrollbar-color: var(--ink-disabled) transparent;
+}
+
+.modalPanel::-webkit-scrollbar {
+  width: 8px;
+}
+
+.modalPanel::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.modalPanel::-webkit-scrollbar-thumb {
+  background: var(--ink-disabled);
+  border-radius: var(--radius-full);
 }
 
 /* heading-md */
