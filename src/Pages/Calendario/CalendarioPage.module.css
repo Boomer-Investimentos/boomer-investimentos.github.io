@@ -229,8 +229,7 @@
 .summaryLabel {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: var(--space-1);
+  gap: var(--space-2);
   font-size: 11px;
   line-height: 16px;
   font-weight: 700;
@@ -241,8 +240,12 @@
 
 .summaryLabel svg {
   flex: none;
-  width: 14px;
-  height: 14px;
+  width: 18px;
+  height: 18px;
+  /* texto maiúsculo não tem descendentes — o "centro óptico" dele fica mais
+     alto que o centro geométrico da line-box; sem isso o ícone (que ocupa a
+     caixa inteira) parece mais baixo que o texto mesmo centralizado por flex. */
+  transform: translateY(-1.5px);
 }
 
 /* heading-xl */
