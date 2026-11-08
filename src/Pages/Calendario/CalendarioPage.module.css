@@ -378,7 +378,7 @@
 }
 
 .itemNamePago {
-  color: var(--ink-subtle);
+  color: var(--ink-disabled);
   text-decoration: line-through;
 }
 
@@ -395,7 +395,7 @@
 }
 
 .itemAmountPago {
-  color: var(--ink-subtle);
+  color: var(--ink-disabled);
   text-decoration: line-through;
 }
 
