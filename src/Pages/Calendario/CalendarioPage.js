@@ -382,7 +382,7 @@ function Toolbar({ mes, dados, onNav, onAdicionar, carregando }) {
 function SummaryCards({ totals, moeda }) {
   return (
     <div className={styles.summaryRow}>
-      <SummaryCard label="Pago no mês" valor={totals.pago} moeda={moeda} cor="var(--ink-subtle)" />
+      <SummaryCard label="Pago" valor={totals.pago} moeda={moeda} cor="var(--ink-subtle)" />
       <SummaryCard label="A pagar" valor={totals.pendente} moeda={moeda} cor="var(--ink)" />
       <SummaryCard label="Em atraso" valor={totals.atrasado} moeda={moeda} cor="var(--status-atrasado)" />
       <SummaryCard label="Entradas" valor={totals.receita} moeda={moeda} cor="var(--status-receita)" destaque />
