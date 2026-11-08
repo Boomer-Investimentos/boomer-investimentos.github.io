@@ -379,6 +379,7 @@
 
 .itemNamePago {
   color: var(--ink-subtle);
+  text-decoration: line-through;
 }
 
 /* caption-strong */
@@ -395,6 +396,7 @@
 
 .itemAmountPago {
   color: var(--ink-subtle);
+  text-decoration: line-through;
 }
 
 .itemAmountAtrasado {
