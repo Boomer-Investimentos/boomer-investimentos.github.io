@@ -227,12 +227,22 @@
 
 /* label-sm */
 .summaryLabel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-1);
   font-size: 11px;
   line-height: 16px;
   font-weight: 700;
   letter-spacing: 0.04em;
   color: var(--ink-subtle);
   text-transform: uppercase;
+}
+
+.summaryLabel svg {
+  flex: none;
+  width: 14px;
+  height: 14px;
 }
 
 /* heading-xl */

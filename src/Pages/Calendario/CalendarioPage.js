@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
+import { CircleCheck, Clock, TriangleAlert, TrendingUp, PiggyBank, Wallet } from 'lucide-react';
 import styles from './CalendarioPage.module.css';
 import boomerBMark from '../../assets/imgs/boomer-b-mark.png';
 import {
@@ -382,14 +383,15 @@ function Toolbar({ mes, dados, onNav, onAdicionar, carregando }) {
 function SummaryCards({ totals, moeda }) {
   return (
     <div className={styles.summaryRow}>
-      <SummaryCard label="Pago" valor={totals.pago} moeda={moeda} cor="var(--ink-subtle)" />
-      <SummaryCard label="A pagar" valor={totals.pendente} moeda={moeda} cor="var(--ink)" />
-      <SummaryCard label="Em atraso" valor={totals.atrasado} moeda={moeda} cor="var(--status-atrasado)" />
-      <SummaryCard label="Entradas" valor={totals.receita} moeda={moeda} cor="var(--status-receita)" destaque />
-      <SummaryCard label="Reservas" valor={totals.reservado || 0} moeda={moeda} cor="#7c3aed" />
+      <SummaryCard label="Pago" icone={CircleCheck} valor={totals.pago} moeda={moeda} cor="var(--ink-subtle)" />
+      <SummaryCard label="A pagar" icone={Clock} valor={totals.pendente} moeda={moeda} cor="var(--ink)" />
+      <SummaryCard label="Em atraso" icone={TriangleAlert} valor={totals.atrasado} moeda={moeda} cor="var(--status-atrasado)" />
+      <SummaryCard label="Entradas" icone={TrendingUp} valor={totals.receita} moeda={moeda} cor="var(--status-receita)" destaque />
+      <SummaryCard label="Reservas" icone={PiggyBank} valor={totals.reservado || 0} moeda={moeda} cor="#7c3aed" />
       <div className={styles.summaryDivider} aria-hidden="true" />
       <SummaryCard
         label="Disponível"
+        icone={Wallet}
         valor={totals.saldo || 0}
         moeda={moeda}
         cor={(totals.saldo || 0) >= 0 ? 'var(--status-receita)' : 'var(--status-atrasado)'}
@@ -399,10 +401,13 @@ function SummaryCards({ totals, moeda }) {
   );
 }
 
-function SummaryCard({ label, valor, moeda, cor, destaque }) {
+function SummaryCard({ label, icone: Icone, valor, moeda, cor, destaque }) {
   return (
     <div className={`${styles.summaryCard} ${destaque ? styles.summaryCardDestaque : ''}`}>
-      <div className={styles.summaryLabel}>{label}</div>
+      <div className={styles.summaryLabel}>
+        <span>{label}</span>
+        {Icone && <Icone />}
+      </div>
       <div className={styles.summaryValue} style={{ color: cor }}>
         {formatarMoeda(valor, moeda)}
       </div>
