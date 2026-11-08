@@ -241,7 +241,6 @@
   line-height: 32px;
   font-weight: 700;
   margin-top: var(--space-1);
-  white-space: nowrap;
 }
 
 /* dowRow e grid compartilham grid-template-columns: o gap tem que ser
