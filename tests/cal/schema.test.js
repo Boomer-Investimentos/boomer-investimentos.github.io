@@ -26,8 +26,8 @@ describe('parseParams', () => {
     expect(p.linkCalendario).toContain('script.google.com');
   });
 
-  test('default de título quando ausente', () => {
-    expect(s.parseParams([]).tituloEstrategia).toBe('Estratégia de recebimentos');
+  test('sem Título_Estratégia na planilha, fica vazio (sem fallback fixo)', () => {
+    expect(s.parseParams([]).tituloEstrategia).toBe('');
   });
 });
 
