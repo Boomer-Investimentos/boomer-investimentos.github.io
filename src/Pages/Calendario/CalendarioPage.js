@@ -808,10 +808,6 @@ function PaymentPanel({ mes, erro, nomesCusto = [], categoriasCusto, modo, tipoI
   const [salvando, setSalvando] = useState(false);
   const [excluindo, setExcluindo] = useState(false);
   const [confirmDuplicado, setConfirmDuplicado] = useState(false);
-  const panelRef = useRef(null);
-  useEffect(() => {
-    panelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-  }, []);
 
   const ehRenda = tipo === 'renda';
   const ehReserva = tipo === 'reserva';
@@ -899,7 +895,29 @@ function PaymentPanel({ mes, erro, nomesCusto = [], categoriasCusto, modo, tipoI
     : `Editar ${substantivo}`;
 
   return (
-    <aside className={styles.panel} ref={panelRef}>
+    <div
+      style={{
+        position: 'fixed',
+        inset: 0,
+        background: 'rgba(0,0,0,.55)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 50,
+      }}
+      onClick={onCancelar}
+    >
+      <div
+        className={`${styles.panel} ${styles.modalPanel}`}
+        style={{
+          width: 440,
+          maxWidth: '90vw',
+          maxHeight: '90vh',
+          overflowY: 'auto',
+          boxSizing: 'border-box',
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
       <div className={styles.panelTitle}>{titulo}</div>
       <div className={styles.panelSubtitle}>{tituloMes(mes)}</div>
 
@@ -1163,7 +1181,8 @@ function PaymentPanel({ mes, erro, nomesCusto = [], categoriasCusto, modo, tipoI
           onCancelar={() => setConfirmDuplicado(false)}
         />
       )}
-    </aside>
+      </div>
+    </div>
   );
 }
 
