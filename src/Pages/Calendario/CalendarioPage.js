@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { CircleCheck, Clock, TriangleAlert, TrendingUp, PiggyBank, Wallet } from 'lucide-react';
+import '@google/model-viewer';
 import styles from './CalendarioPage.module.css';
 import boomerBMark from '../../assets/imgs/boomer-b-mark.png';
+import boomerLogo3D from '../../assets/3d/Logo Boomer 20_PNG-terracota.glb';
 import {
   obterMes,
   verificarAcesso,
@@ -76,6 +78,41 @@ function tituloDia(dataISO) {
   return nome.charAt(0).toUpperCase() + nome.slice(1);
 }
 
+function LoadingLogo() {
+  const ref = useRef(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    // Só reduz o brilho/verniz (roughness/metallic) do material já vindo
+    // colorido certo do arquivo — não mexe na cor base.
+    const fosco = () => {
+      (el.model?.materials || []).forEach((m) => {
+        m.pbrMetallicRoughness.setRoughnessFactor(0.95);
+        m.pbrMetallicRoughness.setMetallicFactor(0);
+      });
+    };
+    el.addEventListener('load', fosco);
+    return () => el.removeEventListener('load', fosco);
+  }, []);
+
+  return (
+    <model-viewer
+      ref={ref}
+      src={boomerLogo3D}
+      class={styles.loadingLogo}
+      auto-rotate
+      auto-rotate-delay="0"
+      rotation-per-second="60deg"
+      disable-zoom
+      interaction-prompt="none"
+      camera-controls={false}
+      tone-mapping="neutral"
+      exposure="1"
+      shadow-intensity="0"
+    />
+  );
+}
+
 export default function CalendarioPage() {
   const [linkToken, setLinkToken] = useState('');
   const [mes, setMes] = useState(mesAtual());
@@ -88,6 +125,21 @@ export default function CalendarioPage() {
   const [mensagemLogin, setMensagemLogin] = useState(null);
   const [painelItem, setPainelItem] = useState(null); // null | { modo: 'criar'|'editar', tipo: 'custo'|'renda', item? }
   const [confirmExcluir, setConfirmExcluir] = useState(null); // null | { tipo, form }
+  const [acaoItem, setAcaoItem] = useState(null); // null | item (escolha pagar/editar no mobile)
+  // Tempo mínimo pra tela de carregamento inicial ficar visível, pra dar
+  // chance da logo 3D (model-viewer) carregar e girar antes de trocar pra
+  // tela real — sem isso, em conexões rápidas o fetch termina antes da logo
+  // sequer aparecer. `introOk` só vira true uma vez (primeira carga) e nunca
+  // mais volta a false, então trocas de mês depois não reativam a tela cheia.
+  const [tempoMinimoOk, setTempoMinimoOk] = useState(false);
+  const [introOk, setIntroOk] = useState(false);
+  useEffect(() => {
+    const timer = setTimeout(() => setTempoMinimoOk(true), 1800);
+    return () => clearTimeout(timer);
+  }, []);
+  useEffect(() => {
+    if (!introOk && dados && tempoMinimoOk) setIntroOk(true);
+  }, [introOk, dados, tempoMinimoOk]);
 
   const carregarMes = useCallback(async (mesAlvo, token) => {
     setCarregando(true);
@@ -201,6 +253,14 @@ export default function CalendarioPage() {
     setPainelItem({ modo: 'editar', tipo: item.tipo, item });
   };
 
+  // Toque no badge (mobile): se a sessão não estiver verificada, pede o e-mail
+  // primeiro; só com a sessão autenticada abre a escolha pagar/editar.
+  const pedirAcaoPagamento = (item) => {
+    if (!dados.autenticado) return exigirLogin();
+    setErroAcao(null);
+    setAcaoItem(item);
+  };
+
   const fecharPainel = () => {
     setErroAcao(null);
     setPainelItem(null);
@@ -252,10 +312,12 @@ export default function CalendarioPage() {
     }
   };
 
-  if (carregando && !dados) {
+  if (!introOk && !erroFatal) {
     return (
       <div className={styles.page}>
-        <div className={styles.centerScreen}>Carregando calendário…</div>
+        <div className={styles.centerScreen}>
+          <LoadingLogo />
+        </div>
       </div>
     );
   }
@@ -288,10 +350,10 @@ export default function CalendarioPage() {
           />
           <SummaryCards totals={dados.totals} moeda={dados.moeda} />
           <div className={styles.desktopOnly}>
-            <MonthGrid dados={dados} mes={mes} onEditar={abrirPainelEditar} onTogglePago={alternarPago} />
+            <MonthGrid dados={dados} mes={mes} onEditar={abrirPainelEditar} onTogglePago={alternarPago} onPedirAcao={pedirAcaoPagamento} />
           </div>
           <div className={styles.mobileOnly}>
-            <MobileAgenda dados={dados} mes={mes} onEditar={abrirPainelEditar} onTogglePago={alternarPago} />
+            <MobileAgenda dados={dados} mes={mes} onEditar={abrirPainelEditar} onTogglePago={alternarPago} onPedirAcao={pedirAcaoPagamento} />
           </div>
           <Legend categorias={dados.categorias} />
           {dados.semData.length > 0 && (
@@ -334,6 +396,23 @@ export default function CalendarioPage() {
           confirmarLabel="Excluir"
           onConfirmar={confirmarExclusao}
           onCancelar={() => setConfirmExcluir(null)}
+        />
+      )}
+
+      {acaoItem && (
+        <AcaoPagamentoModal
+          item={acaoItem}
+          onPagar={async () => {
+            const alvo = acaoItem;
+            setAcaoItem(null);
+            await alternarPago(alvo);
+          }}
+          onEditar={() => {
+            const alvo = acaoItem;
+            setAcaoItem(null);
+            abrirPainelEditar(alvo);
+          }}
+          onCancelar={() => setAcaoItem(null)}
         />
       )}
     </div>
@@ -415,7 +494,7 @@ function SummaryCard({ label, icone: Icone, valor, moeda, cor, destaque }) {
   );
 }
 
-function MonthGrid({ dados, mes, onEditar, onTogglePago }) {
+function MonthGrid({ dados, mes, onEditar, onTogglePago, onPedirAcao }) {
   const blanksAntes = primeiroDiaDaSemana(mes);
   const totalCelulas = blanksAntes + dados.dias.length;
   const blanksDepois = (7 - (totalCelulas % 7)) % 7;
@@ -434,7 +513,7 @@ function MonthGrid({ dados, mes, onEditar, onTogglePago }) {
           <div key={`antes-${i}`} className={`${styles.cell} ${styles.cellBlank}`} />
         ))}
         {dados.dias.map((dia) => (
-          <DayCell key={dia.data} dia={dia} hoje={dados.hoje} moeda={dados.moeda} onEditar={onEditar} onTogglePago={onTogglePago} />
+          <DayCell key={dia.data} dia={dia} hoje={dados.hoje} moeda={dados.moeda} onEditar={onEditar} onTogglePago={onTogglePago} onPedirAcao={onPedirAcao} />
         ))}
         {Array.from({ length: blanksDepois }).map((_, i) => (
           <div key={`depois-${i}`} className={`${styles.cell} ${styles.cellBlank}`} />
@@ -448,7 +527,7 @@ function nomeComParcela(item) {
   return item.parcela ? `${item.nome} (${item.parcela.atual}/${item.parcela.total})` : item.nome;
 }
 
-function DayCell({ dia, hoje, moeda, onEditar, onTogglePago }) {
+function DayCell({ dia, hoje, moeda, onEditar, onTogglePago, onPedirAcao }) {
   const isHoje = dia.data === hoje;
   const atrasado = dia.itens.some((i) => i.atrasado);
   const totalSaida = dia.itens
@@ -466,7 +545,7 @@ function DayCell({ dia, hoje, moeda, onEditar, onTogglePago }) {
         {totalSaida > 0 && <span className={styles.cellDayTotal}>−{formatarNumero(totalSaida, moeda)}</span>}
       </div>
       {dia.itens.map((item, idx) => (
-        <Item key={idx} item={item} moeda={moeda} onEditar={onEditar} onTogglePago={onTogglePago} />
+        <Item key={idx} item={item} moeda={moeda} onEditar={onEditar} onTogglePago={onTogglePago} onPedirAcao={onPedirAcao} />
       ))}
     </div>
   );
@@ -496,9 +575,10 @@ function itemConcluido(item) {
   return item.tipo === 'reserva' ? item.statusReserva === 'guardado' : item.statusPagamento === 'pago';
 }
 
-function Item({ item, moeda, onEditar, onTogglePago }) {
+function Item({ item, moeda, onEditar, onPedirAcao }) {
   const concluido = itemConcluido(item);
   const alternavel = item.tipo === 'custo' || item.tipo === 'reserva';
+  const acionavel = alternavel && !concluido && typeof onPedirAcao === 'function';
   const classeNome = concluido ? styles.itemNamePago : '';
   const classeValor =
     item.tipo === 'renda'
@@ -511,28 +591,22 @@ function Item({ item, moeda, onEditar, onTogglePago }) {
 
   const marca = item.tipo === 'renda' ? '+' : concluido ? ' ✓' : item.atrasado ? ' !' : '';
 
-  const { onClick, onDoubleClick } = useCliqueSimplesOuDuplo(
-    () => onEditar(item),
-    () => { if (alternavel) onTogglePago(item); },
-  );
+  const aoClicar = () => { if (acionavel) onPedirAcao(item); else onEditar(item); };
   const aoTeclar = (ev) => {
     if (ev.key === 'Enter' || ev.key === ' ') {
       ev.preventDefault();
-      onEditar(item);
+      aoClicar();
     }
   };
 
-  const titulo = item.tipo === 'reserva'
-    ? 'Clique para editar · duplo clique para marcar guardado/pendente'
-    : item.tipo === 'custo'
-      ? 'Clique para editar · duplo clique para marcar pago/pendente'
-      : 'Editar lançamento';
+  const titulo = acionavel
+    ? (item.tipo === 'reserva' ? 'Clique para guardar ou editar' : 'Clique para pagar ou editar')
+    : 'Editar lançamento';
 
   return (
     <div
       className={`${styles.item} ${styles.itemClickable}`}
-      onClick={onClick}
-      onDoubleClick={onDoubleClick}
+      onClick={aoClicar}
       onKeyDown={aoTeclar}
       role="button"
       tabIndex={0}
@@ -557,7 +631,7 @@ function Item({ item, moeda, onEditar, onTogglePago }) {
  * mockup original pra celular: mini-calendário só com pontinhos por
  * categoria + lista de detalhe do dia selecionado abaixo.
  */
-function MobileAgenda({ dados, mes, onEditar, onTogglePago }) {
+function MobileAgenda({ dados, mes, onEditar, onTogglePago, onPedirAcao }) {
   const hojeNoMes = dados.dias.some((d) => d.data === dados.hoje);
   const [diaSelecionado, setDiaSelecionado] = useState(hojeNoMes ? dados.hoje : dados.dias[0]?.data);
 
@@ -572,8 +646,8 @@ function MobileAgenda({ dados, mes, onEditar, onTogglePago }) {
 
   return (
     <div className={styles.mobileAgenda}>
+      <DayList dia={diaAtual} hoje={dados.hoje} moeda={dados.moeda} onEditar={onEditar} onTogglePago={onTogglePago} onPedirAcao={onPedirAcao} />
       <MiniCalendar mes={mes} dias={dados.dias} hoje={dados.hoje} selecionado={diaAtual.data} onSelecionar={setDiaSelecionado} />
-      <DayList dia={diaAtual} hoje={dados.hoje} moeda={dados.moeda} onEditar={onEditar} onTogglePago={onTogglePago} />
     </div>
   );
 }
@@ -636,7 +710,7 @@ function MiniCell({ dia, isHoje, isSelecionado, onSelecionar }) {
   );
 }
 
-function DayList({ dia, hoje, moeda, onEditar, onTogglePago }) {
+function DayList({ dia, hoje, moeda, onEditar, onTogglePago, onPedirAcao }) {
   return (
     <div className={styles.dayList}>
       <div className={styles.dayListHead}>
@@ -646,15 +720,17 @@ function DayList({ dia, hoje, moeda, onEditar, onTogglePago }) {
       {dia.itens.length === 0 ? (
         <div className={styles.dayListVazio}>Nenhum lançamento neste dia.</div>
       ) : (
-        dia.itens.map((item, idx) => <DayListRow key={idx} item={item} moeda={moeda} onEditar={onEditar} onTogglePago={onTogglePago} />)
+        dia.itens.map((item, idx) => <DayListRow key={idx} item={item} moeda={moeda} onEditar={onEditar} onTogglePago={onTogglePago} onPedirAcao={onPedirAcao} />)
       )}
     </div>
   );
 }
 
-function DayListRow({ item, moeda, onEditar, onTogglePago }) {
+function DayListRow({ item, moeda, onEditar, onTogglePago, onPedirAcao }) {
   const concluido = itemConcluido(item);
   const alternavel = item.tipo === 'custo' || item.tipo === 'reserva';
+  const badgeAcionavel = alternavel && !concluido && typeof onPedirAcao === 'function';
+  const classeNome = concluido ? styles.itemNamePago : '';
   const statusLabel =
     item.tipo === 'renda'
       ? null
@@ -693,10 +769,23 @@ function DayListRow({ item, moeda, onEditar, onTogglePago }) {
     >
       <span className={styles.itemDot} style={{ background: item.categoria.cor }} />
       <div className={styles.itemBody} style={{ flex: 1 }}>
-        <div className={styles.itemName}>{nomeComParcela(item)}</div>
+        <div className={`${styles.itemName} ${classeNome}`}>{nomeComParcela(item)}</div>
         {item.tipo !== 'renda' && <div className={styles.semDataMeta}>{item.categoria.nome}</div>}
       </div>
-      {statusLabel && <span className={`${styles.dayListBadgeBase} ${statusClasse}`}>{statusLabel}</span>}
+      {statusLabel && (
+        badgeAcionavel ? (
+          <button
+            type="button"
+            className={`${styles.dayListBadgeBase} ${statusClasse} ${styles.dayListBadgeButton}`}
+            onClick={(ev) => { ev.stopPropagation(); onPedirAcao(item); }}
+            aria-label={`${statusLabel} · tocar para pagar ou editar`}
+          >
+            {statusLabel}
+          </button>
+        ) : (
+          <span className={`${styles.dayListBadgeBase} ${statusClasse}`}>{statusLabel}</span>
+        )
+      )}
       <span className={`${styles.dayListAmount} ${valorClasse}`}>
         {item.tipo === 'renda' ? '+' : ''}
         {formatarMoeda(item.valor, moeda)}
@@ -1260,6 +1349,62 @@ function ConfirmModal({ titulo, mensagem, confirmarLabel = 'Confirmar', cancelar
           </button>
           <button className={styles.btnPrimary} style={{ flex: 1 }} onClick={onConfirmar}>
             {confirmarLabel}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function AcaoPagamentoModal({ item, onPagar, onEditar, onCancelar }) {
+  const ehReserva = item.tipo === 'reserva';
+  const pagarLabel = ehReserva ? 'Guardado' : 'Pago';
+  const [confirmando, setConfirmando] = useState(false);
+
+  // Feedback: botão pisca verde e só então a ação (pagar/guardar) + fecha a tela.
+  const confirmarPagar = () => {
+    if (confirmando) return;
+    setConfirmando(true);
+    setTimeout(() => onPagar(), 550);
+  };
+
+  return (
+    <div
+      style={{
+        position: 'fixed',
+        inset: 0,
+        background: 'rgba(0,0,0,.55)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 50,
+      }}
+      onClick={confirmando ? undefined : onCancelar}
+    >
+      <div
+        className={`${styles.panel} ${styles.modalPanel}`}
+        style={{ width: 320, maxWidth: '90vw' }}
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-label="O que fazer com o lançamento"
+      >
+        <div className={styles.panelTitle} style={{ marginBottom: 'var(--space-5)' }}>{nomeComParcela(item)}</div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
+          <button
+            className={styles.btnPrimary}
+            style={confirmando
+              ? { background: 'var(--status-receita)', color: 'var(--surface)', transition: 'background 0.15s ease', textTransform: 'uppercase', fontWeight: 700 }
+              : { transition: 'background 0.15s ease', textTransform: 'uppercase', fontWeight: 700 }}
+            onClick={confirmarPagar}
+            disabled={confirmando}
+          >
+            {confirmando ? `✓ ${pagarLabel}` : pagarLabel}
+          </button>
+          <button className={styles.btnGhost} style={{ borderColor: 'var(--ink-subtle)', textTransform: 'uppercase', fontWeight: 700 }} onClick={onEditar} disabled={confirmando}>
+            Editar
+          </button>
+          <button className={styles.btnGhost} style={{ textTransform: 'uppercase', fontWeight: 700 }} onClick={onCancelar} disabled={confirmando}>
+            Cancelar
           </button>
         </div>
       </div>

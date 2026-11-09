@@ -3,7 +3,7 @@
   --surface-raised: #1a2340;
   --surface-inset: #0f1015;
   --ink: #ede6e2;
-  --ink-subtle: #aa8a78;
+  --ink-subtle: #8a93b0;
   --ink-disabled: #40445a;
   --border: #25345a;
   --border-strong: #ede6e2;
@@ -794,13 +794,20 @@
 .centerScreen {
   min-height: 100vh;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: var(--space-4);
   color: var(--ink-subtle);
   font-size: 15px;
   line-height: 23px;
   text-align: center;
   padding: var(--space-6);
+}
+
+.loadingLogo {
+  width: 160px;
+  height: 160px;
 }
 
 /* Grade de 7 colunas com texto inline (desktop) não cabe em ~400px sem
@@ -1035,6 +1042,19 @@
 .dayListBadgeAtrasado {
   color: var(--status-atrasado);
   border-color: var(--status-atrasado);
+}
+
+/* Badge de status que vira botão (mobile): toca pra escolher pagar/guardar ou editar. */
+.dayListBadgeButton {
+  background: transparent;
+  font-family: inherit;
+  cursor: pointer;
+  transition: border-color 0.12s ease, color 0.12s ease;
+}
+
+.dayListBadgeButton:hover {
+  border-color: var(--interactive);
+  color: var(--interactive);
 }
 
 /* heading-sm */
