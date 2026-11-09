@@ -41,6 +41,11 @@
       "react-app/jest"
     ]
   },
+  "jest": {
+    "moduleNameMapper": {
+      "^@google/model-viewer$": "<rootDir>/src/__mocks__/modelViewer.js"
+    }
+  },
   "browserslist": {
     "production": [
       ">0.2%",
