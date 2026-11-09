@@ -655,6 +655,7 @@ function DayList({ dia, hoje, moeda, onEditar, onTogglePago }) {
 function DayListRow({ item, moeda, onEditar, onTogglePago }) {
   const concluido = itemConcluido(item);
   const alternavel = item.tipo === 'custo' || item.tipo === 'reserva';
+  const classeNome = concluido ? styles.itemNamePago : '';
   const statusLabel =
     item.tipo === 'renda'
       ? null
@@ -693,7 +694,7 @@ function DayListRow({ item, moeda, onEditar, onTogglePago }) {
     >
       <span className={styles.itemDot} style={{ background: item.categoria.cor }} />
       <div className={styles.itemBody} style={{ flex: 1 }}>
-        <div className={styles.itemName}>{nomeComParcela(item)}</div>
+        <div className={`${styles.itemName} ${classeNome}`}>{nomeComParcela(item)}</div>
         {item.tipo !== 'renda' && <div className={styles.semDataMeta}>{item.categoria.nome}</div>}
       </div>
       {statusLabel && <span className={`${styles.dayListBadgeBase} ${statusClasse}`}>{statusLabel}</span>}
