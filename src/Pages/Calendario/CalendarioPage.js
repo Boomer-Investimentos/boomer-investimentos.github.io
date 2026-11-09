@@ -572,8 +572,8 @@ function MobileAgenda({ dados, mes, onEditar, onTogglePago }) {
 
   return (
     <div className={styles.mobileAgenda}>
-      <MiniCalendar mes={mes} dias={dados.dias} hoje={dados.hoje} selecionado={diaAtual.data} onSelecionar={setDiaSelecionado} />
       <DayList dia={diaAtual} hoje={dados.hoje} moeda={dados.moeda} onEditar={onEditar} onTogglePago={onTogglePago} />
+      <MiniCalendar mes={mes} dias={dados.dias} hoje={dados.hoje} selecionado={diaAtual.data} onSelecionar={setDiaSelecionado} />
     </div>
   );
 }
