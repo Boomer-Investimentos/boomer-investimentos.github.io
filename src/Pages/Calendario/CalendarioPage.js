@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { CircleCheck, Clock, TriangleAlert, TrendingUp, PiggyBank, Wallet } from 'lucide-react';
+import '@google/model-viewer';
 import styles from './CalendarioPage.module.css';
 import boomerBMark from '../../assets/imgs/boomer-b-mark.png';
+import boomerLogo3D from '../../assets/3d/Logo Boomer 20_PNG-terracota.glb';
 import {
   obterMes,
   verificarAcesso,
@@ -76,6 +78,41 @@ function tituloDia(dataISO) {
   return nome.charAt(0).toUpperCase() + nome.slice(1);
 }
 
+function LoadingLogo() {
+  const ref = useRef(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    // Só reduz o brilho/verniz (roughness/metallic) do material já vindo
+    // colorido certo do arquivo — não mexe na cor base.
+    const fosco = () => {
+      (el.model?.materials || []).forEach((m) => {
+        m.pbrMetallicRoughness.setRoughnessFactor(0.95);
+        m.pbrMetallicRoughness.setMetallicFactor(0);
+      });
+    };
+    el.addEventListener('load', fosco);
+    return () => el.removeEventListener('load', fosco);
+  }, []);
+
+  return (
+    <model-viewer
+      ref={ref}
+      src={boomerLogo3D}
+      class={styles.loadingLogo}
+      auto-rotate
+      auto-rotate-delay="0"
+      rotation-per-second="60deg"
+      disable-zoom
+      interaction-prompt="none"
+      camera-controls={false}
+      tone-mapping="neutral"
+      exposure="1"
+      shadow-intensity="0"
+    />
+  );
+}
+
 export default function CalendarioPage() {
   const [linkToken, setLinkToken] = useState('');
   const [mes, setMes] = useState(mesAtual());
@@ -88,6 +125,20 @@ export default function CalendarioPage() {
   const [mensagemLogin, setMensagemLogin] = useState(null);
   const [painelItem, setPainelItem] = useState(null); // null | { modo: 'criar'|'editar', tipo: 'custo'|'renda', item? }
   const [confirmExcluir, setConfirmExcluir] = useState(null); // null | { tipo, form }
+  // Tempo mínimo pra tela de carregamento inicial ficar visível, pra dar
+  // chance da logo 3D (model-viewer) carregar e girar antes de trocar pra
+  // tela real — sem isso, em conexões rápidas o fetch termina antes da logo
+  // sequer aparecer. `introOk` só vira true uma vez (primeira carga) e nunca
+  // mais volta a false, então trocas de mês depois não reativam a tela cheia.
+  const [tempoMinimoOk, setTempoMinimoOk] = useState(false);
+  const [introOk, setIntroOk] = useState(false);
+  useEffect(() => {
+    const timer = setTimeout(() => setTempoMinimoOk(true), 1800);
+    return () => clearTimeout(timer);
+  }, []);
+  useEffect(() => {
+    if (!introOk && dados && tempoMinimoOk) setIntroOk(true);
+  }, [introOk, dados, tempoMinimoOk]);
 
   const carregarMes = useCallback(async (mesAlvo, token) => {
     setCarregando(true);
@@ -252,10 +303,12 @@ export default function CalendarioPage() {
     }
   };
 
-  if (carregando && !dados) {
+  if (!introOk && !erroFatal) {
     return (
       <div className={styles.page}>
-        <div className={styles.centerScreen}>Carregando calendário…</div>
+        <div className={styles.centerScreen}>
+          <LoadingLogo />
+        </div>
       </div>
     );
   }

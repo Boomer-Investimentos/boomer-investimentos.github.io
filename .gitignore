@@ -164,3 +164,6 @@ yarn-error.log*
 FORMULARIO_SPEC.md
 skills-lock.json
 .agents/
+
+# Windows download metadata (NTFS alternate data stream marker)
+*:Zone.Identifier
