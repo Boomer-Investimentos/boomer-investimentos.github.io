@@ -1,0 +1,674 @@
+/* Formulário de Cadastro — identidade Boomer (tema claro).
+   Tokens e padrão de escopo seguem o Calendário (CalendarioPage.module.css). */
+.page {
+  --surface: #ede6e2;
+  --surface-raised: #faf6f3;
+  --surface-field: #fffdfb;
+  --surface-inset: #f3ece6;
+  --ink: #141c31;
+  --ink-subtle: #636161;
+  --border: #d7c8bf;
+  --border-strong: #141c31;
+  --accent: #7d3c19;
+  --accent-fg: #ede6e2;
+  --accent-soft: #f1e4db;
+  --midnight: #141c31;
+
+  --success-bg: #ecf3ec;
+  --success-border: #cadeca;
+  --success-fg: #2f6b3f;
+  --danger: #c0392b;
+
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+
+  --radius-md: 10px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-2xl: 24px;
+  --radius-full: 9999px;
+
+  --shadow-sm: 0 1px 3px rgba(15, 16, 21, 0.05);
+  --shadow-card: 0 10px 30px rgba(15, 16, 21, 0.09);
+
+  --font-sans: 'Comfortaa Variable Font wght', 'Comfortaa', 'Nunito Sans', system-ui, -apple-system, sans-serif;
+
+  background: var(--surface);
+  font-family: var(--font-sans);
+  color: var(--ink);
+}
+
+/* Anel de foco para navegação por teclado. */
+.page a:focus-visible,
+.page button:focus-visible,
+.page input:focus-visible,
+.page select:focus-visible,
+.page label:focus-within {
+  outline: 2px solid var(--border-strong);
+  outline-offset: 2px;
+}
+
+.shell {
+  width: 100%;
+  max-width: 760px;
+  margin: 0 auto;
+  background: var(--surface-raised);
+  border: 1px solid #e4dcd4;
+  border-radius: var(--radius-2xl);
+  box-shadow: var(--shadow-card);
+  overflow: hidden;
+}
+
+/* Faixa de cabeçalho da marca */
+.headerBand {
+  background: var(--midnight);
+  color: var(--accent-fg);
+  padding: 20px var(--space-10);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.brandGroup {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.brandMark {
+  height: 30px;
+  width: auto;
+  display: block;
+  flex-shrink: 0;
+}
+
+.brandName {
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+.stepTag {
+  font-size: 12px;
+  font-weight: 600;
+  color: #c9c2d6;
+  background: rgba(237, 230, 226, 0.1);
+  padding: 6px 12px;
+  border-radius: var(--radius-full);
+  white-space: nowrap;
+}
+
+.body {
+  padding: var(--space-8) var(--space-10) var(--space-10);
+}
+
+.title {
+  margin: 0 0 6px;
+  font-size: 28px;
+  line-height: 1.2;
+  font-weight: 700;
+}
+
+.subtitle {
+  margin: 0 0 var(--space-6);
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--ink-subtle);
+  max-width: 60ch;
+}
+
+/* Stepper */
+.stepper {
+  margin-bottom: var(--space-8);
+}
+
+.stepBars {
+  display: flex;
+  gap: 10px;
+}
+
+.stepBar {
+  flex: 1;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--border);
+  transition: background 0.3s;
+}
+
+.stepBarDone {
+  background: var(--midnight);
+}
+
+.stepBarActive {
+  background: var(--accent);
+}
+
+.stepLabels {
+  display: flex;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.stepLabel {
+  flex: 1;
+  font-size: 12px;
+  font-weight: 600;
+  color: #9a8e84;
+}
+
+.stepLabelOn {
+  color: var(--ink);
+}
+
+/* Cabeçalho de seção */
+.section {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 18px;
+}
+
+.sectionSpaced {
+  margin-top: var(--space-8);
+}
+
+.sectionIcon {
+  width: 34px;
+  height: 34px;
+  border-radius: var(--radius-md);
+  background: var(--accent-soft);
+  color: var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.sectionTitle {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 600;
+}
+
+/* Campos (overrides sobre o react-bootstrap) */
+.page :global(.form-label) {
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 6px;
+  color: var(--ink);
+}
+
+.req {
+  color: var(--accent);
+}
+
+.page :global(.form-control),
+.page :global(.form-select) {
+  padding: 12px 14px;
+  font-size: 15px;
+  color: var(--ink);
+  background: var(--surface-field);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-md);
+  font-family: var(--font-sans);
+}
+
+.page :global(.form-control::placeholder) {
+  color: #a79a8e;
+}
+
+.page :global(.form-control:focus),
+.page :global(.form-select:focus) {
+  border-color: var(--border-strong);
+  box-shadow: 0 0 0 3px rgba(20, 28, 49, 0.08);
+  background: #fff;
+}
+
+.page :global(.form-control.is-invalid),
+.page :global(.form-select.is-invalid) {
+  border-color: var(--danger);
+}
+
+.fieldError {
+  font-size: 12px;
+  color: var(--danger);
+  margin-top: 4px;
+}
+
+/* Pílulas de tipo de documento */
+.pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.pill {
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 8px 16px;
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  background: transparent;
+  color: var(--ink);
+  border: 1.5px solid #cbbcae;
+  transition: all 0.15s;
+}
+
+.pill:hover {
+  border-color: var(--midnight);
+}
+
+.pillActive {
+  background: var(--midnight);
+  color: var(--accent-fg);
+  border-color: var(--midnight);
+}
+
+/* Área de upload */
+.dropzone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  text-align: center;
+  border: 2px dashed #cbb6a6;
+  border-radius: var(--radius-xl);
+  background: var(--surface-field);
+  padding: 26px;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.dropzone:hover {
+  border-color: var(--accent);
+  background: #fff;
+}
+
+.dropzoneInvalid {
+  border-color: var(--danger);
+}
+
+.dropIcon {
+  color: var(--accent);
+}
+
+.dropTitle {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.dropLink {
+  color: var(--accent);
+  text-decoration: underline;
+}
+
+.dropHint {
+  font-size: 12px;
+  color: var(--ink-subtle);
+}
+
+.visuallyHidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  border: 0;
+}
+
+.fileChip {
+  margin-top: 10px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--success-bg);
+  border: 1px solid var(--success-border);
+  border-radius: var(--radius-lg);
+  padding: 10px 12px;
+}
+
+.fileChipIcon {
+  color: var(--success-fg);
+  flex-shrink: 0;
+  display: flex;
+}
+
+.fileChipMeta {
+  flex: 1;
+  min-width: 0;
+}
+
+.fileChipName {
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.fileChipSize {
+  font-size: 11px;
+  color: var(--ink-subtle);
+}
+
+.iconBtn {
+  font: inherit;
+  background: transparent;
+  border: none;
+  color: var(--ink-subtle);
+  cursor: pointer;
+  padding: 4px;
+  line-height: 0;
+  display: flex;
+}
+
+/* Cartões de entrada repetível (cartão / renda / custo) */
+.entryCard {
+  background: var(--surface-field);
+  border: 1px solid #e4dcd4;
+  border-radius: var(--radius-xl);
+  padding: 20px;
+  box-shadow: var(--shadow-sm);
+}
+
+.entryHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.entryBadge {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--accent);
+  background: var(--accent-soft);
+  padding: 4px 12px;
+  border-radius: var(--radius-full);
+}
+
+.entryRemove {
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-subtle);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.entryRemove:hover {
+  color: var(--danger);
+}
+
+/* Painel de parcelamento */
+.subPanel {
+  margin-top: 14px;
+  padding: 16px;
+  background: var(--surface-inset);
+  border: 1px solid #e3d6ca;
+  border-radius: var(--radius-lg);
+}
+
+/* Botão fantasma de adicionar */
+.ghostAdd {
+  font: inherit;
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--ink);
+  background: transparent;
+  border: 1.5px dashed #c0ad9e;
+  border-radius: var(--radius-lg);
+  padding: 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.ghostAdd:hover {
+  border-color: var(--accent);
+  background: #fff;
+}
+
+/* Nota informativa (substitui o Alert amarelo) */
+.note {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  background: var(--surface-inset);
+  border: 1px solid #e3d6ca;
+  border-radius: var(--radius-lg);
+  padding: 14px 16px;
+}
+
+.noteIcon {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-md);
+  background: #e7d6c8;
+  color: var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.noteText {
+  font-size: 13px;
+  line-height: 1.5;
+  color: #4a4a4a;
+}
+
+/* Checkbox */
+.check {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 14px;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.check input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--accent);
+}
+
+/* Ações */
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 30px;
+  padding-top: 22px;
+  border-top: 1px solid #e4dcd4;
+}
+
+.trust {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--ink-subtle);
+  font-size: 12px;
+  max-width: 52ch;
+}
+
+.btnPrimary {
+  font: inherit;
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--accent-fg);
+  background: var(--midnight);
+  border: none;
+  padding: 14px 28px;
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.btnPrimary:hover {
+  background: #25345a;
+}
+
+.btnPrimary:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.btnSubmit {
+  background: var(--accent);
+}
+
+.btnSubmit:hover {
+  background: #5c2c12;
+}
+
+.btnSecondary {
+  font: inherit;
+  font-weight: 600;
+  font-size: 15px;
+  color: var(--ink);
+  background: transparent;
+  border: 1.5px solid var(--midnight);
+  padding: 12px 24px;
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.btnSecondary:hover {
+  background: var(--midnight);
+  color: var(--accent-fg);
+}
+
+/* Erro de envio */
+.submitError {
+  margin-top: var(--space-4);
+  background: #fbeceb;
+  border: 1px solid #e7b7b2;
+  color: #8f2b22;
+  border-radius: var(--radius-lg);
+  padding: 12px 16px;
+  font-size: 14px;
+}
+
+/* Tela de sucesso */
+.success {
+  max-width: 560px;
+  margin: 0 auto;
+  background: var(--surface-raised);
+  border: 1px solid #e4dcd4;
+  border-radius: var(--radius-2xl);
+  box-shadow: var(--shadow-card);
+  padding: 48px 40px;
+  text-align: center;
+}
+
+.successIcon {
+  width: 72px;
+  height: 72px;
+  margin: 0 auto 20px;
+  border-radius: var(--radius-full);
+  background: var(--accent-soft);
+  color: var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.successTitle {
+  margin: 0 0 8px;
+  font-size: 24px;
+  font-weight: 700;
+}
+
+.successText {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--ink-subtle);
+}
+
+/* Grade de campos */
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+}
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.col {
+  flex: 1 1 220px;
+  min-width: 0;
+}
+
+.colNarrow {
+  flex: 1 1 120px;
+  min-width: 0;
+}
+
+.colWide {
+  flex: 2 1 260px;
+  min-width: 0;
+}
+
+/* CEP com botão acoplado */
+.cepGroup {
+  display: flex;
+}
+
+.cepGroup :global(.form-control) {
+  border-right: none;
+  border-radius: var(--radius-md) 0 0 var(--radius-md);
+}
+
+.cepBtn {
+  font: inherit;
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--accent-fg);
+  background: var(--midnight);
+  border: none;
+  padding: 0 18px;
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+@media (max-width: 575px) {
+  .body {
+    padding: var(--space-6) var(--space-5) var(--space-8);
+  }
+  .headerBand {
+    padding: 16px var(--space-5);
+  }
+}
