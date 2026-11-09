@@ -1044,6 +1044,19 @@
   border-color: var(--status-atrasado);
 }
 
+/* Badge de status que vira botão (mobile): toca pra escolher pagar/guardar ou editar. */
+.dayListBadgeButton {
+  background: transparent;
+  font-family: inherit;
+  cursor: pointer;
+  transition: border-color 0.12s ease, color 0.12s ease;
+}
+
+.dayListBadgeButton:hover {
+  border-color: var(--interactive);
+  color: var(--interactive);
+}
+
 /* heading-sm */
 .dayListAmount {
   font-size: 14px;
