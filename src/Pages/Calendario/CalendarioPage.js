@@ -442,11 +442,11 @@ export default function CalendarioPage() {
                 <MonthGrid dados={dados} mes={mes} onEditar={abrirPainelEditar} onTogglePago={alternarPago} onPedirAcao={pedirAcaoPagamento} />
               </div>
               <div className={styles.mobileOnly}>
-                <MobileAgenda dados={dados} mes={mes} onEditar={abrirPainelEditar} onTogglePago={alternarPago} onPedirAcao={pedirAcaoPagamento} />
+                <MobileAgenda dados={dados} mes={mes} onEditar={abrirPainelEditar} onTogglePago={alternarPago} />
               </div>
             </>
           ) : (
-            <AgendaView dados={dados} onEditar={abrirPainelEditar} onTogglePago={alternarPago} onPedirAcao={pedirAcaoPagamento} />
+            <AgendaView dados={dados} onEditar={abrirPainelEditar} onTogglePago={alternarPago} />
           )}
           <Legend categorias={dados.categorias} />
           {vista === 'mes' && dados.semData.length > 0 && (
@@ -740,7 +740,7 @@ function Item({ item, moeda, onEditar, onTogglePago, onPedirAcao }) {
  * mockup original pra celular: mini-calendário só com pontinhos por
  * categoria + lista de detalhe do dia selecionado abaixo.
  */
-function MobileAgenda({ dados, mes, onEditar, onTogglePago, onPedirAcao }) {
+function MobileAgenda({ dados, mes, onEditar, onTogglePago }) {
   const hojeNoMes = dados.dias.some((d) => d.data === dados.hoje);
   const [diaSelecionado, setDiaSelecionado] = useState(hojeNoMes ? dados.hoje : dados.dias[0]?.data);
 
@@ -755,7 +755,7 @@ function MobileAgenda({ dados, mes, onEditar, onTogglePago, onPedirAcao }) {
 
   return (
     <div className={styles.mobileAgenda}>
-      <DayList dia={diaAtual} hoje={dados.hoje} moeda={dados.moeda} onEditar={onEditar} onTogglePago={onTogglePago} onPedirAcao={onPedirAcao} />
+      <DayList dia={diaAtual} hoje={dados.hoje} moeda={dados.moeda} onEditar={onEditar} onTogglePago={onTogglePago} />
       <MiniCalendar mes={mes} dias={dados.dias} hoje={dados.hoje} selecionado={diaAtual.data} onSelecionar={setDiaSelecionado} />
     </div>
   );
@@ -819,7 +819,7 @@ function MiniCell({ dia, isHoje, isSelecionado, onSelecionar }) {
   );
 }
 
-function DayList({ dia, hoje, moeda, onEditar, onTogglePago, onPedirAcao, comIcone }) {
+function DayList({ dia, hoje, moeda, onEditar, onTogglePago, comIcone }) {
   return (
     <div className={styles.dayList}>
       <div className={styles.dayListHead}>
@@ -827,27 +827,21 @@ function DayList({ dia, hoje, moeda, onEditar, onTogglePago, onPedirAcao, comIco
         {dia.data === hoje && <span className={styles.dayListBadge}>hoje</span>}
       </div>
       {dia.itens.length === 0 ? (
-        <div className={styles.dayListVazio}>Nenhum lançamento neste dia.</div>
+        <div className={styles.dayListVazio}>Nenhum lançamento.</div>
       ) : (
-        dia.itens.map((item, idx) => <DayListRow key={idx} item={item} moeda={moeda} onEditar={onEditar} onTogglePago={onTogglePago} onPedirAcao={onPedirAcao} comIcone={comIcone} />)
+        // Chave por identidade (não por posição): senão, ao trocar de dia, o React
+        // reaproveita o mesmo botão da linha anterior e o check "desliza" do estado dela.
+        dia.itens.map((item, idx) => <DayListRow key={`${item.tipo}-${item.linhaPlanilha ?? idx}-${item.data ?? dia.data}`} item={item} moeda={moeda} onEditar={onEditar} onTogglePago={onTogglePago} comIcone={comIcone} />)
       )}
     </div>
   );
 }
 
-function DayListRow({ item, moeda, onEditar, onTogglePago, onPedirAcao, comIcone }) {
+function DayListRow({ item, moeda, onEditar, onTogglePago, comIcone }) {
   const concluido = itemConcluido(item);
   const IconeCat = iconeCategoria(item.categoria.nome);
   const alternavel = item.tipo === 'custo' || item.tipo === 'reserva';
-  const badgeAcionavel = alternavel && !concluido && typeof onPedirAcao === 'function';
   const classeNome = concluido ? styles.itemNamePago : '';
-  const statusLabel =
-    item.tipo === 'renda'
-      ? null
-      : item.tipo === 'reserva'
-        ? concluido ? 'Guardado' : 'A guardar'
-        : item.atrasado ? 'Atrasado' : concluido ? 'Pago' : 'Não pago';
-  const statusClasse = item.atrasado ? styles.dayListBadgeAtrasado : concluido ? styles.dayListBadgePago : styles.dayListBadgePendente;
   const valorClasse =
     item.tipo === 'renda'
       ? styles.itemAmountReceita
@@ -888,25 +882,11 @@ function DayListRow({ item, moeda, onEditar, onTogglePago, onPedirAcao, comIcone
         <div className={`${styles.itemName} ${classeNome}`}>{nomeComParcela(item)}</div>
         {item.tipo !== 'renda' && <div className={styles.semDataMeta}>{item.categoria.nome}</div>}
       </div>
-      {statusLabel && !comIcone && (
-        badgeAcionavel ? (
-          <button
-            type="button"
-            className={`${styles.dayListBadgeBase} ${statusClasse} ${styles.dayListBadgeButton}`}
-            onClick={(ev) => { ev.stopPropagation(); onPedirAcao(item); }}
-            aria-label={`${statusLabel} · tocar para pagar ou editar`}
-          >
-            {statusLabel}
-          </button>
-        ) : (
-          <span className={`${styles.dayListBadgeBase} ${statusClasse}`}>{statusLabel}</span>
-        )
-      )}
       <span className={`${styles.dayListAmount} ${valorClasse}`}>
         {item.tipo === 'renda' ? '+' : ''}
         {formatarMoeda(item.valor, moeda)}
       </span>
-      {comIcone && alternavel && (
+      {alternavel && (
         <button
           type="button"
           className={`${styles.agendaCheck} ${item.tipo === 'reserva' ? styles.agendaCheckReserva : ''} ${concluido ? styles.agendaCheckOn : ''}`}
@@ -941,7 +921,7 @@ function ViewToggle({ vista, onChange }) {
   );
 }
 
-function AgendaView({ dados, onEditar, onTogglePago, onPedirAcao }) {
+function AgendaView({ dados, onEditar, onTogglePago }) {
   const diasComItens = dados.dias.filter((d) => d.itens.length > 0);
   const vazio = diasComItens.length === 0 && dados.semData.length === 0;
   return (
@@ -958,7 +938,6 @@ function AgendaView({ dados, onEditar, onTogglePago, onPedirAcao }) {
               moeda={dados.moeda}
               onEditar={onEditar}
               onTogglePago={onTogglePago}
-              onPedirAcao={onPedirAcao}
               comIcone
             />
           ))}

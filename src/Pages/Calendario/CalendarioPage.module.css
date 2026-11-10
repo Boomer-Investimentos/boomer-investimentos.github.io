@@ -1182,45 +1182,6 @@
   border-bottom: none;
 }
 
-.dayListBadgeBase {
-  font-size: 11px;
-  line-height: 16px;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  padding: 2px var(--space-2);
-  border-radius: var(--radius-full);
-  border: 1px solid;
-  flex: none;
-}
-
-.dayListBadgePago {
-  color: var(--ink-subtle);
-  border-color: var(--border);
-}
-
-.dayListBadgePendente {
-  color: var(--ink);
-  border-color: var(--border-strong);
-}
-
-.dayListBadgeAtrasado {
-  color: var(--status-atrasado);
-  border-color: var(--status-atrasado);
-}
-
-/* Badge de status que vira botão (mobile): toca pra escolher pagar/guardar ou editar. */
-.dayListBadgeButton {
-  background: transparent;
-  font-family: inherit;
-  cursor: pointer;
-  transition: border-color 0.12s ease, color 0.12s ease;
-}
-
-.dayListBadgeButton:hover {
-  border-color: var(--interactive);
-  color: var(--interactive);
-}
-
 /* Segmented control Mês / Agenda */
 .viewToggle {
   display: flex;
