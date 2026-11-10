@@ -334,13 +334,12 @@
   opacity: 0.5;
 }
 
-/* Hoje/atrasado se diferenciam pela borda (accent/status-atrasado) + cor do
-   número do dia. Hoje ganha também um preenchimento sutil (anel), já que
-   accent e status-atrasado são tons próximos de laranja/vermelho — sem o
-   preenchimento, a borda sozinha não distingue bem os dois. */
+/* Hoje: faixa terracota no topo do card (.cellToday) + número terracota, sem
+   contornar o card nem usar círculo. Atrasado: borda vermelha fina e número
+   vermelho com um ícone de alerta ao lado (.cellDayLate), sem fundo — discreto,
+   pra não ofuscar o "hoje". */
 .cellToday {
-  border-color: var(--accent);
-  background: color-mix(in srgb, var(--accent) 12%, var(--surface-raised));
+  box-shadow: inset 0 3px 0 var(--accent);
 }
 
 .cellLate {
@@ -365,6 +364,19 @@
 
 .cellDayToday {
   color: var(--accent);
+}
+
+.cellDayLate {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  color: var(--status-atrasado);
+}
+
+.cellDayLate svg {
+  flex: none;
+  width: 13px;
+  height: 13px;
 }
 
 /* caption-strong */
@@ -1107,6 +1119,17 @@
 /* Selecionado (mas não hoje) usa border-strong; hoje continua accent
    (.cellToday, reaproveitado do grid desktop) — hoje tem prioridade visual. */
 .miniCellSelecionado {
+  border-color: var(--border-strong);
+}
+
+/* Atrasado no mini-calendário: o .miniCell vem depois de .cellLate no arquivo e
+   sobrescreveria a borda/fundo, então repete com mais especificidade. Se o dia
+   atrasado também for o selecionado, a borda clara de seleção vence. */
+.miniCell.cellLate {
+  border-color: var(--status-atrasado);
+}
+
+.miniCell.miniCellSelecionado {
   border-color: var(--border-strong);
 }
 

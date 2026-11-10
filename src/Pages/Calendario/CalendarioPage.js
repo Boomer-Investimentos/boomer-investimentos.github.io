@@ -637,7 +637,10 @@ function DayCell({ dia, hoje, moeda, onEditar, onTogglePago, onPedirAcao }) {
   return (
     <div className={classe}>
       <div className={styles.cellHead}>
-        <span className={`${styles.cellDay} ${isHoje ? styles.cellDayToday : ''}`}>{dia.dia}</span>
+        <span className={`${styles.cellDay} ${isHoje ? styles.cellDayToday : atrasado ? styles.cellDayLate : ''}`}>
+          {atrasado && !isHoje && <TriangleAlert size={13} strokeWidth={2.4} role="img" aria-label="Em atraso" />}
+          {dia.dia}
+        </span>
         {totalSaida > 0 && <span className={styles.cellDayTotal}>−{formatarNumero(totalSaida, moeda)}</span>}
       </div>
       {dia.itens.map((item, idx) => (
@@ -801,7 +804,7 @@ function MiniCell({ dia, isHoje, isSelecionado, onSelecionar }) {
   const classe = [
     styles.miniCell,
     isHoje ? styles.cellToday : '',
-    !isHoje && isSelecionado ? styles.miniCellSelecionado : '',
+    isSelecionado ? styles.miniCellSelecionado : '',
     !isHoje && atrasado ? styles.cellLate : '',
   ]
     .filter(Boolean)
@@ -809,7 +812,10 @@ function MiniCell({ dia, isHoje, isSelecionado, onSelecionar }) {
 
   return (
     <button type="button" className={classe} onClick={() => onSelecionar(dia.data)}>
-      <span className={`${styles.cellDay} ${isHoje ? styles.cellDayToday : ''}`}>{dia.dia}</span>
+      <span className={`${styles.cellDay} ${isHoje ? styles.cellDayToday : atrasado ? styles.cellDayLate : ''}`}>
+        {atrasado && !isHoje && <TriangleAlert size={13} strokeWidth={2.4} role="img" aria-label="Em atraso" />}
+        {dia.dia}
+      </span>
       <span className={styles.miniDots}>
         {dia.itens.slice(0, 3).map((item, idx) => (
           <span key={idx} className={styles.miniDot} style={{ background: item.categoria.cor }} />
