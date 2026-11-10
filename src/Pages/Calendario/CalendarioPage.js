@@ -559,7 +559,7 @@ function SummaryCards({ totals, moeda }) {
       <SummaryCard label="A pagar" icone={Clock} valor={totals.pendente} moeda={moeda} cor="var(--ink)" />
       <SummaryCard label="Em atraso" icone={TriangleAlert} valor={totals.atrasado} moeda={moeda} cor="var(--status-atrasado)" />
       <SummaryCard label="Entradas" icone={TrendingUp} valor={totals.receita} moeda={moeda} cor="var(--status-receita)" />
-      <SummaryCard label="Reservas" icone={PiggyBank} valor={totals.reservado || 0} moeda={moeda} cor="#7c3aed" />
+      <SummaryCard label="Reservas" icone={PiggyBank} valor={totals.reservado || 0} moeda={moeda} cor="var(--status-reserva)" />
       <div className={styles.summaryDivider} aria-hidden="true" />
       <SummaryCard
         label="Disponível"
@@ -1155,7 +1155,7 @@ function PaymentPanel({ mes, erro, nomesCusto = [], categoriasCusto, modo, tipoI
       style={{
         position: 'fixed',
         inset: 0,
-        background: 'rgba(0,0,0,.55)',
+        background: 'var(--scrim)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -1436,7 +1436,7 @@ function LoginModal({ email, onEmailChange, mensagem, onEnviar, onFechar }) {
       style={{
         position: 'fixed',
         inset: 0,
-        background: 'rgba(0,0,0,.55)',
+        background: 'var(--scrim)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -1480,7 +1480,7 @@ function ConfirmModal({ titulo, mensagem, confirmarLabel = 'Confirmar', cancelar
       style={{
         position: 'fixed',
         inset: 0,
-        background: 'rgba(0,0,0,.55)',
+        background: 'var(--scrim)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -1525,7 +1525,7 @@ function AcaoPagamentoModal({ item, onPagar, onEditar, onCancelar }) {
       style={{
         position: 'fixed',
         inset: 0,
-        background: 'rgba(0,0,0,.55)',
+        background: 'var(--scrim)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',

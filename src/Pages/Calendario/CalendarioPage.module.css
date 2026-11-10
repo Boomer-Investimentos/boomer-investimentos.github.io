@@ -16,6 +16,11 @@
 
   --status-atrasado: #e5484d;
   --status-receita: #6fc49b;
+  --status-reserva: #7c3aed;
+  --status-reserva-fg: #b79cf5; /* tom claro p/ texto/ícone sobre fundo tingido de reserva */
+
+  /* Véu atrás dos modais. */
+  --scrim: rgba(0, 0, 0, 0.55);
 
   --space-1: 4px;
   --space-2: 8px;
@@ -27,6 +32,9 @@
   --space-10: 40px;
   --space-12: 48px;
 
+  /* Escala de raios (intencional): full = controles (botões, inputs, seletores,
+     chips); lg = cards, células e painéis; md/sm = elementos internos pequenos
+     (mini-células, avisos, opções internas); 50% = bolinhas e checks. */
   --radius-sm: 4px;
   --radius-md: 8px;
   --radius-lg: 12px;
@@ -702,7 +710,7 @@
   display: flex;
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-full);
   padding: var(--space-1);
   margin-bottom: var(--space-4);
 }
@@ -711,7 +719,7 @@
   flex: 1;
   text-align: center;
   padding: var(--space-3) 0;
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-full);
   font-size: 12px;
   font-weight: 600;
   color: var(--ink-subtle);
@@ -1224,9 +1232,9 @@
 }
 
 .agendaCheckReserva.agendaCheckOn {
-  background: rgba(124, 58, 237, 0.18);
-  border-color: rgba(124, 58, 237, 0.6);
-  color: #b79cf5;
+  background: color-mix(in srgb, var(--status-reserva) 18%, transparent);
+  border-color: color-mix(in srgb, var(--status-reserva) 60%, transparent);
+  color: var(--status-reserva-fg);
 }
 
 /* heading-sm */
