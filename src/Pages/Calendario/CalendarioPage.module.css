@@ -776,7 +776,7 @@
   top: 4px;
   bottom: 4px;
   left: 4px;
-  width: calc((100% - 8px) / 3);
+  width: calc((100% - 8px) / var(--n, 3));
   border-radius: var(--radius-full);
   background: var(--interactive);
   box-shadow: 0 1px 3px rgba(15, 16, 21, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.25);
@@ -802,6 +802,24 @@
 .segmentedBtnActive {
   color: var(--interactive-fg);
   font-weight: 700;
+}
+
+/* Variante compacta (frequência): controle secundário, um pouco menor que o
+   seletor de tipo pra manter a hierarquia. */
+.segmentedSm {
+  padding: 3px;
+}
+
+.segmentedSm .segmentedThumb {
+  top: 3px;
+  bottom: 3px;
+  left: 3px;
+  width: calc((100% - 6px) / var(--n, 3));
+}
+
+.segmentedSm .segmentedBtn {
+  padding: 6px 0;
+  font-size: 13px;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -838,39 +856,11 @@
   color: var(--ink);
 }
 
+/* Interruptor terracota (Parcelado, Repetir todo mês). O <input> nativo fica
+   escondido (acessível por teclado/leitor de tela); .switchTrack desenha o
+   trilho e reflete o estado por CSS. A linha inteira (label) é clicável. */
 .switchRow {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  margin-bottom: var(--space-6);
-}
-
-.switchTrack {
-  width: 36px;
-  height: 20px;
-  border-radius: var(--radius-full);
-  background: var(--surface-raised);
-  padding: 2px;
-  display: flex;
-  align-items: center;
-  cursor: pointer;
-  border: none;
-}
-
-.switchTrackOn {
-  background: var(--accent);
-  justify-content: flex-end;
-}
-
-.switchThumb {
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  background: var(--ink);
-}
-
-/* body-sm */
-.checkRow {
+  position: relative;
   display: flex;
   align-items: center;
   gap: var(--space-3);
@@ -878,11 +868,68 @@
   cursor: pointer;
 }
 
-.checkRow input {
-  accent-color: var(--accent);
+/* Última linha antes dos botões: mais espaço embaixo. */
+.switchRowFim {
+  margin-bottom: var(--space-6);
+}
+
+.switchInput {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Desligado: o trilho precisa se destacar do painel (surface-raised); antes tinha
+   a mesma cor dele e o estado "desligado" quase sumia. */
+.switchTrack {
+  flex: none;
+  box-sizing: border-box;
+  width: 36px;
+  height: 20px;
+  padding: 2px;
+  border-radius: var(--radius-full);
+  background: color-mix(in srgb, var(--ink-subtle) 30%, var(--surface-raised));
+  display: flex;
+  align-items: center;
+  transition: background 0.2s ease;
+}
+
+.switchThumb {
   width: 16px;
   height: 16px;
-  margin: 0;
+  border-radius: 50%;
+  background: var(--ink);
+  transition: transform 0.2s ease;
+}
+
+/* Ligado em creme (a cor de "selecionado" do painel: pílulas dos seletores, chip
+   ativo, Salvar), com a bolinha escura; o terracota fica reservado pro "hoje". */
+.switchInput:checked + .switchTrack {
+  background: var(--interactive);
+}
+
+.switchInput:checked + .switchTrack .switchThumb {
+  transform: translateX(16px);
+  background: var(--interactive-fg);
+}
+
+.switchRow:hover .switchInput:not(:checked) + .switchTrack {
+  background: color-mix(in srgb, var(--ink-subtle) 42%, var(--surface-raised));
+}
+
+.switchInput:focus-visible + .switchTrack {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .switchTrack,
+  .switchThumb {
+    transition: none;
+  }
 }
 
 .switchLabel {
@@ -1355,5 +1402,47 @@
   .segmentedBtn,
   .statusOption {
     min-height: 44px;
+  }
+
+  /* Painel de adicionar/editar. Interruptores (Parcelado, Repetir todo mês): a
+     linha inteira (label) é o alvo, então ganha altura; as margens compensam o
+     que cresce ((44 - 20) / 2 = 12px), pra nada sair do lugar visualmente. */
+  .switchRow {
+    min-height: 44px;
+    margin-top: -12px;
+    margin-bottom: 4px;
+  }
+
+  .switchRowFim {
+    margin-bottom: 12px;
+  }
+
+  /* Chips (35px): área clicável maior via pseudo-elemento invisível. O chip tem
+     borda de 1px (inset -5.5px fecha 44px). O espaço entre as linhas de chips
+     sobe de 8 para 9px: assim as áreas de 44px se encostam sem se sobrepor. */
+  .chip {
+    position: relative;
+  }
+
+  .chip::after {
+    content: '';
+    position: absolute;
+    inset: -5.5px 0;
+  }
+
+  .chipsRow {
+    row-gap: 9px;
+  }
+
+  /* Seletor compacto (frequência): mantém o tamanho visual menor e amplia só a
+     área clicável (o botão não tem borda, então -6.5px fecha ~44px). */
+  .segmentedSm .segmentedBtn {
+    min-height: 0;
+  }
+
+  .segmentedSm .segmentedBtn::after {
+    content: '';
+    position: absolute;
+    inset: -6.5px 0;
   }
 }

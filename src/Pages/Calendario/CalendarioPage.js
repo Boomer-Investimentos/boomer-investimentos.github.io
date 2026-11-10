@@ -1031,6 +1031,67 @@ function SemData({ itens, moeda, onEditar, onTogglePago }) {
 
 const FREQUENCIAS_RENDA = ['Mensal', 'Semanal', 'Única'];
 const FREQUENCIAS_RESERVA = ['Mensal', 'Única'];
+const OPCOES_TIPO = [
+  { valor: 'custo', label: 'Custo' },
+  { valor: 'renda', label: 'Renda' },
+  { valor: 'reserva', label: 'Reserva' },
+];
+
+// Interruptor terracota (Parcelado, Repetir todo mês). Mantém um <input
+// type="checkbox" role="switch"> escondido, então teclado e leitor de tela seguem
+// funcionando; o trilho desenhado ao lado reflete o estado via CSS. A linha
+// inteira é clicável. `fim`: última linha antes dos botões (mais espaço embaixo).
+function Interruptor({ marcado, onChange, fim, children }) {
+  return (
+    <label className={`${styles.switchRow} ${fim ? styles.switchRowFim : ''}`}>
+      <input
+        type="checkbox"
+        role="switch"
+        className={styles.switchInput}
+        checked={marcado}
+        onChange={(e) => onChange(e.target.checked)}
+      />
+      <span className={styles.switchTrack} aria-hidden="true">
+        <span className={styles.switchThumb} />
+      </span>
+      <span className={styles.switchLabel}>{children}</span>
+    </label>
+  );
+}
+
+// Seletor segmentado com a pílula deslizante (estilo "liquid glass"). `--n` ajusta
+// a largura da pílula ao número de opções (3 em Custo/Renda/Reserva e na
+// frequência de renda; 2 na de reserva). Se o valor atual não estiver entre as
+// opções, a pílula some em vez de marcar a primeira.
+function Segmentado({ opcoes, valor, onChange, ariaLabel, compacto }) {
+  const indice = opcoes.findIndex((o) => o.valor === valor);
+  return (
+    <div
+      className={`${styles.segmented} ${compacto ? styles.segmentedSm : ''}`}
+      role="tablist"
+      aria-label={ariaLabel}
+      style={{ '--n': opcoes.length }}
+    >
+      <span
+        className={styles.segmentedThumb}
+        style={{ transform: `translateX(${Math.max(indice, 0) * 100}%)`, opacity: indice < 0 ? 0 : 1 }}
+        aria-hidden="true"
+      />
+      {opcoes.map((o) => (
+        <button
+          key={o.valor}
+          type="button"
+          role="tab"
+          aria-selected={valor === o.valor}
+          className={`${styles.segmentedBtn} ${valor === o.valor ? styles.segmentedBtnActive : ''}`}
+          onClick={() => onChange(o.valor)}
+        >
+          {o.label}
+        </button>
+      ))}
+    </div>
+  );
+}
 const DIAS_SEMANA_OPCOES = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'];
 
 function semAcentoLocal(s) {
@@ -1189,29 +1250,16 @@ function PaymentPanel({ mes, erro, nomesCusto = [], categoriasCusto, modo, tipoI
       <div className={styles.panelSubtitle}>{tituloMes(mes)}</div>
 
       {modo === 'criar' && (
-        <div className={styles.segmented} role="tablist" aria-label="Tipo de lançamento">
-          <span
-            className={styles.segmentedThumb}
-            style={{ transform: `translateX(${['custo', 'renda', 'reserva'].indexOf(tipo) * 100}%)` }}
-            aria-hidden="true"
-          />
-          {[['custo', 'Custo'], ['renda', 'Renda'], ['reserva', 'Reserva']].map(([val, label]) => (
-            <button
-              key={val}
-              type="button"
-              role="tab"
-              aria-selected={tipo === val}
-              className={`${styles.segmentedBtn} ${tipo === val ? styles.segmentedBtnActive : ''}`}
-              onClick={() => {
-                setTipo(val);
-                setFrequencia('Mensal');
-                setRepetirTodoMes(true);
-              }}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
+        <Segmentado
+          ariaLabel="Tipo de lançamento"
+          opcoes={OPCOES_TIPO}
+          valor={tipo}
+          onChange={(val) => {
+            setTipo(val);
+            setFrequencia('Mensal');
+            setRepetirTodoMes(true);
+          }}
+        />
       )}
 
       <label className={styles.fieldLabel}>{ehRenda ? 'Fonte' : 'Descrição'}</label>
@@ -1272,10 +1320,9 @@ function PaymentPanel({ mes, erro, nomesCusto = [], categoriasCusto, modo, tipoI
       </div>
 
       {modo === 'criar' && !ehRenda && !ehReserva && (
-        <label className={styles.checkRow}>
-          <input type="checkbox" checked={parcelado} onChange={(e) => setParcelado(e.target.checked)} />
-          <span className={styles.switchLabel}>Parcelado</span>
-        </label>
+        <Interruptor marcado={parcelado} onChange={setParcelado}>
+          Parcelado
+        </Interruptor>
       )}
 
       {comParcelas && (
@@ -1312,21 +1359,16 @@ function PaymentPanel({ mes, erro, nomesCusto = [], categoriasCusto, modo, tipoI
       {ehRenda || ehReserva ? (
         <>
           <label className={styles.fieldLabel}>Frequência</label>
-          <div className={styles.chipsRow}>
-            {(ehReserva ? FREQUENCIAS_RESERVA : FREQUENCIAS_RENDA).map((f) => (
-              <button
-                key={f}
-                type="button"
-                className={`${styles.chip} ${frequencia === f ? styles.chipActive : ''}`}
-                onClick={() => {
-                  setFrequencia(f);
-                  setRepetirTodoMes(f !== 'Única');
-                }}
-              >
-                {f}
-              </button>
-            ))}
-          </div>
+          <Segmentado
+            compacto
+            ariaLabel="Frequência"
+            opcoes={(ehReserva ? FREQUENCIAS_RESERVA : FREQUENCIAS_RENDA).map((f) => ({ valor: f, label: f }))}
+            valor={frequencia}
+            onChange={(f) => {
+              setFrequencia(f);
+              setRepetirTodoMes(f !== 'Única');
+            }}
+          />
         </>
       ) : (
         <>
@@ -1395,17 +1437,9 @@ function PaymentPanel({ mes, erro, nomesCusto = [], categoriasCusto, modo, tipoI
       )}
 
       {!comParcelas && (
-        <div className={styles.switchRow}>
-          <button
-            type="button"
-            className={`${styles.switchTrack} ${repetirTodoMes ? styles.switchTrackOn : ''}`}
-            onClick={() => setRepetirTodoMes((v) => !v)}
-            aria-pressed={repetirTodoMes}
-          >
-            <span className={styles.switchThumb} />
-          </button>
-          <span className={styles.switchLabel}>Repetir todo mês</span>
-        </div>
+        <Interruptor marcado={repetirTodoMes} onChange={setRepetirTodoMes} fim>
+          Repetir todo mês
+        </Interruptor>
       )}
 
       {erro && <div className={styles.errorText}>{erro}</div>}
