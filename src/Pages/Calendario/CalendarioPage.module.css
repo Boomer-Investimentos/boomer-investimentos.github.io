@@ -356,7 +356,7 @@
 .item {
   display: flex;
   gap: var(--space-2);
-  align-items: flex-start;
+  align-items: center;
   cursor: default;
   border-radius: var(--radius-sm);
   min-width: 0;
@@ -374,11 +374,11 @@
   width: 5px;
   height: 5px;
   border-radius: 50%;
-  margin-top: 5px;
   flex: none;
 }
 
 .itemBody {
+  flex: 1;
   min-width: 0;
 }
 
@@ -388,6 +388,9 @@
   line-height: 17px;
   font-weight: 400;
   color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .itemNamePago {
@@ -401,6 +404,9 @@
   line-height: 17px;
   font-weight: 600;
   color: var(--ink);
+  flex: none;
+  white-space: nowrap;
+  margin-left: auto;
 }
 
 .itemAmountPendente {

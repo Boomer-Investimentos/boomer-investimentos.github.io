@@ -615,11 +615,11 @@ function Item({ item, moeda, onEditar, onPedirAcao }) {
       <span className={styles.itemDot} style={{ background: item.categoria.cor }} />
       <div className={styles.itemBody}>
         <div className={`${styles.itemName} ${classeNome}`}>{nomeComParcela(item)}</div>
-        <div className={`${styles.itemAmount} ${classeValor}`}>
-          {marca === '+' ? '+' : ''}
-          {formatarNumero(item.valor, moeda)}
-          {marca !== '+' ? marca : ''}
-        </div>
+      </div>
+      <div className={`${styles.itemAmount} ${classeValor}`}>
+        {marca === '+' ? '+' : ''}
+        {formatarNumero(item.valor, moeda)}
+        {marca !== '+' ? marca : ''}
       </div>
     </div>
   );
