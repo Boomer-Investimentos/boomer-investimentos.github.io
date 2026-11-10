@@ -1063,6 +1063,99 @@
   color: var(--interactive);
 }
 
+/* Segmented control Mês / Agenda */
+.viewToggle {
+  display: flex;
+  width: fit-content;
+  gap: 2px;
+  padding: 3px;
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  margin: 0 auto var(--space-5);
+}
+
+.viewToggleBtn {
+  padding: var(--space-2) var(--space-5);
+  border: none;
+  background: none;
+  color: var(--ink-subtle);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: color 0.12s ease, background 0.12s ease;
+}
+
+.viewToggleBtn:hover {
+  color: var(--ink);
+}
+
+.viewToggleBtnActive,
+.viewToggleBtnActive:hover {
+  background: var(--interactive);
+  color: var(--interactive-fg);
+}
+
+/* Visão Agenda: dias empilhados numa coluna única, centralizada. */
+.agendaView {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  max-width: 640px;
+  margin: 0 auto;
+}
+
+/* Ícone de categoria (Lucide) na linha da agenda, na cor da categoria. */
+.itemIcon {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+}
+
+/* Botão ✓ redondo da agenda: marca pago/guardado direto. Vazio = pendente;
+   tint verde = pago; tint roxo = reserva guardada. */
+.agendaCheck {
+  flex: none;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  margin-left: var(--space-1);
+  box-sizing: border-box;
+  border-radius: 50%;
+  border: 2px solid var(--ink-disabled);
+  background: transparent;
+  color: transparent;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.agendaCheck svg {
+  display: block;
+}
+
+.agendaCheck:hover {
+  border-color: var(--ink-subtle);
+}
+
+.agendaCheckOn {
+  background: rgba(111, 196, 155, 0.16);
+  border-color: rgba(111, 196, 155, 0.55);
+  color: var(--status-receita);
+}
+
+.agendaCheckReserva.agendaCheckOn {
+  background: rgba(124, 58, 237, 0.18);
+  border-color: rgba(124, 58, 237, 0.6);
+  color: #b79cf5;
+}
+
 /* heading-sm */
 .dayListAmount {
   font-size: 14px;

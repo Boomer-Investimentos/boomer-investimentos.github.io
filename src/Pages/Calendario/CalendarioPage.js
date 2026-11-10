@@ -1,5 +1,8 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { CircleCheck, Clock, TriangleAlert, TrendingUp, PiggyBank, Wallet } from 'lucide-react';
+import {
+  CircleCheck, Clock, TriangleAlert, TrendingUp, PiggyBank, Wallet, Check,
+  Coins, House, Laptop, Clapperboard, HeartPulse, Wrench, ShoppingBag, Dumbbell, Tag,
+} from 'lucide-react';
 import '@google/model-viewer';
 import styles from './CalendarioPage.module.css';
 import boomerBMark from '../../assets/imgs/boomer-b-mark.png';
@@ -78,6 +81,28 @@ function tituloDia(dataISO) {
   return nome.charAt(0).toUpperCase() + nome.slice(1);
 }
 
+// Mapa categoria -> ícone Lucide (chave por nome normalizado; `includes` cobre
+// variações como "Software e Ferramentas"). Fallback: Circle.
+const ICONES_CATEGORIA = {
+  recebimento: Coins,
+  moradia: House,
+  tecnologia: Laptop,
+  entretenimento: Clapperboard,
+  saude: HeartPulse,
+  software: Wrench,
+  compras: ShoppingBag,
+  esportes: Dumbbell,
+  reserva: PiggyBank,
+};
+function normalizarTexto(txt) {
+  return (txt || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
+}
+function iconeCategoria(nome) {
+  const chave = normalizarTexto(nome);
+  const achado = Object.keys(ICONES_CATEGORIA).find((k) => chave.includes(k));
+  return achado ? ICONES_CATEGORIA[achado] : Tag;
+}
+
 function LoadingLogo() {
   const ref = useRef(null);
   useEffect(() => {
@@ -126,6 +151,7 @@ export default function CalendarioPage() {
   const [painelItem, setPainelItem] = useState(null); // null | { modo: 'criar'|'editar', tipo: 'custo'|'renda', item? }
   const [confirmExcluir, setConfirmExcluir] = useState(null); // null | { tipo, form }
   const [acaoItem, setAcaoItem] = useState(null); // null | item (escolha pagar/editar no mobile)
+  const [vista, setVista] = useState('mes'); // 'mes' | 'agenda'
   // Tempo mínimo pra tela de carregamento inicial ficar visível, pra dar
   // chance da logo 3D (model-viewer) carregar e girar antes de trocar pra
   // tela real — sem isso, em conexões rápidas o fetch termina antes da logo
@@ -349,14 +375,21 @@ export default function CalendarioPage() {
             carregando={carregando}
           />
           <SummaryCards totals={dados.totals} moeda={dados.moeda} />
-          <div className={styles.desktopOnly}>
-            <MonthGrid dados={dados} mes={mes} onEditar={abrirPainelEditar} onTogglePago={alternarPago} onPedirAcao={pedirAcaoPagamento} />
-          </div>
-          <div className={styles.mobileOnly}>
-            <MobileAgenda dados={dados} mes={mes} onEditar={abrirPainelEditar} onTogglePago={alternarPago} onPedirAcao={pedirAcaoPagamento} />
-          </div>
+          <ViewToggle vista={vista} onChange={setVista} />
+          {vista === 'mes' ? (
+            <>
+              <div className={styles.desktopOnly}>
+                <MonthGrid dados={dados} mes={mes} onEditar={abrirPainelEditar} onTogglePago={alternarPago} onPedirAcao={pedirAcaoPagamento} />
+              </div>
+              <div className={styles.mobileOnly}>
+                <MobileAgenda dados={dados} mes={mes} onEditar={abrirPainelEditar} onTogglePago={alternarPago} onPedirAcao={pedirAcaoPagamento} />
+              </div>
+            </>
+          ) : (
+            <AgendaView dados={dados} onEditar={abrirPainelEditar} onTogglePago={alternarPago} onPedirAcao={pedirAcaoPagamento} />
+          )}
           <Legend categorias={dados.categorias} />
-          {dados.semData.length > 0 && (
+          {vista === 'mes' && dados.semData.length > 0 && (
             <SemData itens={dados.semData} moeda={dados.moeda} onEditar={abrirPainelEditar} onTogglePago={alternarPago} />
           )}
           {erroAcao && !painelItem && <div className={styles.errorText}>{erroAcao}</div>}
@@ -710,7 +743,7 @@ function MiniCell({ dia, isHoje, isSelecionado, onSelecionar }) {
   );
 }
 
-function DayList({ dia, hoje, moeda, onEditar, onTogglePago, onPedirAcao }) {
+function DayList({ dia, hoje, moeda, onEditar, onTogglePago, onPedirAcao, comIcone }) {
   return (
     <div className={styles.dayList}>
       <div className={styles.dayListHead}>
@@ -720,14 +753,15 @@ function DayList({ dia, hoje, moeda, onEditar, onTogglePago, onPedirAcao }) {
       {dia.itens.length === 0 ? (
         <div className={styles.dayListVazio}>Nenhum lançamento neste dia.</div>
       ) : (
-        dia.itens.map((item, idx) => <DayListRow key={idx} item={item} moeda={moeda} onEditar={onEditar} onTogglePago={onTogglePago} onPedirAcao={onPedirAcao} />)
+        dia.itens.map((item, idx) => <DayListRow key={idx} item={item} moeda={moeda} onEditar={onEditar} onTogglePago={onTogglePago} onPedirAcao={onPedirAcao} comIcone={comIcone} />)
       )}
     </div>
   );
 }
 
-function DayListRow({ item, moeda, onEditar, onTogglePago, onPedirAcao }) {
+function DayListRow({ item, moeda, onEditar, onTogglePago, onPedirAcao, comIcone }) {
   const concluido = itemConcluido(item);
+  const IconeCat = iconeCategoria(item.categoria.nome);
   const alternavel = item.tipo === 'custo' || item.tipo === 'reserva';
   const badgeAcionavel = alternavel && !concluido && typeof onPedirAcao === 'function';
   const classeNome = concluido ? styles.itemNamePago : '';
@@ -767,12 +801,18 @@ function DayListRow({ item, moeda, onEditar, onTogglePago, onPedirAcao }) {
       role="button"
       tabIndex={0}
     >
-      <span className={styles.itemDot} style={{ background: item.categoria.cor }} />
+      {comIcone ? (
+        <span className={styles.itemIcon} style={{ color: item.categoria.cor }}>
+          <IconeCat size={17} strokeWidth={2} aria-hidden="true" />
+        </span>
+      ) : (
+        <span className={styles.itemDot} style={{ background: item.categoria.cor }} />
+      )}
       <div className={styles.itemBody} style={{ flex: 1 }}>
         <div className={`${styles.itemName} ${classeNome}`}>{nomeComParcela(item)}</div>
         {item.tipo !== 'renda' && <div className={styles.semDataMeta}>{item.categoria.nome}</div>}
       </div>
-      {statusLabel && (
+      {statusLabel && !comIcone && (
         badgeAcionavel ? (
           <button
             type="button"
@@ -790,6 +830,67 @@ function DayListRow({ item, moeda, onEditar, onTogglePago, onPedirAcao }) {
         {item.tipo === 'renda' ? '+' : ''}
         {formatarMoeda(item.valor, moeda)}
       </span>
+      {comIcone && alternavel && (
+        <button
+          type="button"
+          className={`${styles.agendaCheck} ${item.tipo === 'reserva' ? styles.agendaCheckReserva : ''} ${concluido ? styles.agendaCheckOn : ''}`}
+          onClick={(ev) => { ev.stopPropagation(); onTogglePago(item); }}
+          aria-pressed={concluido}
+          aria-label={`${concluido ? 'Desmarcar' : 'Marcar'} ${item.tipo === 'reserva' ? 'guardado' : 'pago'}: ${item.nome}`}
+        >
+          <Check size={14} strokeWidth={2.5} aria-hidden="true" />
+        </button>
+      )}
+    </div>
+  );
+}
+
+function ViewToggle({ vista, onChange }) {
+  const opcoes = [['mes', 'Mês'], ['agenda', 'Agenda']];
+  return (
+    <div className={styles.viewToggle} role="tablist" aria-label="Visualização">
+      {opcoes.map(([valor, label]) => (
+        <button
+          key={valor}
+          type="button"
+          role="tab"
+          aria-selected={vista === valor}
+          className={`${styles.viewToggleBtn} ${vista === valor ? styles.viewToggleBtnActive : ''}`}
+          onClick={() => onChange(valor)}
+        >
+          {label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function AgendaView({ dados, onEditar, onTogglePago, onPedirAcao }) {
+  const diasComItens = dados.dias.filter((d) => d.itens.length > 0);
+  const vazio = diasComItens.length === 0 && dados.semData.length === 0;
+  return (
+    <div className={styles.agendaView}>
+      {vazio ? (
+        <div className={styles.dayListVazio}>Nenhum lançamento neste mês.</div>
+      ) : (
+        <>
+          {diasComItens.map((dia) => (
+            <DayList
+              key={dia.data}
+              dia={dia}
+              hoje={dados.hoje}
+              moeda={dados.moeda}
+              onEditar={onEditar}
+              onTogglePago={onTogglePago}
+              onPedirAcao={onPedirAcao}
+              comIcone
+            />
+          ))}
+          {dados.semData.length > 0 && (
+            <SemData itens={dados.semData} moeda={dados.moeda} onEditar={onEditar} onTogglePago={onTogglePago} />
+          )}
+        </>
+      )}
     </div>
   );
 }
