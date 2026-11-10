@@ -671,7 +671,7 @@ function itemConcluido(item) {
   return item.tipo === 'reserva' ? item.statusReserva === 'guardado' : item.statusPagamento === 'pago';
 }
 
-function Item({ item, moeda, onEditar, onPedirAcao }) {
+function Item({ item, moeda, onEditar, onTogglePago, onPedirAcao }) {
   const concluido = itemConcluido(item);
   const alternavel = item.tipo === 'custo' || item.tipo === 'reserva';
   const acionavel = alternavel && !concluido && typeof onPedirAcao === 'function';
@@ -687,6 +687,7 @@ function Item({ item, moeda, onEditar, onPedirAcao }) {
 
   const marca = item.tipo === 'renda' ? '+' : concluido ? ' ✓' : item.atrasado ? ' !' : '';
 
+  const comCheck = alternavel && typeof onTogglePago === 'function';
   const aoClicar = () => { if (acionavel) onPedirAcao(item); else onEditar(item); };
   const aoTeclar = (ev) => {
     if (ev.key === 'Enter' || ev.key === ' ') {
@@ -701,7 +702,7 @@ function Item({ item, moeda, onEditar, onPedirAcao }) {
 
   return (
     <div
-      className={`${styles.item} ${styles.itemClickable}`}
+      className={`${styles.item} ${styles.itemClickable} ${comCheck ? styles.itemComCheck : ''}`}
       onClick={aoClicar}
       onKeyDown={aoTeclar}
       role="button"
@@ -709,6 +710,18 @@ function Item({ item, moeda, onEditar, onPedirAcao }) {
       title={titulo}
     >
       <span className={styles.itemDot} style={{ background: item.categoria.cor }} />
+      {comCheck && (
+        <button
+          type="button"
+          className={`${styles.itemCheck} ${item.tipo === 'reserva' ? styles.itemCheckReserva : ''} ${concluido ? styles.itemCheckOn : ''}`}
+          onClick={(ev) => { ev.stopPropagation(); onTogglePago(item); }}
+          onKeyDown={(ev) => ev.stopPropagation()}
+          aria-pressed={concluido}
+          aria-label={`${concluido ? 'Desmarcar' : 'Marcar'} ${item.tipo === 'reserva' ? 'guardado' : 'pago'}: ${item.nome}`}
+        >
+          <Check size={8} strokeWidth={3.5} aria-hidden="true" />
+        </button>
+      )}
       <div className={styles.itemBody}>
         <div className={`${styles.itemName} ${classeNome}`}>{nomeComParcela(item)}</div>
       </div>
