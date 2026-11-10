@@ -103,6 +103,46 @@ function iconeCategoria(nome) {
   return achado ? ICONES_CATEGORIA[achado] : Tag;
 }
 
+function round2(n) {
+  return Math.round(n * 100) / 100;
+}
+
+// Vira pago/pendente (custo) ou guardado/pendente (reserva) no estado local,
+// sem esperar a planilha (atualização otimista). Espelha as regras de
+// lib/cal/projection.js: custo cai em atrasado/pago/pendente; reserva guardada
+// soma em `reservado`; saldo = receita - (pago + pendente + atrasado + reservado).
+// O alvo é achado por tipo+linha+data e virado pelo seu estado ATUAL, então
+// aplicar duas vezes desfaz (usado no rollback quando a gravação falha).
+function aplicarToggleOtimista(dados, alvo) {
+  if (!dados) return dados;
+  const mesmo = (i) =>
+    i.tipo === alvo.tipo && i.linhaPlanilha === alvo.linhaPlanilha && (i.data || null) === (alvo.data || null);
+  const totals = { ...dados.totals };
+
+  const virar = (i) => {
+    if (i.tipo === 'reserva') {
+      const guardado = i.statusReserva === 'guardado';
+      totals.reservado = round2((totals.reservado || 0) + (guardado ? -i.valor : i.valor));
+      return { ...i, statusReserva: guardado ? 'pendente' : 'guardado' };
+    }
+    const novoPago = i.statusPagamento !== 'pago';
+    const atrasado = !novoPago && i.data != null && i.data < dados.hoje;
+    const antes = i.atrasado ? 'atrasado' : i.statusPagamento === 'pago' ? 'pago' : 'pendente';
+    const depois = atrasado ? 'atrasado' : novoPago ? 'pago' : 'pendente';
+    totals[antes] = round2((totals[antes] || 0) - i.valor);
+    totals[depois] = round2((totals[depois] || 0) + i.valor);
+    return { ...i, statusPagamento: novoPago ? 'pago' : 'pendente', atrasado };
+  };
+
+  const mapItens = (itens) => itens.map((i) => (mesmo(i) ? virar(i) : i));
+  const dias = dados.dias.map((d) => (d.itens.some(mesmo) ? { ...d, itens: mapItens(d.itens) } : d));
+  const semData = mapItens(dados.semData || []);
+  totals.saldo = round2(
+    (totals.receita || 0) - ((totals.pago || 0) + (totals.pendente || 0) + (totals.atrasado || 0) + (totals.reservado || 0)),
+  );
+  return { ...dados, dias, semData, totals };
+}
+
 function LoadingLogo() {
   const ref = useRef(null);
   useEffect(() => {
@@ -152,6 +192,12 @@ export default function CalendarioPage() {
   const [confirmExcluir, setConfirmExcluir] = useState(null); // null | { tipo, form }
   const [acaoItem, setAcaoItem] = useState(null); // null | item (escolha pagar/editar no mobile)
   const [vista, setVista] = useState('mes'); // 'mes' | 'agenda'
+  // Gravações de pago/guardado em andamento + mês atual (lido dentro de callbacks
+  // assíncronos): a releitura silenciosa só aplica se não houver gravação pendente
+  // e o usuário ainda estiver no mesmo mês, senão sobrescreveria a tela otimista.
+  const escritasPendentes = useRef(0);
+  const mesRef = useRef(mes);
+  mesRef.current = mes;
   // Tempo mínimo pra tela de carregamento inicial ficar visível, pra dar
   // chance da logo 3D (model-viewer) carregar e girar antes de trocar pra
   // tela real — sem isso, em conexões rápidas o fetch termina antes da logo
@@ -167,17 +213,22 @@ export default function CalendarioPage() {
     if (!introOk && dados && tempoMinimoOk) setIntroOk(true);
   }, [introOk, dados, tempoMinimoOk]);
 
-  const carregarMes = useCallback(async (mesAlvo, token) => {
-    setCarregando(true);
-    setErroFatal(null);
+  // `silencioso`: releitura em segundo plano (reconcilia após gravar) — sem
+  // ligar o "carregando", sem erro fatal e sem sobrescrever gravação pendente.
+  const carregarMes = useCallback(async (mesAlvo, token, { silencioso = false } = {}) => {
+    if (!silencioso) {
+      setCarregando(true);
+      setErroFatal(null);
+    }
     try {
       const resposta = await obterMes(mesAlvo, token);
+      if (silencioso && (escritasPendentes.current > 0 || mesRef.current !== mesAlvo)) return;
       setDados(resposta);
       setMes(mesAlvo);
     } catch (e) {
-      setErroFatal(e.message);
+      if (!silencioso) setErroFatal(e.message);
     } finally {
-      setCarregando(false);
+      if (!silencioso) setCarregando(false);
     }
   }, []);
 
@@ -253,6 +304,10 @@ export default function CalendarioPage() {
   const alternarPago = async (item) => {
     if (!dados.autenticado) return exigirLogin();
     setErroAcao(null);
+    // Atualização otimista: vira o check (e os totais) na hora, sem esperar a
+    // planilha. A gravação e a releitura acontecem em segundo plano.
+    setDados((atual) => aplicarToggleOtimista(atual, item));
+    escritasPendentes.current += 1;
     try {
       if (item.tipo === 'reserva') {
         const novoStatus = item.statusReserva === 'guardado' ? 'Pendente' : 'Guardado';
@@ -261,10 +316,15 @@ export default function CalendarioPage() {
         const novoStatus = item.statusPagamento === 'pago' ? 'Pendente' : 'Pago';
         await atualizarPagamento(item.linhaPlanilha, novoStatus, mes);
       }
-      carregarMes(mes, linkToken);
     } catch (e) {
+      // Falhou: desfaz o otimista (aplicar de novo reverte) e mostra o erro.
+      setDados((atual) => aplicarToggleOtimista(atual, item));
       setErroAcao(e.message);
+    } finally {
+      escritasPendentes.current -= 1;
     }
+    // Reconcilia com a planilha só quando não resta gravação pendente.
+    if (escritasPendentes.current === 0) carregarMes(mes, linkToken, { silencioso: true });
   };
 
   const abrirPainelCriar = () => {
