@@ -287,7 +287,7 @@
 .dowRow {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  gap: var(--space-6);
+  gap: var(--space-3);
   margin-bottom: var(--space-2);
 }
 
@@ -305,7 +305,7 @@
 .grid {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  gap: var(--space-6);
+  gap: var(--space-3);
 }
 
 /* Célula de dia: densidade de grid de calendário não comporta padding de
@@ -313,7 +313,9 @@
    usa space-3 em vez de space-6 — exceção funcional, não de cor/token.
    Fundo surface-raised (é um "card": superfície elevada sobre a página). */
 .cell {
-  min-height: 118px;
+  /* Piso baixo: a altura da linha vem do dia com mais lançamentos. Com 118px,
+     metade dos dias (vazios) ocupava o mesmo espaço dos dias com conteúdo. */
+  min-height: 64px;
   min-width: 0;
   /* grid/flex items default to min-width:auto — sem isso o
                    conteúdo (nomes/valores) força a coluna a crescer além do
@@ -364,6 +366,13 @@
 
 .cellDayToday {
   color: var(--accent);
+}
+
+/* Dia sem lançamento: número mais discreto, pra os dias com conteúdo se destacarem.
+   O "hoje" mantém o terracota. */
+.cellVazio .cellDay:not(.cellDayToday) {
+  color: var(--ink-subtle);
+  font-weight: 500;
 }
 
 .cellDayLate {

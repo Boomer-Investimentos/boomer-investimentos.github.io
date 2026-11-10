@@ -630,7 +630,12 @@ function DayCell({ dia, hoje, moeda, onEditar, onTogglePago, onPedirAcao }) {
     .filter((i) => i.tipo === 'custo')
     .reduce((s, i) => s + i.valor, 0);
 
-  const classe = [styles.cell, isHoje ? styles.cellToday : '', !isHoje && atrasado ? styles.cellLate : '']
+  const classe = [
+    styles.cell,
+    dia.itens.length === 0 ? styles.cellVazio : '',
+    isHoje ? styles.cellToday : '',
+    !isHoje && atrasado ? styles.cellLate : '',
+  ]
     .filter(Boolean)
     .join(' ');
 
