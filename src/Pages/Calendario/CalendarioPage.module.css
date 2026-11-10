@@ -16,6 +16,11 @@
 
   --status-atrasado: #e5484d;
   --status-receita: #6fc49b;
+  --status-reserva: #7c3aed;
+  --status-reserva-fg: #b79cf5; /* tom claro p/ texto/ícone sobre fundo tingido de reserva */
+
+  /* Véu atrás dos modais. */
+  --scrim: rgba(0, 0, 0, 0.55);
 
   --space-1: 4px;
   --space-2: 8px;
@@ -27,6 +32,9 @@
   --space-10: 40px;
   --space-12: 48px;
 
+  /* Escala de raios (intencional): full = controles (botões, inputs, seletores,
+     chips); lg = cards, células e painéis; md/sm = elementos internos pequenos
+     (mini-células, avisos, opções internas); 50% = bolinhas e checks. */
   --radius-sm: 4px;
   --radius-md: 8px;
   --radius-lg: 12px;
@@ -40,11 +48,15 @@
   --shadow-xl: 0 16px 48px rgba(15, 16, 21, 0.22), 0 8px 16px rgba(15, 16, 21, 0.1);
 
 
-  --font-sans: 'Comfortaa Variable Font wght', 'Comfortaa', 'Nunito Sans', system-ui, -apple-system, sans-serif;
+  /* Tipografia híbrida: Comfortaa (marca) só nos títulos; Inter no texto e nos
+     números. tabular-nums alinha as colunas de valores. */
+  --font-display: 'Comfortaa Variable Font wght', 'Comfortaa', 'Nunito Sans', system-ui, -apple-system, sans-serif;
+  --font-body: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
 
   min-height: 100vh;
   background: var(--surface);
-  font-family: var(--font-sans);
+  font-family: var(--font-body);
+  font-variant-numeric: tabular-nums;
   color: var(--ink);
 }
 
@@ -81,6 +93,7 @@
 
 /* heading-md */
 .brandName {
+  font-family: var(--font-display);
   font-size: 17px;
   line-height: 24px;
   font-weight: 600;
@@ -127,6 +140,7 @@
 
 /* display-md */
 .monthTitle {
+  font-family: var(--font-display);
   font-size: 28px;
   line-height: 36px;
   font-weight: 700;
@@ -152,7 +166,7 @@
   display: flex;
   background: var(--surface-inset);
   border: 1px solid var(--border);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-full);
   overflow: hidden;
 }
 
@@ -180,11 +194,11 @@
 
 /* label-lg — rótulo de botão */
 .addButton {
-  padding: var(--space-3) var(--space-4);
+  padding: var(--space-3) var(--space-5);
   background: var(--interactive);
   color: var(--interactive-fg);
   border: none;
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-full);
   font-size: 15px;
   line-height: 20px;
   font-weight: 600;
@@ -217,6 +231,18 @@
 
 .summaryCardDestaque {
   border-color: var(--border-strong);
+}
+
+/* Card-herói "Disponível": mais largo, elevado e com valor maior. A cor da
+   borda/tint vem do saldo (verde positivo / vermelho negativo), via inline. */
+.summaryCardHero {
+  flex: 1.6;
+  box-shadow: var(--shadow-md);
+}
+
+.summaryCardHero .summaryValue {
+  font-size: 30px;
+  line-height: 38px;
 }
 
 .summaryDivider {
@@ -252,7 +278,7 @@
 .summaryValue {
   font-size: 24px;
   line-height: 32px;
-  font-weight: 700;
+  font-weight: 500;
   margin-top: var(--space-1);
 }
 
@@ -261,7 +287,7 @@
 .dowRow {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  gap: var(--space-6);
+  gap: var(--space-3);
   margin-bottom: var(--space-2);
 }
 
@@ -279,7 +305,7 @@
 .grid {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  gap: var(--space-6);
+  gap: var(--space-3);
 }
 
 /* Célula de dia: densidade de grid de calendário não comporta padding de
@@ -287,7 +313,9 @@
    usa space-3 em vez de space-6 — exceção funcional, não de cor/token.
    Fundo surface-raised (é um "card": superfície elevada sobre a página). */
 .cell {
-  min-height: 118px;
+  /* Piso baixo: a altura da linha vem do dia com mais lançamentos. Com 118px,
+     metade dos dias (vazios) ocupava o mesmo espaço dos dias com conteúdo. */
+  min-height: 64px;
   min-width: 0;
   /* grid/flex items default to min-width:auto — sem isso o
                    conteúdo (nomes/valores) força a coluna a crescer além do
@@ -308,13 +336,12 @@
   opacity: 0.5;
 }
 
-/* Hoje/atrasado se diferenciam pela borda (accent/status-atrasado) + cor do
-   número do dia. Hoje ganha também um preenchimento sutil (anel), já que
-   accent e status-atrasado são tons próximos de laranja/vermelho — sem o
-   preenchimento, a borda sozinha não distingue bem os dois. */
+/* Hoje: faixa terracota no topo do card (.cellToday) + número terracota, sem
+   contornar o card nem usar círculo. Atrasado: borda vermelha fina e número
+   vermelho com um ícone de alerta ao lado (.cellDayLate), sem fundo — discreto,
+   pra não ofuscar o "hoje". */
 .cellToday {
-  border-color: var(--accent);
-  background: color-mix(in srgb, var(--accent) 12%, var(--surface-raised));
+  box-shadow: inset 0 3px 0 var(--accent);
 }
 
 .cellLate {
@@ -341,6 +368,26 @@
   color: var(--accent);
 }
 
+/* Dia sem lançamento: número mais discreto, pra os dias com conteúdo se destacarem.
+   O "hoje" mantém o terracota. */
+.cellVazio .cellDay:not(.cellDayToday) {
+  color: var(--ink-subtle);
+  font-weight: 500;
+}
+
+.cellDayLate {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  color: var(--status-atrasado);
+}
+
+.cellDayLate svg {
+  flex: none;
+  width: 13px;
+  height: 13px;
+}
+
 /* caption-strong */
 .cellDayTotal {
   font-size: 12px;
@@ -354,12 +401,81 @@
 }
 
 .item {
+  position: relative;
   display: flex;
   gap: var(--space-2);
-  align-items: flex-start;
+  align-items: center;
   cursor: default;
   border-radius: var(--radius-sm);
   min-width: 0;
+}
+
+/* Check ✓ que aparece no hover/foco do item da grade e marca pago/guardado
+   direto. Fica sobre a bolinha da categoria (que some enquanto ele aparece),
+   sem deslocar nome nem valor. Só em dispositivos com hover real. */
+.itemCheck {
+  position: absolute;
+  left: -3.5px; /* centro do círculo = centro da bolinha (5px / 2 = 2,5px) */
+  top: 50%;
+  transform: translateY(-50%);
+  width: 12px;
+  height: 12px;
+  padding: 0;
+  box-sizing: border-box;
+  border-radius: 50%;
+  border: 1.5px solid var(--ink-subtle);
+  background: var(--surface-raised);
+  color: var(--ink-subtle); /* ✓ esmaecido já no hover da linha */
+  display: none;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+/* Área clicável maior que o círculo visível (13px), pra ficar fácil de acertar. */
+.itemCheck::after {
+  content: '';
+  position: absolute;
+  inset: -5px;
+}
+
+/* Com o mouse no círculo, o ✓ acende na cor da ação (verde = pago). */
+.itemCheck:hover {
+  border-color: var(--status-receita);
+  color: var(--status-receita);
+}
+
+.itemCheckReserva:hover {
+  border-color: var(--status-reserva-fg);
+  color: var(--status-reserva-fg);
+}
+
+.itemCheckOn,
+.itemCheckOn:hover {
+  background: color-mix(in srgb, var(--status-receita) 18%, var(--surface-raised));
+  border-color: color-mix(in srgb, var(--status-receita) 60%, transparent);
+  color: var(--status-receita);
+}
+
+.itemCheckReserva.itemCheckOn,
+.itemCheckReserva.itemCheckOn:hover {
+  background: color-mix(in srgb, var(--status-reserva) 18%, var(--surface-raised));
+  border-color: color-mix(in srgb, var(--status-reserva) 60%, transparent);
+  color: var(--status-reserva-fg);
+}
+
+@media (hover: hover) {
+  .item:hover .itemCheck,
+  .item:focus-within .itemCheck {
+    display: inline-flex;
+  }
+
+  /* A bolinha só some se houver check pra ocupar o lugar dela (renda não tem). */
+  .itemComCheck:hover .itemDot,
+  .itemComCheck:focus-within .itemDot {
+    opacity: 0;
+  }
 }
 
 .itemClickable {
@@ -374,11 +490,11 @@
   width: 5px;
   height: 5px;
   border-radius: 50%;
-  margin-top: 5px;
   flex: none;
 }
 
 .itemBody {
+  flex: 1;
   min-width: 0;
 }
 
@@ -388,6 +504,9 @@
   line-height: 17px;
   font-weight: 400;
   color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .itemNamePago {
@@ -401,6 +520,9 @@
   line-height: 17px;
   font-weight: 600;
   color: var(--ink);
+  flex: none;
+  white-space: nowrap;
+  margin-left: auto;
 }
 
 .itemAmountPendente {
@@ -537,6 +659,7 @@
 
 /* heading-md */
 .panelTitle {
+  font-family: var(--font-display);
   font-size: 17px;
   line-height: 24px;
   font-weight: 600;
@@ -575,8 +698,8 @@
   box-sizing: border-box;
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-full);
+  padding: var(--space-3) var(--space-5);
   font-size: 13px;
   line-height: 20px;
   color: var(--ink);
@@ -586,6 +709,19 @@
 
 .fieldInput::placeholder {
   color: var(--ink-disabled);
+}
+
+/* Sem as setinhas (spinner) nativas dos campos numéricos: destoam do visual em
+   pílula do painel. O valor continua digitável normalmente. */
+.fieldInput[type='number'] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+.fieldInput[type='number']::-webkit-outer-spin-button,
+.fieldInput[type='number']::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
 }
 
 .fieldInput:focus {
@@ -622,17 +758,81 @@
   background: var(--surface-raised);
 }
 
-.chipDot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
+/* Seletor de tipo (Custo/Renda/Reserva): segmented control estilo "liquid glass".
+   A pílula de vidro fosco desliza entre os três com leve efeito elástico. */
+.segmented {
+  position: relative;
+  display: flex;
+  padding: 4px;
+  background: var(--surface-inset);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  margin-bottom: var(--space-4);
+  isolation: isolate;
+}
+
+.segmentedThumb {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  left: 4px;
+  width: calc((100% - 8px) / var(--n, 3));
+  border-radius: var(--radius-full);
+  background: var(--interactive);
+  box-shadow: 0 1px 3px rgba(15, 16, 21, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+  transition: transform 0.45s cubic-bezier(0.34, 1.4, 0.5, 1);
+  z-index: 0;
+}
+
+.segmentedBtn {
+  position: relative;
+  z-index: 1;
+  flex: 1;
+  padding: var(--space-2) 0;
+  border: none;
+  background: none;
+  color: var(--ink-subtle);
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.005em;
+  cursor: pointer;
+  transition: color 0.3s ease;
+}
+
+.segmentedBtnActive {
+  color: var(--interactive-fg);
+  font-weight: 700;
+}
+
+/* Variante compacta (frequência): controle secundário, um pouco menor que o
+   seletor de tipo pra manter a hierarquia. */
+.segmentedSm {
+  padding: 3px;
+}
+
+.segmentedSm .segmentedThumb {
+  top: 3px;
+  bottom: 3px;
+  left: 3px;
+  width: calc((100% - 6px) / var(--n, 3));
+}
+
+.segmentedSm .segmentedBtn {
+  padding: 6px 0;
+  font-size: 13px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .segmentedThumb {
+    transition: none;
+  }
 }
 
 .statusToggle {
   display: flex;
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-full);
   padding: var(--space-1);
   margin-bottom: var(--space-4);
 }
@@ -641,7 +841,7 @@
   flex: 1;
   text-align: center;
   padding: var(--space-3) 0;
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-full);
   font-size: 12px;
   font-weight: 600;
   color: var(--ink-subtle);
@@ -656,39 +856,11 @@
   color: var(--ink);
 }
 
+/* Interruptor terracota (Parcelado, Repetir todo mês). O <input> nativo fica
+   escondido (acessível por teclado/leitor de tela); .switchTrack desenha o
+   trilho e reflete o estado por CSS. A linha inteira (label) é clicável. */
 .switchRow {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  margin-bottom: var(--space-6);
-}
-
-.switchTrack {
-  width: 36px;
-  height: 20px;
-  border-radius: var(--radius-full);
-  background: var(--surface-raised);
-  padding: 2px;
-  display: flex;
-  align-items: center;
-  cursor: pointer;
-  border: none;
-}
-
-.switchTrackOn {
-  background: var(--accent);
-  justify-content: flex-end;
-}
-
-.switchThumb {
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  background: var(--ink);
-}
-
-/* body-sm */
-.checkRow {
+  position: relative;
   display: flex;
   align-items: center;
   gap: var(--space-3);
@@ -696,11 +868,68 @@
   cursor: pointer;
 }
 
-.checkRow input {
-  accent-color: var(--accent);
+/* Última linha antes dos botões: mais espaço embaixo. */
+.switchRowFim {
+  margin-bottom: var(--space-6);
+}
+
+.switchInput {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Desligado: o trilho precisa se destacar do painel (surface-raised); antes tinha
+   a mesma cor dele e o estado "desligado" quase sumia. */
+.switchTrack {
+  flex: none;
+  box-sizing: border-box;
+  width: 36px;
+  height: 20px;
+  padding: 2px;
+  border-radius: var(--radius-full);
+  background: color-mix(in srgb, var(--ink-subtle) 30%, var(--surface-raised));
+  display: flex;
+  align-items: center;
+  transition: background 0.2s ease;
+}
+
+.switchThumb {
   width: 16px;
   height: 16px;
-  margin: 0;
+  border-radius: 50%;
+  background: var(--ink);
+  transition: transform 0.2s ease;
+}
+
+/* Ligado em creme (a cor de "selecionado" do painel: pílulas dos seletores, chip
+   ativo, Salvar), com a bolinha escura; o terracota fica reservado pro "hoje". */
+.switchInput:checked + .switchTrack {
+  background: var(--interactive);
+}
+
+.switchInput:checked + .switchTrack .switchThumb {
+  transform: translateX(16px);
+  background: var(--interactive-fg);
+}
+
+.switchRow:hover .switchInput:not(:checked) + .switchTrack {
+  background: color-mix(in srgb, var(--ink-subtle) 42%, var(--surface-raised));
+}
+
+.switchInput:focus-visible + .switchTrack {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .switchTrack,
+  .switchThumb {
+    transition: none;
+  }
 }
 
 .switchLabel {
@@ -720,7 +949,7 @@
   flex: 1;
   text-align: center;
   padding: var(--space-3) 0;
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-full);
   background: var(--interactive);
   color: var(--interactive-fg);
   font-size: 15px;
@@ -743,8 +972,8 @@
 
 /* label-lg */
 .btnGhost {
-  padding: var(--space-3) var(--space-4);
-  border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-5);
+  border-radius: var(--radius-full);
   border: 1px solid var(--border);
   color: var(--ink-subtle);
   font-size: 15px;
@@ -883,6 +1112,15 @@
     line-height: 24px;
   }
 
+  .summaryCardHero {
+    flex: 1 1 100%;
+  }
+
+  .summaryCardHero .summaryValue {
+    font-size: 22px;
+    line-height: 28px;
+  }
+
   .dowRow {
     gap: var(--space-1);
   }
@@ -947,6 +1185,17 @@
   border-color: var(--border-strong);
 }
 
+/* Atrasado no mini-calendário: o .miniCell vem depois de .cellLate no arquivo e
+   sobrescreveria a borda/fundo, então repete com mais especificidade. Se o dia
+   atrasado também for o selecionado, a borda clara de seleção vence. */
+.miniCell.cellLate {
+  border-color: var(--status-atrasado);
+}
+
+.miniCell.miniCellSelecionado {
+  border-color: var(--border-strong);
+}
+
 .miniDots {
   display: flex;
   gap: 2px;
@@ -981,6 +1230,7 @@
 
 /* heading-md */
 .dayListTitle {
+  font-family: var(--font-display);
   font-size: 17px;
   line-height: 24px;
   font-weight: 600;
@@ -1018,43 +1268,97 @@
   border-bottom: none;
 }
 
-.dayListBadgeBase {
-  font-size: 11px;
-  line-height: 16px;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  padding: 2px var(--space-2);
+/* Segmented control Mês / Agenda */
+.viewToggle {
+  display: flex;
+  width: fit-content;
+  gap: 2px;
+  padding: 3px;
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
   border-radius: var(--radius-full);
-  border: 1px solid;
-  flex: none;
+  margin: 0 auto var(--space-5);
 }
 
-.dayListBadgePago {
+.viewToggleBtn {
+  padding: var(--space-2) var(--space-5);
+  border: none;
+  background: none;
   color: var(--ink-subtle);
-  border-color: var(--border);
-}
-
-.dayListBadgePendente {
-  color: var(--ink);
-  border-color: var(--border-strong);
-}
-
-.dayListBadgeAtrasado {
-  color: var(--status-atrasado);
-  border-color: var(--status-atrasado);
-}
-
-/* Badge de status que vira botão (mobile): toca pra escolher pagar/guardar ou editar. */
-.dayListBadgeButton {
-  background: transparent;
-  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  border-radius: var(--radius-full);
   cursor: pointer;
-  transition: border-color 0.12s ease, color 0.12s ease;
+  transition: color 0.12s ease, background 0.12s ease;
 }
 
-.dayListBadgeButton:hover {
-  border-color: var(--interactive);
-  color: var(--interactive);
+.viewToggleBtn:hover {
+  color: var(--ink);
+}
+
+.viewToggleBtnActive,
+.viewToggleBtnActive:hover {
+  background: var(--interactive);
+  color: var(--interactive-fg);
+}
+
+/* Visão Agenda: dias empilhados numa coluna única, centralizada. */
+.agendaView {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  max-width: 640px;
+  margin: 0 auto;
+}
+
+/* Ícone de categoria (Lucide) na linha da agenda, na cor da categoria. */
+.itemIcon {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+}
+
+/* Botão ✓ redondo da agenda: marca pago/guardado direto. Vazio = pendente;
+   tint verde = pago; tint roxo = reserva guardada. */
+.agendaCheck {
+  flex: none;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  margin-left: var(--space-1);
+  box-sizing: border-box;
+  border-radius: 50%;
+  border: 2px solid var(--ink-disabled);
+  background: transparent;
+  color: transparent;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.agendaCheck svg {
+  display: block;
+}
+
+.agendaCheck:hover {
+  border-color: var(--ink-subtle);
+}
+
+.agendaCheckOn {
+  background: rgba(111, 196, 155, 0.16);
+  border-color: rgba(111, 196, 155, 0.55);
+  color: var(--status-receita);
+}
+
+.agendaCheckReserva.agendaCheckOn {
+  background: color-mix(in srgb, var(--status-reserva) 18%, transparent);
+  border-color: color-mix(in srgb, var(--status-reserva) 60%, transparent);
+  color: var(--status-reserva-fg);
 }
 
 /* heading-sm */
@@ -1063,4 +1367,82 @@
   line-height: 20px;
   font-weight: 600;
   flex: none;
+}
+
+/* Alvos de toque >= 44px (Apple HIG / WCAG 2.5.5) no mobile e em telas de toque.
+   Controles pequenos mantêm o tamanho visual e ganham área clicável maior via
+   pseudo-elemento invisível; as setas de mês e as linhas crescem de verdade.
+   Fica no fim do arquivo pra vencer as regras base de mesma especificidade. */
+@media (max-width: 640px), (pointer: coarse) {
+  .navButton {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  .viewToggleBtn,
+  .agendaCheck {
+    position: relative;
+  }
+
+  .viewToggleBtn::after {
+    content: '';
+    position: absolute;
+    inset: -4px 0;
+  }
+
+  /* `inset` conta a partir da borda interna: com a borda de 2px do check, -11px
+     fecha 44px de área clicável. */
+  .agendaCheck::after {
+    content: '';
+    position: absolute;
+    inset: -11px;
+  }
+
+  .dayListRow,
+  .segmentedBtn,
+  .statusOption {
+    min-height: 44px;
+  }
+
+  /* Painel de adicionar/editar. Interruptores (Parcelado, Repetir todo mês): a
+     linha inteira (label) é o alvo, então ganha altura; as margens compensam o
+     que cresce ((44 - 20) / 2 = 12px), pra nada sair do lugar visualmente. */
+  .switchRow {
+    min-height: 44px;
+    margin-top: -12px;
+    margin-bottom: 4px;
+  }
+
+  .switchRowFim {
+    margin-bottom: 12px;
+  }
+
+  /* Chips (35px): área clicável maior via pseudo-elemento invisível. O chip tem
+     borda de 1px (inset -5.5px fecha 44px). O espaço entre as linhas de chips
+     sobe de 8 para 9px: assim as áreas de 44px se encostam sem se sobrepor. */
+  .chip {
+    position: relative;
+  }
+
+  .chip::after {
+    content: '';
+    position: absolute;
+    inset: -5.5px 0;
+  }
+
+  .chipsRow {
+    row-gap: 9px;
+  }
+
+  /* Seletor compacto (frequência): mantém o tamanho visual menor e amplia só a
+     área clicável (o botão não tem borda, então -6.5px fecha ~44px). */
+  .segmentedSm .segmentedBtn {
+    min-height: 0;
+  }
+
+  .segmentedSm .segmentedBtn::after {
+    content: '';
+    position: absolute;
+    inset: -6.5px 0;
+  }
 }

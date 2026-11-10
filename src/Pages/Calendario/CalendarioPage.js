@@ -1,5 +1,8 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { CircleCheck, Clock, TriangleAlert, TrendingUp, PiggyBank, Wallet } from 'lucide-react';
+import {
+  CircleCheck, Clock, TriangleAlert, TrendingUp, PiggyBank, Wallet, Check,
+  Coins, House, Laptop, Clapperboard, HeartPulse, Wrench, ShoppingBag, Dumbbell, Tag,
+} from 'lucide-react';
 import '@google/model-viewer';
 import styles from './CalendarioPage.module.css';
 import boomerBMark from '../../assets/imgs/boomer-b-mark.png';
@@ -78,6 +81,76 @@ function tituloDia(dataISO) {
   return nome.charAt(0).toUpperCase() + nome.slice(1);
 }
 
+// Mapa categoria -> ícone Lucide (chave por nome normalizado; `includes` cobre
+// variações como "Software e Ferramentas"). Fallback: Circle.
+const ICONES_CATEGORIA = {
+  recebimento: Coins,
+  moradia: House,
+  tecnologia: Laptop,
+  entretenimento: Clapperboard,
+  saude: HeartPulse,
+  software: Wrench,
+  compras: ShoppingBag,
+  esportes: Dumbbell,
+  reserva: PiggyBank,
+};
+function normalizarTexto(txt) {
+  return (txt || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
+}
+function iconeCategoria(nome) {
+  const chave = normalizarTexto(nome);
+  const achado = Object.keys(ICONES_CATEGORIA).find((k) => chave.includes(k));
+  return achado ? ICONES_CATEGORIA[achado] : Tag;
+}
+
+// As cores de categoria vêm do backend em tons escuros (pensados pra fundo claro).
+// Como ícone sobre o navy, algumas ficam abaixo de 3:1 de contraste (Tecnologia
+// 1,7; Software 2,2). Clareia em direção ao creme da interface, mantendo o matiz
+// (todas passam de 4,8:1).
+function corIcone(cor) {
+  return `color-mix(in srgb, ${cor} 55%, var(--ink))`;
+}
+
+function round2(n) {
+  return Math.round(n * 100) / 100;
+}
+
+// Vira pago/pendente (custo) ou guardado/pendente (reserva) no estado local,
+// sem esperar a planilha (atualização otimista). Espelha as regras de
+// lib/cal/projection.js: custo cai em atrasado/pago/pendente; reserva guardada
+// soma em `reservado`; saldo = receita - (pago + pendente + atrasado + reservado).
+// O alvo é achado por tipo+linha+data e virado pelo seu estado ATUAL, então
+// aplicar duas vezes desfaz (usado no rollback quando a gravação falha).
+function aplicarToggleOtimista(dados, alvo) {
+  if (!dados) return dados;
+  const mesmo = (i) =>
+    i.tipo === alvo.tipo && i.linhaPlanilha === alvo.linhaPlanilha && (i.data || null) === (alvo.data || null);
+  const totals = { ...dados.totals };
+
+  const virar = (i) => {
+    if (i.tipo === 'reserva') {
+      const guardado = i.statusReserva === 'guardado';
+      totals.reservado = round2((totals.reservado || 0) + (guardado ? -i.valor : i.valor));
+      return { ...i, statusReserva: guardado ? 'pendente' : 'guardado' };
+    }
+    const novoPago = i.statusPagamento !== 'pago';
+    const atrasado = !novoPago && i.data != null && i.data < dados.hoje;
+    const antes = i.atrasado ? 'atrasado' : i.statusPagamento === 'pago' ? 'pago' : 'pendente';
+    const depois = atrasado ? 'atrasado' : novoPago ? 'pago' : 'pendente';
+    totals[antes] = round2((totals[antes] || 0) - i.valor);
+    totals[depois] = round2((totals[depois] || 0) + i.valor);
+    return { ...i, statusPagamento: novoPago ? 'pago' : 'pendente', atrasado };
+  };
+
+  const mapItens = (itens) => itens.map((i) => (mesmo(i) ? virar(i) : i));
+  const dias = dados.dias.map((d) => (d.itens.some(mesmo) ? { ...d, itens: mapItens(d.itens) } : d));
+  const semData = mapItens(dados.semData || []);
+  totals.saldo = round2(
+    (totals.receita || 0) - ((totals.pago || 0) + (totals.pendente || 0) + (totals.atrasado || 0) + (totals.reservado || 0)),
+  );
+  return { ...dados, dias, semData, totals };
+}
+
 function LoadingLogo() {
   const ref = useRef(null);
   useEffect(() => {
@@ -126,6 +199,13 @@ export default function CalendarioPage() {
   const [painelItem, setPainelItem] = useState(null); // null | { modo: 'criar'|'editar', tipo: 'custo'|'renda', item? }
   const [confirmExcluir, setConfirmExcluir] = useState(null); // null | { tipo, form }
   const [acaoItem, setAcaoItem] = useState(null); // null | item (escolha pagar/editar no mobile)
+  const [vista, setVista] = useState('mes'); // 'mes' | 'agenda'
+  // Gravações de pago/guardado em andamento + mês atual (lido dentro de callbacks
+  // assíncronos): a releitura silenciosa só aplica se não houver gravação pendente
+  // e o usuário ainda estiver no mesmo mês, senão sobrescreveria a tela otimista.
+  const escritasPendentes = useRef(0);
+  const mesRef = useRef(mes);
+  mesRef.current = mes;
   // Tempo mínimo pra tela de carregamento inicial ficar visível, pra dar
   // chance da logo 3D (model-viewer) carregar e girar antes de trocar pra
   // tela real — sem isso, em conexões rápidas o fetch termina antes da logo
@@ -141,17 +221,22 @@ export default function CalendarioPage() {
     if (!introOk && dados && tempoMinimoOk) setIntroOk(true);
   }, [introOk, dados, tempoMinimoOk]);
 
-  const carregarMes = useCallback(async (mesAlvo, token) => {
-    setCarregando(true);
-    setErroFatal(null);
+  // `silencioso`: releitura em segundo plano (reconcilia após gravar) — sem
+  // ligar o "carregando", sem erro fatal e sem sobrescrever gravação pendente.
+  const carregarMes = useCallback(async (mesAlvo, token, { silencioso = false } = {}) => {
+    if (!silencioso) {
+      setCarregando(true);
+      setErroFatal(null);
+    }
     try {
       const resposta = await obterMes(mesAlvo, token);
+      if (silencioso && (escritasPendentes.current > 0 || mesRef.current !== mesAlvo)) return;
       setDados(resposta);
       setMes(mesAlvo);
     } catch (e) {
-      setErroFatal(e.message);
+      if (!silencioso) setErroFatal(e.message);
     } finally {
-      setCarregando(false);
+      if (!silencioso) setCarregando(false);
     }
   }, []);
 
@@ -227,6 +312,10 @@ export default function CalendarioPage() {
   const alternarPago = async (item) => {
     if (!dados.autenticado) return exigirLogin();
     setErroAcao(null);
+    // Atualização otimista: vira o check (e os totais) na hora, sem esperar a
+    // planilha. A gravação e a releitura acontecem em segundo plano.
+    setDados((atual) => aplicarToggleOtimista(atual, item));
+    escritasPendentes.current += 1;
     try {
       if (item.tipo === 'reserva') {
         const novoStatus = item.statusReserva === 'guardado' ? 'Pendente' : 'Guardado';
@@ -235,10 +324,15 @@ export default function CalendarioPage() {
         const novoStatus = item.statusPagamento === 'pago' ? 'Pendente' : 'Pago';
         await atualizarPagamento(item.linhaPlanilha, novoStatus, mes);
       }
-      carregarMes(mes, linkToken);
     } catch (e) {
+      // Falhou: desfaz o otimista (aplicar de novo reverte) e mostra o erro.
+      setDados((atual) => aplicarToggleOtimista(atual, item));
       setErroAcao(e.message);
+    } finally {
+      escritasPendentes.current -= 1;
     }
+    // Reconcilia com a planilha só quando não resta gravação pendente.
+    if (escritasPendentes.current === 0) carregarMes(mes, linkToken, { silencioso: true });
   };
 
   const abrirPainelCriar = () => {
@@ -349,14 +443,21 @@ export default function CalendarioPage() {
             carregando={carregando}
           />
           <SummaryCards totals={dados.totals} moeda={dados.moeda} />
-          <div className={styles.desktopOnly}>
-            <MonthGrid dados={dados} mes={mes} onEditar={abrirPainelEditar} onTogglePago={alternarPago} onPedirAcao={pedirAcaoPagamento} />
-          </div>
-          <div className={styles.mobileOnly}>
-            <MobileAgenda dados={dados} mes={mes} onEditar={abrirPainelEditar} onTogglePago={alternarPago} onPedirAcao={pedirAcaoPagamento} />
-          </div>
+          <ViewToggle vista={vista} onChange={setVista} />
+          {vista === 'mes' ? (
+            <>
+              <div className={styles.desktopOnly}>
+                <MonthGrid dados={dados} mes={mes} onEditar={abrirPainelEditar} onTogglePago={alternarPago} onPedirAcao={pedirAcaoPagamento} />
+              </div>
+              <div className={styles.mobileOnly}>
+                <MobileAgenda dados={dados} mes={mes} onEditar={abrirPainelEditar} onTogglePago={alternarPago} />
+              </div>
+            </>
+          ) : (
+            <AgendaView dados={dados} onEditar={abrirPainelEditar} onTogglePago={alternarPago} />
+          )}
           <Legend categorias={dados.categorias} />
-          {dados.semData.length > 0 && (
+          {vista === 'mes' && dados.semData.length > 0 && (
             <SemData itens={dados.semData} moeda={dados.moeda} onEditar={abrirPainelEditar} onTogglePago={alternarPago} />
           )}
           {erroAcao && !painelItem && <div className={styles.errorText}>{erroAcao}</div>}
@@ -465,8 +566,8 @@ function SummaryCards({ totals, moeda }) {
       <SummaryCard label="Pago" icone={CircleCheck} valor={totals.pago} moeda={moeda} cor="var(--ink-subtle)" />
       <SummaryCard label="A pagar" icone={Clock} valor={totals.pendente} moeda={moeda} cor="var(--ink)" />
       <SummaryCard label="Em atraso" icone={TriangleAlert} valor={totals.atrasado} moeda={moeda} cor="var(--status-atrasado)" />
-      <SummaryCard label="Entradas" icone={TrendingUp} valor={totals.receita} moeda={moeda} cor="var(--status-receita)" destaque />
-      <SummaryCard label="Reservas" icone={PiggyBank} valor={totals.reservado || 0} moeda={moeda} cor="#7c3aed" />
+      <SummaryCard label="Entradas" icone={TrendingUp} valor={totals.receita} moeda={moeda} cor="var(--status-receita)" />
+      <SummaryCard label="Reservas" icone={PiggyBank} valor={totals.reservado || 0} moeda={moeda} cor="var(--status-reserva)" />
       <div className={styles.summaryDivider} aria-hidden="true" />
       <SummaryCard
         label="Disponível"
@@ -474,15 +575,18 @@ function SummaryCards({ totals, moeda }) {
         valor={totals.saldo || 0}
         moeda={moeda}
         cor={(totals.saldo || 0) >= 0 ? 'var(--status-receita)' : 'var(--status-atrasado)'}
-        destaque
+        heroi
       />
     </div>
   );
 }
 
-function SummaryCard({ label, icone: Icone, valor, moeda, cor, destaque }) {
+function SummaryCard({ label, icone: Icone, valor, moeda, cor, destaque, heroi }) {
   return (
-    <div className={`${styles.summaryCard} ${destaque ? styles.summaryCardDestaque : ''}`}>
+    <div
+      className={`${styles.summaryCard} ${heroi ? styles.summaryCardHero : destaque ? styles.summaryCardDestaque : ''}`}
+      style={heroi ? { borderColor: cor, background: `color-mix(in srgb, ${cor} 8%, var(--surface-raised))` } : undefined}
+    >
       <div className={styles.summaryLabel}>
         <span>{label}</span>
         {Icone && <Icone />}
@@ -534,14 +638,22 @@ function DayCell({ dia, hoje, moeda, onEditar, onTogglePago, onPedirAcao }) {
     .filter((i) => i.tipo === 'custo')
     .reduce((s, i) => s + i.valor, 0);
 
-  const classe = [styles.cell, isHoje ? styles.cellToday : '', !isHoje && atrasado ? styles.cellLate : '']
+  const classe = [
+    styles.cell,
+    dia.itens.length === 0 ? styles.cellVazio : '',
+    isHoje ? styles.cellToday : '',
+    !isHoje && atrasado ? styles.cellLate : '',
+  ]
     .filter(Boolean)
     .join(' ');
 
   return (
     <div className={classe}>
       <div className={styles.cellHead}>
-        <span className={`${styles.cellDay} ${isHoje ? styles.cellDayToday : ''}`}>{dia.dia}</span>
+        <span className={`${styles.cellDay} ${isHoje ? styles.cellDayToday : atrasado ? styles.cellDayLate : ''}`}>
+          {atrasado && !isHoje && <TriangleAlert size={13} strokeWidth={2.4} role="img" aria-label="Em atraso" />}
+          {dia.dia}
+        </span>
         {totalSaida > 0 && <span className={styles.cellDayTotal}>−{formatarNumero(totalSaida, moeda)}</span>}
       </div>
       {dia.itens.map((item, idx) => (
@@ -575,7 +687,7 @@ function itemConcluido(item) {
   return item.tipo === 'reserva' ? item.statusReserva === 'guardado' : item.statusPagamento === 'pago';
 }
 
-function Item({ item, moeda, onEditar, onPedirAcao }) {
+function Item({ item, moeda, onEditar, onTogglePago, onPedirAcao }) {
   const concluido = itemConcluido(item);
   const alternavel = item.tipo === 'custo' || item.tipo === 'reserva';
   const acionavel = alternavel && !concluido && typeof onPedirAcao === 'function';
@@ -591,6 +703,7 @@ function Item({ item, moeda, onEditar, onPedirAcao }) {
 
   const marca = item.tipo === 'renda' ? '+' : concluido ? ' ✓' : item.atrasado ? ' !' : '';
 
+  const comCheck = alternavel && typeof onTogglePago === 'function';
   const aoClicar = () => { if (acionavel) onPedirAcao(item); else onEditar(item); };
   const aoTeclar = (ev) => {
     if (ev.key === 'Enter' || ev.key === ' ') {
@@ -605,7 +718,7 @@ function Item({ item, moeda, onEditar, onPedirAcao }) {
 
   return (
     <div
-      className={`${styles.item} ${styles.itemClickable}`}
+      className={`${styles.item} ${styles.itemClickable} ${comCheck ? styles.itemComCheck : ''}`}
       onClick={aoClicar}
       onKeyDown={aoTeclar}
       role="button"
@@ -613,13 +726,25 @@ function Item({ item, moeda, onEditar, onPedirAcao }) {
       title={titulo}
     >
       <span className={styles.itemDot} style={{ background: item.categoria.cor }} />
+      {comCheck && (
+        <button
+          type="button"
+          className={`${styles.itemCheck} ${item.tipo === 'reserva' ? styles.itemCheckReserva : ''} ${concluido ? styles.itemCheckOn : ''}`}
+          onClick={(ev) => { ev.stopPropagation(); onTogglePago(item); }}
+          onKeyDown={(ev) => ev.stopPropagation()}
+          aria-pressed={concluido}
+          aria-label={`${concluido ? 'Desmarcar' : 'Marcar'} ${item.tipo === 'reserva' ? 'guardado' : 'pago'}: ${item.nome}`}
+        >
+          <Check size={8} strokeWidth={3.5} aria-hidden="true" />
+        </button>
+      )}
       <div className={styles.itemBody}>
         <div className={`${styles.itemName} ${classeNome}`}>{nomeComParcela(item)}</div>
-        <div className={`${styles.itemAmount} ${classeValor}`}>
-          {marca === '+' ? '+' : ''}
-          {formatarNumero(item.valor, moeda)}
-          {marca !== '+' ? marca : ''}
-        </div>
+      </div>
+      <div className={`${styles.itemAmount} ${classeValor}`}>
+        {marca === '+' ? '+' : ''}
+        {formatarNumero(item.valor, moeda)}
+        {marca !== '+' ? marca : ''}
       </div>
     </div>
   );
@@ -631,7 +756,7 @@ function Item({ item, moeda, onEditar, onPedirAcao }) {
  * mockup original pra celular: mini-calendário só com pontinhos por
  * categoria + lista de detalhe do dia selecionado abaixo.
  */
-function MobileAgenda({ dados, mes, onEditar, onTogglePago, onPedirAcao }) {
+function MobileAgenda({ dados, mes, onEditar, onTogglePago }) {
   const hojeNoMes = dados.dias.some((d) => d.data === dados.hoje);
   const [diaSelecionado, setDiaSelecionado] = useState(hojeNoMes ? dados.hoje : dados.dias[0]?.data);
 
@@ -646,7 +771,7 @@ function MobileAgenda({ dados, mes, onEditar, onTogglePago, onPedirAcao }) {
 
   return (
     <div className={styles.mobileAgenda}>
-      <DayList dia={diaAtual} hoje={dados.hoje} moeda={dados.moeda} onEditar={onEditar} onTogglePago={onTogglePago} onPedirAcao={onPedirAcao} />
+      <DayList dia={diaAtual} hoje={dados.hoje} moeda={dados.moeda} onEditar={onEditar} onTogglePago={onTogglePago} />
       <MiniCalendar mes={mes} dias={dados.dias} hoje={dados.hoje} selecionado={diaAtual.data} onSelecionar={setDiaSelecionado} />
     </div>
   );
@@ -692,7 +817,7 @@ function MiniCell({ dia, isHoje, isSelecionado, onSelecionar }) {
   const classe = [
     styles.miniCell,
     isHoje ? styles.cellToday : '',
-    !isHoje && isSelecionado ? styles.miniCellSelecionado : '',
+    isSelecionado ? styles.miniCellSelecionado : '',
     !isHoje && atrasado ? styles.cellLate : '',
   ]
     .filter(Boolean)
@@ -700,7 +825,10 @@ function MiniCell({ dia, isHoje, isSelecionado, onSelecionar }) {
 
   return (
     <button type="button" className={classe} onClick={() => onSelecionar(dia.data)}>
-      <span className={`${styles.cellDay} ${isHoje ? styles.cellDayToday : ''}`}>{dia.dia}</span>
+      <span className={`${styles.cellDay} ${isHoje ? styles.cellDayToday : atrasado ? styles.cellDayLate : ''}`}>
+        {atrasado && !isHoje && <TriangleAlert size={13} strokeWidth={2.4} role="img" aria-label="Em atraso" />}
+        {dia.dia}
+      </span>
       <span className={styles.miniDots}>
         {dia.itens.slice(0, 3).map((item, idx) => (
           <span key={idx} className={styles.miniDot} style={{ background: item.categoria.cor }} />
@@ -710,7 +838,7 @@ function MiniCell({ dia, isHoje, isSelecionado, onSelecionar }) {
   );
 }
 
-function DayList({ dia, hoje, moeda, onEditar, onTogglePago, onPedirAcao }) {
+function DayList({ dia, hoje, moeda, onEditar, onTogglePago, comIcone }) {
   return (
     <div className={styles.dayList}>
       <div className={styles.dayListHead}>
@@ -718,26 +846,21 @@ function DayList({ dia, hoje, moeda, onEditar, onTogglePago, onPedirAcao }) {
         {dia.data === hoje && <span className={styles.dayListBadge}>hoje</span>}
       </div>
       {dia.itens.length === 0 ? (
-        <div className={styles.dayListVazio}>Nenhum lançamento neste dia.</div>
+        <div className={styles.dayListVazio}>Nenhum lançamento.</div>
       ) : (
-        dia.itens.map((item, idx) => <DayListRow key={idx} item={item} moeda={moeda} onEditar={onEditar} onTogglePago={onTogglePago} onPedirAcao={onPedirAcao} />)
+        // Chave por identidade (não por posição): senão, ao trocar de dia, o React
+        // reaproveita o mesmo botão da linha anterior e o check "desliza" do estado dela.
+        dia.itens.map((item, idx) => <DayListRow key={`${item.tipo}-${item.linhaPlanilha ?? idx}-${item.data ?? dia.data}`} item={item} moeda={moeda} onEditar={onEditar} onTogglePago={onTogglePago} comIcone={comIcone} />)
       )}
     </div>
   );
 }
 
-function DayListRow({ item, moeda, onEditar, onTogglePago, onPedirAcao }) {
+function DayListRow({ item, moeda, onEditar, onTogglePago, comIcone }) {
   const concluido = itemConcluido(item);
+  const IconeCat = iconeCategoria(item.categoria.nome);
   const alternavel = item.tipo === 'custo' || item.tipo === 'reserva';
-  const badgeAcionavel = alternavel && !concluido && typeof onPedirAcao === 'function';
   const classeNome = concluido ? styles.itemNamePago : '';
-  const statusLabel =
-    item.tipo === 'renda'
-      ? null
-      : item.tipo === 'reserva'
-        ? concluido ? 'Guardado' : 'A guardar'
-        : item.atrasado ? 'Atrasado' : concluido ? 'Pago' : 'Não pago';
-  const statusClasse = item.atrasado ? styles.dayListBadgeAtrasado : concluido ? styles.dayListBadgePago : styles.dayListBadgePendente;
   const valorClasse =
     item.tipo === 'renda'
       ? styles.itemAmountReceita
@@ -767,29 +890,81 @@ function DayListRow({ item, moeda, onEditar, onTogglePago, onPedirAcao }) {
       role="button"
       tabIndex={0}
     >
-      <span className={styles.itemDot} style={{ background: item.categoria.cor }} />
+      {comIcone ? (
+        <span className={styles.itemIcon} style={{ color: item.categoria.cor }}>
+          <IconeCat size={17} strokeWidth={2} aria-hidden="true" />
+        </span>
+      ) : (
+        <span className={styles.itemDot} style={{ background: item.categoria.cor }} />
+      )}
       <div className={styles.itemBody} style={{ flex: 1 }}>
         <div className={`${styles.itemName} ${classeNome}`}>{nomeComParcela(item)}</div>
         {item.tipo !== 'renda' && <div className={styles.semDataMeta}>{item.categoria.nome}</div>}
       </div>
-      {statusLabel && (
-        badgeAcionavel ? (
-          <button
-            type="button"
-            className={`${styles.dayListBadgeBase} ${statusClasse} ${styles.dayListBadgeButton}`}
-            onClick={(ev) => { ev.stopPropagation(); onPedirAcao(item); }}
-            aria-label={`${statusLabel} · tocar para pagar ou editar`}
-          >
-            {statusLabel}
-          </button>
-        ) : (
-          <span className={`${styles.dayListBadgeBase} ${statusClasse}`}>{statusLabel}</span>
-        )
-      )}
       <span className={`${styles.dayListAmount} ${valorClasse}`}>
         {item.tipo === 'renda' ? '+' : ''}
         {formatarMoeda(item.valor, moeda)}
       </span>
+      {alternavel && (
+        <button
+          type="button"
+          className={`${styles.agendaCheck} ${item.tipo === 'reserva' ? styles.agendaCheckReserva : ''} ${concluido ? styles.agendaCheckOn : ''}`}
+          onClick={(ev) => { ev.stopPropagation(); onTogglePago(item); }}
+          aria-pressed={concluido}
+          aria-label={`${concluido ? 'Desmarcar' : 'Marcar'} ${item.tipo === 'reserva' ? 'guardado' : 'pago'}: ${item.nome}`}
+        >
+          <Check size={14} strokeWidth={2.5} aria-hidden="true" />
+        </button>
+      )}
+    </div>
+  );
+}
+
+function ViewToggle({ vista, onChange }) {
+  const opcoes = [['mes', 'Mês'], ['agenda', 'Agenda']];
+  return (
+    <div className={styles.viewToggle} role="tablist" aria-label="Visualização">
+      {opcoes.map(([valor, label]) => (
+        <button
+          key={valor}
+          type="button"
+          role="tab"
+          aria-selected={vista === valor}
+          className={`${styles.viewToggleBtn} ${vista === valor ? styles.viewToggleBtnActive : ''}`}
+          onClick={() => onChange(valor)}
+        >
+          {label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function AgendaView({ dados, onEditar, onTogglePago }) {
+  const diasComItens = dados.dias.filter((d) => d.itens.length > 0);
+  const vazio = diasComItens.length === 0 && dados.semData.length === 0;
+  return (
+    <div className={styles.agendaView}>
+      {vazio ? (
+        <div className={styles.dayListVazio}>Nenhum lançamento neste mês.</div>
+      ) : (
+        <>
+          {diasComItens.map((dia) => (
+            <DayList
+              key={dia.data}
+              dia={dia}
+              hoje={dados.hoje}
+              moeda={dados.moeda}
+              onEditar={onEditar}
+              onTogglePago={onTogglePago}
+              comIcone
+            />
+          ))}
+          {dados.semData.length > 0 && (
+            <SemData itens={dados.semData} moeda={dados.moeda} onEditar={onEditar} onTogglePago={onTogglePago} />
+          )}
+        </>
+      )}
     </div>
   );
 }
@@ -856,6 +1031,67 @@ function SemData({ itens, moeda, onEditar, onTogglePago }) {
 
 const FREQUENCIAS_RENDA = ['Mensal', 'Semanal', 'Única'];
 const FREQUENCIAS_RESERVA = ['Mensal', 'Única'];
+const OPCOES_TIPO = [
+  { valor: 'custo', label: 'Custo' },
+  { valor: 'renda', label: 'Renda' },
+  { valor: 'reserva', label: 'Reserva' },
+];
+
+// Interruptor terracota (Parcelado, Repetir todo mês). Mantém um <input
+// type="checkbox" role="switch"> escondido, então teclado e leitor de tela seguem
+// funcionando; o trilho desenhado ao lado reflete o estado via CSS. A linha
+// inteira é clicável. `fim`: última linha antes dos botões (mais espaço embaixo).
+function Interruptor({ marcado, onChange, fim, children }) {
+  return (
+    <label className={`${styles.switchRow} ${fim ? styles.switchRowFim : ''}`}>
+      <input
+        type="checkbox"
+        role="switch"
+        className={styles.switchInput}
+        checked={marcado}
+        onChange={(e) => onChange(e.target.checked)}
+      />
+      <span className={styles.switchTrack} aria-hidden="true">
+        <span className={styles.switchThumb} />
+      </span>
+      <span className={styles.switchLabel}>{children}</span>
+    </label>
+  );
+}
+
+// Seletor segmentado com a pílula deslizante (estilo "liquid glass"). `--n` ajusta
+// a largura da pílula ao número de opções (3 em Custo/Renda/Reserva e na
+// frequência de renda; 2 na de reserva). Se o valor atual não estiver entre as
+// opções, a pílula some em vez de marcar a primeira.
+function Segmentado({ opcoes, valor, onChange, ariaLabel, compacto }) {
+  const indice = opcoes.findIndex((o) => o.valor === valor);
+  return (
+    <div
+      className={`${styles.segmented} ${compacto ? styles.segmentedSm : ''}`}
+      role="tablist"
+      aria-label={ariaLabel}
+      style={{ '--n': opcoes.length }}
+    >
+      <span
+        className={styles.segmentedThumb}
+        style={{ transform: `translateX(${Math.max(indice, 0) * 100}%)`, opacity: indice < 0 ? 0 : 1 }}
+        aria-hidden="true"
+      />
+      {opcoes.map((o) => (
+        <button
+          key={o.valor}
+          type="button"
+          role="tab"
+          aria-selected={valor === o.valor}
+          className={`${styles.segmentedBtn} ${valor === o.valor ? styles.segmentedBtnActive : ''}`}
+          onClick={() => onChange(o.valor)}
+        >
+          {o.label}
+        </button>
+      ))}
+    </div>
+  );
+}
 const DIAS_SEMANA_OPCOES = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'];
 
 function semAcentoLocal(s) {
@@ -991,7 +1227,7 @@ function PaymentPanel({ mes, erro, nomesCusto = [], categoriasCusto, modo, tipoI
       style={{
         position: 'fixed',
         inset: 0,
-        background: 'rgba(0,0,0,.55)',
+        background: 'var(--scrim)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -1010,45 +1246,20 @@ function PaymentPanel({ mes, erro, nomesCusto = [], categoriasCusto, modo, tipoI
         }}
         onClick={(e) => e.stopPropagation()}
       >
-      <div className={styles.panelTitle}>{titulo}</div>
+      {modo !== 'criar' && <div className={styles.panelTitle}>{titulo}</div>}
       <div className={styles.panelSubtitle}>{tituloMes(mes)}</div>
 
       {modo === 'criar' && (
-        <div className={styles.chipsRow}>
-          <button
-            type="button"
-            className={`${styles.chip} ${tipo === 'custo' ? styles.chipActive : ''}`}
-            onClick={() => {
-              setTipo('custo');
-              setFrequencia('Mensal');
-              setRepetirTodoMes(true);
-            }}
-          >
-            Custo
-          </button>
-          <button
-            type="button"
-            className={`${styles.chip} ${tipo === 'renda' ? styles.chipActive : ''}`}
-            onClick={() => {
-              setTipo('renda');
-              setFrequencia('Mensal');
-              setRepetirTodoMes(true);
-            }}
-          >
-            Renda
-          </button>
-          <button
-            type="button"
-            className={`${styles.chip} ${tipo === 'reserva' ? styles.chipActive : ''}`}
-            onClick={() => {
-              setTipo('reserva');
-              setFrequencia('Mensal');
-              setRepetirTodoMes(true);
-            }}
-          >
-            Reserva
-          </button>
-        </div>
+        <Segmentado
+          ariaLabel="Tipo de lançamento"
+          opcoes={OPCOES_TIPO}
+          valor={tipo}
+          onChange={(val) => {
+            setTipo(val);
+            setFrequencia('Mensal');
+            setRepetirTodoMes(true);
+          }}
+        />
       )}
 
       <label className={styles.fieldLabel}>{ehRenda ? 'Fonte' : 'Descrição'}</label>
@@ -1109,10 +1320,9 @@ function PaymentPanel({ mes, erro, nomesCusto = [], categoriasCusto, modo, tipoI
       </div>
 
       {modo === 'criar' && !ehRenda && !ehReserva && (
-        <label className={styles.checkRow}>
-          <input type="checkbox" checked={parcelado} onChange={(e) => setParcelado(e.target.checked)} />
-          <span className={styles.switchLabel}>Parcelado</span>
-        </label>
+        <Interruptor marcado={parcelado} onChange={setParcelado}>
+          Parcelado
+        </Interruptor>
       )}
 
       {comParcelas && (
@@ -1149,37 +1359,35 @@ function PaymentPanel({ mes, erro, nomesCusto = [], categoriasCusto, modo, tipoI
       {ehRenda || ehReserva ? (
         <>
           <label className={styles.fieldLabel}>Frequência</label>
-          <div className={styles.chipsRow}>
-            {(ehReserva ? FREQUENCIAS_RESERVA : FREQUENCIAS_RENDA).map((f) => (
-              <button
-                key={f}
-                type="button"
-                className={`${styles.chip} ${frequencia === f ? styles.chipActive : ''}`}
-                onClick={() => {
-                  setFrequencia(f);
-                  setRepetirTodoMes(f !== 'Única');
-                }}
-              >
-                {f}
-              </button>
-            ))}
-          </div>
+          <Segmentado
+            compacto
+            ariaLabel="Frequência"
+            opcoes={(ehReserva ? FREQUENCIAS_RESERVA : FREQUENCIAS_RENDA).map((f) => ({ valor: f, label: f }))}
+            valor={frequencia}
+            onChange={(f) => {
+              setFrequencia(f);
+              setRepetirTodoMes(f !== 'Única');
+            }}
+          />
         </>
       ) : (
         <>
           <label className={styles.fieldLabel}>Categoria</label>
           <div className={styles.chipsRow}>
-            {categoriasCusto.map((c) => (
-              <button
-                key={c.nome}
-                type="button"
-                className={`${styles.chip} ${categoria === c.nome ? styles.chipActive : ''}`}
-                onClick={() => setCategoria(c.nome)}
-              >
-                <span className={styles.chipDot} style={{ background: c.cor }} />
-                {c.icone} {c.nome}
-              </button>
-            ))}
+            {categoriasCusto.map((c) => {
+              const IconeCat = iconeCategoria(c.nome);
+              return (
+                <button
+                  key={c.nome}
+                  type="button"
+                  className={`${styles.chip} ${categoria === c.nome ? styles.chipActive : ''}`}
+                  onClick={() => setCategoria(c.nome)}
+                >
+                  <IconeCat size={14} strokeWidth={2.2} style={{ color: corIcone(c.cor), flex: 'none' }} aria-hidden="true" />
+                  {c.nome}
+                </button>
+              );
+            })}
           </div>
         </>
       )}
@@ -1229,17 +1437,9 @@ function PaymentPanel({ mes, erro, nomesCusto = [], categoriasCusto, modo, tipoI
       )}
 
       {!comParcelas && (
-        <div className={styles.switchRow}>
-          <button
-            type="button"
-            className={`${styles.switchTrack} ${repetirTodoMes ? styles.switchTrackOn : ''}`}
-            onClick={() => setRepetirTodoMes((v) => !v)}
-            aria-pressed={repetirTodoMes}
-          >
-            <span className={styles.switchThumb} />
-          </button>
-          <span className={styles.switchLabel}>Repetir todo mês</span>
-        </div>
+        <Interruptor marcado={repetirTodoMes} onChange={setRepetirTodoMes} fim>
+          Repetir todo mês
+        </Interruptor>
       )}
 
       {erro && <div className={styles.errorText}>{erro}</div>}
@@ -1284,7 +1484,7 @@ function LoginModal({ email, onEmailChange, mensagem, onEnviar, onFechar }) {
       style={{
         position: 'fixed',
         inset: 0,
-        background: 'rgba(0,0,0,.55)',
+        background: 'var(--scrim)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -1328,7 +1528,7 @@ function ConfirmModal({ titulo, mensagem, confirmarLabel = 'Confirmar', cancelar
       style={{
         position: 'fixed',
         inset: 0,
-        background: 'rgba(0,0,0,.55)',
+        background: 'var(--scrim)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -1373,7 +1573,7 @@ function AcaoPagamentoModal({ item, onPagar, onEditar, onCancelar }) {
       style={{
         position: 'fixed',
         inset: 0,
-        background: 'rgba(0,0,0,.55)',
+        background: 'var(--scrim)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
