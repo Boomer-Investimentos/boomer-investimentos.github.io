@@ -498,7 +498,7 @@ function SummaryCards({ totals, moeda }) {
       <SummaryCard label="Pago" icone={CircleCheck} valor={totals.pago} moeda={moeda} cor="var(--ink-subtle)" />
       <SummaryCard label="A pagar" icone={Clock} valor={totals.pendente} moeda={moeda} cor="var(--ink)" />
       <SummaryCard label="Em atraso" icone={TriangleAlert} valor={totals.atrasado} moeda={moeda} cor="var(--status-atrasado)" />
-      <SummaryCard label="Entradas" icone={TrendingUp} valor={totals.receita} moeda={moeda} cor="var(--status-receita)" destaque />
+      <SummaryCard label="Entradas" icone={TrendingUp} valor={totals.receita} moeda={moeda} cor="var(--status-receita)" />
       <SummaryCard label="Reservas" icone={PiggyBank} valor={totals.reservado || 0} moeda={moeda} cor="#7c3aed" />
       <div className={styles.summaryDivider} aria-hidden="true" />
       <SummaryCard
@@ -507,15 +507,18 @@ function SummaryCards({ totals, moeda }) {
         valor={totals.saldo || 0}
         moeda={moeda}
         cor={(totals.saldo || 0) >= 0 ? 'var(--status-receita)' : 'var(--status-atrasado)'}
-        destaque
+        heroi
       />
     </div>
   );
 }
 
-function SummaryCard({ label, icone: Icone, valor, moeda, cor, destaque }) {
+function SummaryCard({ label, icone: Icone, valor, moeda, cor, destaque, heroi }) {
   return (
-    <div className={`${styles.summaryCard} ${destaque ? styles.summaryCardDestaque : ''}`}>
+    <div
+      className={`${styles.summaryCard} ${heroi ? styles.summaryCardHero : destaque ? styles.summaryCardDestaque : ''}`}
+      style={heroi ? { borderColor: cor, background: `color-mix(in srgb, ${cor} 8%, var(--surface-raised))` } : undefined}
+    >
       <div className={styles.summaryLabel}>
         <span>{label}</span>
         {Icone && <Icone />}

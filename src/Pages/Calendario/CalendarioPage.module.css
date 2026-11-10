@@ -219,6 +219,18 @@
   border-color: var(--border-strong);
 }
 
+/* Card-herói "Disponível": mais largo, elevado e com valor maior. A cor da
+   borda/tint vem do saldo (verde positivo / vermelho negativo), via inline. */
+.summaryCardHero {
+  flex: 1.6;
+  box-shadow: var(--shadow-md);
+}
+
+.summaryCardHero .summaryValue {
+  font-size: 30px;
+  line-height: 38px;
+}
+
 .summaryDivider {
   align-self: stretch;
   width: 1px;
@@ -939,6 +951,15 @@
   .summaryValue {
     font-size: 17px;
     line-height: 24px;
+  }
+
+  .summaryCardHero {
+    flex: 1 1 100%;
+  }
+
+  .summaryCardHero .summaryValue {
+    font-size: 22px;
+    line-height: 28px;
   }
 
   .dowRow {
