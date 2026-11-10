@@ -1282,3 +1282,39 @@
   font-weight: 600;
   flex: none;
 }
+
+/* Alvos de toque >= 44px (Apple HIG / WCAG 2.5.5) no mobile e em telas de toque.
+   Controles pequenos mantêm o tamanho visual e ganham área clicável maior via
+   pseudo-elemento invisível; as setas de mês e as linhas crescem de verdade.
+   Fica no fim do arquivo pra vencer as regras base de mesma especificidade. */
+@media (max-width: 640px), (pointer: coarse) {
+  .navButton {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  .viewToggleBtn,
+  .agendaCheck {
+    position: relative;
+  }
+
+  .viewToggleBtn::after {
+    content: '';
+    position: absolute;
+    inset: -4px 0;
+  }
+
+  /* `inset` conta a partir da borda interna: com a borda de 2px do check, -11px
+     fecha 44px de área clicável. */
+  .agendaCheck::after {
+    content: '';
+    position: absolute;
+    inset: -11px;
+  }
+
+  .dayListRow,
+  .segmentedBtn,
+  .statusOption {
+    min-height: 44px;
+  }
+}
