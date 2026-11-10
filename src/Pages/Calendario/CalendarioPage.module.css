@@ -711,6 +711,19 @@
   color: var(--ink-disabled);
 }
 
+/* Sem as setinhas (spinner) nativas dos campos numéricos: destoam do visual em
+   pílula do painel. O valor continua digitável normalmente. */
+.fieldInput[type='number'] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+.fieldInput[type='number']::-webkit-outer-spin-button,
+.fieldInput[type='number']::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
 .fieldInput:focus {
   outline: none;
   border-color: var(--border-strong);
