@@ -48,11 +48,15 @@
   --shadow-xl: 0 16px 48px rgba(15, 16, 21, 0.22), 0 8px 16px rgba(15, 16, 21, 0.1);
 
 
-  --font-sans: 'Comfortaa Variable Font wght', 'Comfortaa', 'Nunito Sans', system-ui, -apple-system, sans-serif;
+  /* Tipografia híbrida: Comfortaa (marca) só nos títulos; Inter no texto e nos
+     números. tabular-nums alinha as colunas de valores. */
+  --font-display: 'Comfortaa Variable Font wght', 'Comfortaa', 'Nunito Sans', system-ui, -apple-system, sans-serif;
+  --font-body: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
 
   min-height: 100vh;
   background: var(--surface);
-  font-family: var(--font-sans);
+  font-family: var(--font-body);
+  font-variant-numeric: tabular-nums;
   color: var(--ink);
 }
 
@@ -89,6 +93,7 @@
 
 /* heading-md */
 .brandName {
+  font-family: var(--font-display);
   font-size: 17px;
   line-height: 24px;
   font-weight: 600;
@@ -135,6 +140,7 @@
 
 /* display-md */
 .monthTitle {
+  font-family: var(--font-display);
   font-size: 28px;
   line-height: 36px;
   font-weight: 700;
@@ -272,7 +278,7 @@
 .summaryValue {
   font-size: 24px;
   line-height: 32px;
-  font-weight: 700;
+  font-weight: 500;
   margin-top: var(--space-1);
 }
 
@@ -563,6 +569,7 @@
 
 /* heading-md */
 .panelTitle {
+  font-family: var(--font-display);
   font-size: 17px;
   line-height: 24px;
   font-weight: 600;
@@ -1068,6 +1075,7 @@
 
 /* heading-md */
 .dayListTitle {
+  font-family: var(--font-display);
   font-size: 17px;
   line-height: 24px;
   font-weight: 600;
