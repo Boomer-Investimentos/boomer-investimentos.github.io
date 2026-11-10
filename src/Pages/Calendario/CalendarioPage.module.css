@@ -797,12 +797,6 @@
   }
 }
 
-.chipDot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-}
-
 .statusToggle {
   display: flex;
   background: var(--surface);

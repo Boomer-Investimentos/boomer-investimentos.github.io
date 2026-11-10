@@ -103,6 +103,14 @@ function iconeCategoria(nome) {
   return achado ? ICONES_CATEGORIA[achado] : Tag;
 }
 
+// As cores de categoria vêm do backend em tons escuros (pensados pra fundo claro).
+// Como ícone sobre o navy, algumas ficam abaixo de 3:1 de contraste (Tecnologia
+// 1,7; Software 2,2). Clareia em direção ao creme da interface, mantendo o matiz
+// (todas passam de 4,8:1).
+function corIcone(cor) {
+  return `color-mix(in srgb, ${cor} 55%, var(--ink))`;
+}
+
 function round2(n) {
   return Math.round(n * 100) / 100;
 }
@@ -1324,17 +1332,20 @@ function PaymentPanel({ mes, erro, nomesCusto = [], categoriasCusto, modo, tipoI
         <>
           <label className={styles.fieldLabel}>Categoria</label>
           <div className={styles.chipsRow}>
-            {categoriasCusto.map((c) => (
-              <button
-                key={c.nome}
-                type="button"
-                className={`${styles.chip} ${categoria === c.nome ? styles.chipActive : ''}`}
-                onClick={() => setCategoria(c.nome)}
-              >
-                <span className={styles.chipDot} style={{ background: c.cor }} />
-                {c.icone} {c.nome}
-              </button>
-            ))}
+            {categoriasCusto.map((c) => {
+              const IconeCat = iconeCategoria(c.nome);
+              return (
+                <button
+                  key={c.nome}
+                  type="button"
+                  className={`${styles.chip} ${categoria === c.nome ? styles.chipActive : ''}`}
+                  onClick={() => setCategoria(c.nome)}
+                >
+                  <IconeCat size={14} strokeWidth={2.2} style={{ color: corIcone(c.cor), flex: 'none' }} aria-hidden="true" />
+                  {c.nome}
+                </button>
+              );
+            })}
           </div>
         </>
       )}
