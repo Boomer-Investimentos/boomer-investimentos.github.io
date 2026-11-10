@@ -1111,44 +1111,32 @@ function PaymentPanel({ mes, erro, nomesCusto = [], categoriasCusto, modo, tipoI
         }}
         onClick={(e) => e.stopPropagation()}
       >
-      <div className={styles.panelTitle}>{titulo}</div>
+      {modo !== 'criar' && <div className={styles.panelTitle}>{titulo}</div>}
       <div className={styles.panelSubtitle}>{tituloMes(mes)}</div>
 
       {modo === 'criar' && (
-        <div className={styles.chipsRow}>
-          <button
-            type="button"
-            className={`${styles.chip} ${tipo === 'custo' ? styles.chipActive : ''}`}
-            onClick={() => {
-              setTipo('custo');
-              setFrequencia('Mensal');
-              setRepetirTodoMes(true);
-            }}
-          >
-            Custo
-          </button>
-          <button
-            type="button"
-            className={`${styles.chip} ${tipo === 'renda' ? styles.chipActive : ''}`}
-            onClick={() => {
-              setTipo('renda');
-              setFrequencia('Mensal');
-              setRepetirTodoMes(true);
-            }}
-          >
-            Renda
-          </button>
-          <button
-            type="button"
-            className={`${styles.chip} ${tipo === 'reserva' ? styles.chipActive : ''}`}
-            onClick={() => {
-              setTipo('reserva');
-              setFrequencia('Mensal');
-              setRepetirTodoMes(true);
-            }}
-          >
-            Reserva
-          </button>
+        <div className={styles.segmented} role="tablist" aria-label="Tipo de lançamento">
+          <span
+            className={styles.segmentedThumb}
+            style={{ transform: `translateX(${['custo', 'renda', 'reserva'].indexOf(tipo) * 100}%)` }}
+            aria-hidden="true"
+          />
+          {[['custo', 'Custo'], ['renda', 'Renda'], ['reserva', 'Reserva']].map(([val, label]) => (
+            <button
+              key={val}
+              type="button"
+              role="tab"
+              aria-selected={tipo === val}
+              className={`${styles.segmentedBtn} ${tipo === val ? styles.segmentedBtnActive : ''}`}
+              onClick={() => {
+                setTipo(val);
+                setFrequencia('Mensal');
+                setRepetirTodoMes(true);
+              }}
+            >
+              {label}
+            </button>
+          ))}
         </div>
       )}
 

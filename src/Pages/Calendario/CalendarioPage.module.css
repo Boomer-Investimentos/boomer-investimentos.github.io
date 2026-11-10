@@ -581,8 +581,8 @@
   box-sizing: border-box;
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-full);
+  padding: var(--space-3) var(--space-5);
   font-size: 13px;
   line-height: 20px;
   color: var(--ink);
@@ -626,6 +626,58 @@
   color: var(--ink);
   border-color: var(--border-strong);
   background: var(--surface-raised);
+}
+
+/* Seletor de tipo (Custo/Renda/Reserva): segmented control estilo "liquid glass".
+   A pílula de vidro fosco desliza entre os três com leve efeito elástico. */
+.segmented {
+  position: relative;
+  display: flex;
+  padding: 4px;
+  background: var(--surface-inset);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  margin-bottom: var(--space-4);
+  isolation: isolate;
+}
+
+.segmentedThumb {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  left: 4px;
+  width: calc((100% - 8px) / 3);
+  border-radius: var(--radius-full);
+  background: var(--interactive);
+  box-shadow: 0 1px 3px rgba(15, 16, 21, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+  transition: transform 0.45s cubic-bezier(0.34, 1.4, 0.5, 1);
+  z-index: 0;
+}
+
+.segmentedBtn {
+  position: relative;
+  z-index: 1;
+  flex: 1;
+  padding: var(--space-2) 0;
+  border: none;
+  background: none;
+  color: var(--ink-subtle);
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.005em;
+  cursor: pointer;
+  transition: color 0.3s ease;
+}
+
+.segmentedBtnActive {
+  color: var(--interactive-fg);
+  font-weight: 700;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .segmentedThumb {
+    transition: none;
+  }
 }
 
 .chipDot {
@@ -1071,7 +1123,7 @@
   padding: 3px;
   background: var(--surface-raised);
   border: 1px solid var(--border);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-full);
   margin: 0 auto var(--space-5);
 }
 
@@ -1083,7 +1135,7 @@
   font-size: 13px;
   font-weight: 600;
   letter-spacing: 0.01em;
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-full);
   cursor: pointer;
   transition: color 0.12s ease, background 0.12s ease;
 }
