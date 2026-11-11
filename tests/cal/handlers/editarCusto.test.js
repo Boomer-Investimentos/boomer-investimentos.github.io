@@ -59,6 +59,40 @@ describe('editarCusto — nome repetido', () => {
   });
 });
 
+describe('editarCusto — conferência de ID (concorrência)', () => {
+  const custoComId = () => [
+    ['Custo', 'Valor', 'Categoria', 'Dia_Vencimento', 'Frequência', 'Total_Parcelas', 'Data_Início', 'Data_Fim', 'Status', 'Status_Pagamento', 'ID'],
+    ['Aluguel', 900, 'Moradia', 1, 'Mensal', '', '', '', 'Ativo', 'Pendente', 'c-abc12345'],
+  ];
+
+  test('id enviado não bate com o ID atual da linha -> 409, sem escrever', async () => {
+    sheets.getValues.mockResolvedValue(custoComId());
+    const r = await editarCusto({ ...base, id: 'c-outro999' });
+    expect(r.status).toBe(409);
+    expect(sheets.updateRow).not.toHaveBeenCalled();
+  });
+
+  test('id enviado bate com o ID atual da linha -> 200', async () => {
+    sheets.getValues.mockResolvedValue(custoComId());
+    const r = await editarCusto({ ...base, id: 'c-abc12345' });
+    expect(r.status).toBe(200);
+  });
+
+  test('linha ainda sem ID (planilha não migrada) não bloqueia mesmo com id enviado', async () => {
+    const custo = custoComId();
+    custo[1][10] = '';
+    sheets.getValues.mockResolvedValue(custo);
+    const r = await editarCusto({ ...base, id: 'c-qualquer' });
+    expect(r.status).toBe(200);
+  });
+
+  test('sem id no pedido (front antigo) segue sem conferir', async () => {
+    sheets.getValues.mockResolvedValue(custoComId());
+    const r = await editarCusto(base);
+    expect(r.status).toBe(200);
+  });
+});
+
 describe('editarCusto', () => {
   test('sem sessão -> 401', async () => {
     const r = await editarCusto({ ...base, cookies: {} });

@@ -18,6 +18,32 @@ beforeEach(() => {
   sheets.updateRow.mockResolvedValue();
 });
 
+describe('editarReserva — conferência de ID (concorrência)', () => {
+  const reservaComId = () => [
+    ['Nome', 'Valor', 'Frequência', 'Dia', 'Data_Início', 'Data_Fim', 'Status', 'ID'],
+    ['Reserva de emergência', 350, 'Mensal', 10, '', '', 'Ativo', 'r-abc12345'],
+  ];
+
+  test('id enviado não bate com o ID atual da linha -> 409, sem escrever', async () => {
+    sheets.getValues.mockResolvedValue(reservaComId());
+    const r = await editarReserva({ ...base, id: 'r-outro999' });
+    expect(r.status).toBe(409);
+    expect(sheets.updateRow).not.toHaveBeenCalled();
+  });
+
+  test('id enviado bate com o ID atual da linha -> 200', async () => {
+    sheets.getValues.mockResolvedValue(reservaComId());
+    const r = await editarReserva({ ...base, id: 'r-abc12345' });
+    expect(r.status).toBe(200);
+  });
+
+  test('sem id no pedido (front antigo) segue sem conferir', async () => {
+    sheets.getValues.mockResolvedValue(reservaComId());
+    const r = await editarReserva(base);
+    expect(r.status).toBe(200);
+  });
+});
+
 describe('editarReserva', () => {
   test('sem sessão -> 401', async () => {
     const r = await editarReserva({ ...base, cookies: {} });
