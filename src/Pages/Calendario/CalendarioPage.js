@@ -448,6 +448,9 @@ export default function CalendarioPage() {
           />
           <SummaryCards totals={dados.totals} moeda={dados.moeda} />
           <ViewToggle vista={vista} onChange={setVista} />
+          {vista === 'mes' && dados.semData.length > 0 && (
+            <SemData itens={dados.semData} moeda={dados.moeda} onEditar={abrirPainelEditar} onTogglePago={alternarPago} />
+          )}
           {vista === 'mes' ? (
             <>
               <div className={styles.desktopOnly}>
@@ -461,9 +464,6 @@ export default function CalendarioPage() {
             <AgendaView dados={dados} onEditar={abrirPainelEditar} onTogglePago={alternarPago} />
           )}
           <Legend categorias={dados.categorias} />
-          {vista === 'mes' && dados.semData.length > 0 && (
-            <SemData itens={dados.semData} moeda={dados.moeda} onEditar={abrirPainelEditar} onTogglePago={alternarPago} />
-          )}
           {erroAcao && !painelItem && <div className={styles.errorText}>{erroAcao}</div>}
         </main>
 
@@ -947,25 +947,23 @@ function AgendaView({ dados, onEditar, onTogglePago }) {
   const vazio = diasComItens.length === 0 && dados.semData.length === 0;
   return (
     <div className={styles.agendaView}>
+      {dados.semData.length > 0 && (
+        <SemData itens={dados.semData} moeda={dados.moeda} onEditar={onEditar} onTogglePago={onTogglePago} />
+      )}
       {vazio ? (
         <div className={styles.dayListVazio}>Nenhum lançamento neste mês.</div>
       ) : (
-        <>
-          {diasComItens.map((dia) => (
-            <DayList
-              key={dia.data}
-              dia={dia}
-              hoje={dados.hoje}
-              moeda={dados.moeda}
-              onEditar={onEditar}
-              onTogglePago={onTogglePago}
-              comIcone
-            />
-          ))}
-          {dados.semData.length > 0 && (
-            <SemData itens={dados.semData} moeda={dados.moeda} onEditar={onEditar} onTogglePago={onTogglePago} />
-          )}
-        </>
+        diasComItens.map((dia) => (
+          <DayList
+            key={dia.data}
+            dia={dia}
+            hoje={dados.hoje}
+            moeda={dados.moeda}
+            onEditar={onEditar}
+            onTogglePago={onTogglePago}
+            comIcone
+          />
+        ))
       )}
     </div>
   );
@@ -995,38 +993,47 @@ function Legend({ categorias }) {
 function SemData({ itens, moeda, onEditar, onTogglePago }) {
   return (
     <div className={styles.semDataBox}>
-      <div className={styles.semDataTitle}>Sem data definida ({itens.length})</div>
-      {itens.map((item) => (
-        <div
-          key={item.linhaPlanilha}
-          className={`${styles.semDataRow} ${styles.itemClickable}`}
-          onClick={() => onEditar(item)}
-          onKeyDown={(ev) => {
-            if (ev.key === 'Enter' || ev.key === ' ') {
-              ev.preventDefault();
-              onEditar(item);
-            }
-          }}
-          role="button"
-          tabIndex={0}
-        >
-          <span className={styles.itemDot} style={{ background: item.categoria.cor }} />
-          <div className={styles.itemBody} style={{ flex: 1 }}>
-            <div className={styles.itemName}>{nomeComParcela(item)}</div>
-            <div className={styles.semDataMeta}>{item.diaTexto}</div>
-          </div>
-          <button
-            className={`${styles.btnGhost} ${styles.btnCompact}`}
-            onClick={(ev) => {
-              ev.stopPropagation();
-              onTogglePago(item);
+      <div className={styles.semDataTitle}>
+        <TriangleAlert size={13} strokeWidth={2.4} aria-hidden="true" />
+        Sem data definida ({itens.length})
+      </div>
+      {itens.map((item) => {
+        const concluido = itemConcluido(item);
+        const alternavel = item.tipo === 'custo' || item.tipo === 'reserva';
+        return (
+          <div
+            key={item.linhaPlanilha}
+            className={`${styles.semDataRow} ${styles.itemClickable}`}
+            onClick={() => onEditar(item)}
+            onKeyDown={(ev) => {
+              if (ev.key === 'Enter' || ev.key === ' ') {
+                ev.preventDefault();
+                onEditar(item);
+              }
             }}
+            role="button"
+            tabIndex={0}
           >
-            {item.statusPagamento === 'pago' ? 'Pago' : 'Marcar pago'}
-          </button>
-          <span className={styles.semDataAmount}>{formatarMoeda(item.valor, moeda)}</span>
-        </div>
-      ))}
+            <span className={styles.itemDot} style={{ background: item.categoria.cor }} />
+            <div className={styles.itemBody} style={{ flex: 1 }}>
+              <div className={`${styles.itemName} ${concluido ? styles.itemNamePago : ''}`}>{nomeComParcela(item)}</div>
+              <div className={styles.semDataMeta}>{item.diaTexto}</div>
+            </div>
+            <span className={styles.semDataAmount}>{formatarMoeda(item.valor, moeda)}</span>
+            {alternavel && (
+              <button
+                type="button"
+                className={`${styles.agendaCheck} ${styles.semDataCheck} ${item.tipo === 'reserva' ? styles.agendaCheckReserva : ''} ${concluido ? styles.agendaCheckOn : ''}`}
+                onClick={(ev) => { ev.stopPropagation(); onTogglePago(item); }}
+                aria-pressed={concluido}
+                aria-label={`${concluido ? 'Desmarcar' : 'Marcar'} ${item.tipo === 'reserva' ? 'guardado' : 'pago'}: ${item.nome}`}
+              >
+                <Check size={10} strokeWidth={2.5} aria-hidden="true" />
+              </button>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }
