@@ -210,6 +210,11 @@
   background: var(--interactive-hover);
 }
 
+/* Fora do mobile o slot não existe como caixa: o botão fica direto na barra. */
+.addSlot {
+  display: contents;
+}
+
 .summaryRow {
   display: flex;
   gap: var(--space-3);
@@ -1322,6 +1327,50 @@ select.fieldInput {
   .toolbarActions {
     width: 100%;
     justify-content: space-between;
+  }
+
+  /* "Adicionar" vira só "+": botão redondo. O slot guarda o espaço no fluxo; assim
+     que a página rola, o botão (.addButtonFlutuante) passa a ficar fixo no canto
+     inferior direito, acima do conteúdo e abaixo dos modais (z-index 50). */
+  .addSlot {
+    display: inline-flex;
+    width: 44px;
+    height: 44px;
+    flex: none;
+    /* Afasta o "+" da borda: 16px do conteúdo + 8px = 24px, a mesma distância do
+       botão flutuante, então ele não muda de lado ao rolar. */
+    margin-right: var(--space-2);
+  }
+
+  .addLabel {
+    display: none;
+  }
+
+  .addButton {
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 26px;
+    line-height: 1;
+    font-weight: 500;
+  }
+
+  .addButtonFlutuante {
+    position: fixed;
+    right: var(--space-6);
+    bottom: calc(var(--space-6) + env(safe-area-inset-bottom, 0px));
+    z-index: 40;
+    width: 52px;
+    height: 52px;
+    box-shadow: var(--shadow-lg);
+  }
+
+  /* Folga no fim da página pro botão flutuante não cobrir o último item. */
+  .content {
+    padding-bottom: 88px;
   }
 
   .summaryRow {

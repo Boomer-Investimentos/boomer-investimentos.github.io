@@ -536,6 +536,17 @@ function Topbar() {
 }
 
 function Toolbar({ mes, dados, onNav, onAdicionar, carregando }) {
+  // No mobile o botão é só "+" e, assim que a página rola um pouco, vira um botão
+  // flutuante (fixo no canto). O `slot` fica no fluxo e guarda o espaço do botão,
+  // então nada pula na troca.
+  const [flutuante, setFlutuante] = useState(false);
+  useEffect(() => {
+    const aoRolar = () => setFlutuante(window.scrollY > 24);
+    aoRolar();
+    window.addEventListener('scroll', aoRolar, { passive: true });
+    return () => window.removeEventListener('scroll', aoRolar);
+  }, []);
+
   return (
     <div className={styles.toolbar}>
       <div>
@@ -554,9 +565,18 @@ function Toolbar({ mes, dados, onNav, onAdicionar, carregando }) {
             ›
           </button>
         </div>
-        <button className={styles.addButton} onClick={onAdicionar}>
-          + Adicionar
-        </button>
+        <span className={styles.addSlot}>
+          <button
+            className={`${styles.addButton} ${flutuante ? styles.addButtonFlutuante : ''}`}
+            onClick={onAdicionar}
+            aria-label="Adicionar"
+          >
+            <span aria-hidden="true">+</span>
+            <span className={styles.addLabel} aria-hidden="true">
+              {' '}Adicionar
+            </span>
+          </button>
+        </span>
       </div>
     </div>
   );
