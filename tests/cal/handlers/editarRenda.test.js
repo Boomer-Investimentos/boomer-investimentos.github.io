@@ -27,6 +27,32 @@ beforeEach(() => {
   sheets.updateRow.mockResolvedValue();
 });
 
+describe('editarRenda — conferência de ID (concorrência)', () => {
+  const rendaComId = () => [
+    ['Fonte_Renda', 'Valor', 'Frequência', 'Dia_Recebimento', 'Data_Início', 'Data_Fim', 'Status', 'ID'],
+    ['Salário', 800, 'Semanal', 'Sexta-feira', '', '', 'Ativo', 'rn-abc12345'],
+  ];
+
+  test('id enviado não bate com o ID atual da linha -> 409, sem escrever', async () => {
+    sheets.getValues.mockResolvedValue(rendaComId());
+    const r = await editarRenda({ ...base, id: 'rn-outro999' });
+    expect(r.status).toBe(409);
+    expect(sheets.updateRow).not.toHaveBeenCalled();
+  });
+
+  test('id enviado bate com o ID atual da linha -> 200', async () => {
+    sheets.getValues.mockResolvedValue(rendaComId());
+    const r = await editarRenda({ ...base, id: 'rn-abc12345' });
+    expect(r.status).toBe(200);
+  });
+
+  test('sem id no pedido (front antigo) segue sem conferir', async () => {
+    sheets.getValues.mockResolvedValue(rendaComId());
+    const r = await editarRenda(base);
+    expect(r.status).toBe(200);
+  });
+});
+
 describe('editarRenda', () => {
   test('sem sessão -> 401', async () => {
     const r = await editarRenda({ ...base, cookies: {} });

@@ -168,6 +168,22 @@ describe('atualizarPagamento', () => {
     expect(sheets.appendRow).not.toHaveBeenCalled();
   });
 
+  test('id enviado não bate com o ID atual da linha -> 409, sem tocar na planilha', async () => {
+    const custo = [CUSTO_ID, ['Aluguel', 900, 1, 'Ativo', 'Pendente', 'c-abc12345']];
+    mockPlanilha({ custo });
+    const r = await atualizarPagamento(pedido({ id: 'c-outro999' }));
+    expect(r.status).toBe(409);
+    expect(sheets.updateCell).not.toHaveBeenCalled();
+    expect(sheets.appendRow).not.toHaveBeenCalled();
+  });
+
+  test('id enviado bate com o ID atual da linha -> segue normalmente', async () => {
+    const custo = [CUSTO_ID, ['Aluguel', 900, 1, 'Ativo', 'Pendente', 'c-abc12345']];
+    mockPlanilha({ custo });
+    const r = await atualizarPagamento(pedido({ id: 'c-abc12345' }));
+    expect(r.status).toBe(200);
+  });
+
   test('adota linha antiga por nome (nome único) carimbando o ID, sem criar linha', async () => {
     const custo = [CUSTO_ID, ['Internet', 75, 10, 'Ativo', 'Pendente', 'c-fixo1111']];
     const historico = [HIST_ID, ['Internet', 2026, '', '', '', '', '', '', '', '', '', '', '', '', '', '']];

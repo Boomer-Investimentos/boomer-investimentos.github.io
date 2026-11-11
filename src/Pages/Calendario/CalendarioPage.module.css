@@ -568,30 +568,34 @@
 }
 
 .semDataBox {
-  margin-top: var(--space-5);
-  padding: var(--space-6);
-  background: var(--surface-raised);
-  border: 1px solid var(--border);
+  margin-bottom: var(--space-2);
+  padding: var(--space-2);
+  background: color-mix(in srgb, var(--status-atrasado) 8%, var(--surface-raised));
+  border: 1px solid color-mix(in srgb, var(--status-atrasado) 35%, var(--border));
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-sm);
 }
 
-/* label-sm */
+/* label-sm — cor de alerta (mesma de "atrasado") pra chamar atenção pro
+   cliente corrigir o dia, já que esses itens ficam fora da grade do mês. */
 .semDataTitle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
   font-size: 11px;
   line-height: 16px;
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: var(--ink-subtle);
-  margin-bottom: var(--space-3);
+  color: var(--status-atrasado);
+  margin-bottom: var(--space-1);
 }
 
 .semDataRow {
   display: flex;
   align-items: center;
-  gap: var(--space-3);
-  padding: var(--space-2) 0;
+  gap: var(--space-2);
+  padding: 2px 0;
   border-bottom: 1px solid var(--border);
 }
 
@@ -612,14 +616,6 @@
   line-height: 20px;
   font-weight: 600;
   color: var(--ink);
-}
-
-/* Variante compacta de btnGhost pra controles dentro de uma linha de lista. */
-.btnCompact {
-  padding: var(--space-1) var(--space-2);
-  font-size: 13px;
-  line-height: 18px;
-  letter-spacing: 0.01em;
 }
 
 /* Card: radius-lg + shadow-sm em repouso (painel fica sempre visível dentro
@@ -1037,6 +1033,9 @@
 .loadingLogo {
   width: 160px;
   height: 160px;
+  /* some com a barra de progresso padrão do model-viewer durante o carregamento do GLB */
+  --progress-bar-height: 0px;
+  --progress-bar-color: transparent;
 }
 
 /* Grade de 7 colunas com texto inline (desktop) não cabe em ~400px sem
@@ -1196,6 +1195,12 @@
   border-color: var(--border-strong);
 }
 
+/* Hoje selecionado: a faixa terracota do topo já marca "hoje" — a borda clara
+   de seleção por cima ficava parecendo um contorno branco sobrando. */
+.cellToday.miniCellSelecionado {
+  border-color: var(--border);
+}
+
 .miniDots {
   display: flex;
   gap: 2px;
@@ -1343,6 +1348,13 @@
 
 .agendaCheck svg {
   display: block;
+}
+
+/* Variante menor do agendaCheck pra caber na caixa compacta de Sem data definida. */
+.semDataCheck {
+  width: 18px;
+  height: 18px;
+  border-width: 1.5px;
 }
 
 .agendaCheck:hover {

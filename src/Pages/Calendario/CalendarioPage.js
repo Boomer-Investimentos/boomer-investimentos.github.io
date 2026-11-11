@@ -6,7 +6,7 @@ import {
 import '@google/model-viewer';
 import styles from './CalendarioPage.module.css';
 import boomerBMark from '../../assets/imgs/boomer-b-mark.png';
-import boomerLogo3D from '../../assets/3d/Logo Boomer 20_PNG-terracota.glb';
+import boomerLogo3D from '../../assets/3d/Logo Boomer - metal.glb';
 import {
   obterMes,
   verificarAcesso,
@@ -19,6 +19,9 @@ import {
   criarReserva,
   editarReserva,
   atualizarReserva,
+  excluirCusto,
+  excluirRenda,
+  excluirReserva,
 } from '../../services/calendarioService';
 
 const LINK_TOKEN_KEY = 'cal_link_token';
@@ -156,16 +159,17 @@ function LoadingLogo() {
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
-    // Só reduz o brilho/verniz (roughness/metallic) do material já vindo
-    // colorido certo do arquivo — não mexe na cor base.
-    const fosco = () => {
+    // Metal de verdade (reflete o ambiente tingido pela cor base = prateado),
+    // em vez do fosco não-metálico calibrado pro logo antigo (que achatava
+    // esse material num plástico branco).
+    const metalico = () => {
       (el.model?.materials || []).forEach((m) => {
-        m.pbrMetallicRoughness.setRoughnessFactor(0.95);
-        m.pbrMetallicRoughness.setMetallicFactor(0);
+        m.pbrMetallicRoughness.setRoughnessFactor(0.4);
+        m.pbrMetallicRoughness.setMetallicFactor(0.9);
       });
     };
-    el.addEventListener('load', fosco);
-    return () => el.removeEventListener('load', fosco);
+    el.addEventListener('load', metalico);
+    return () => el.removeEventListener('load', metalico);
   }, []);
 
   return (
@@ -319,10 +323,10 @@ export default function CalendarioPage() {
     try {
       if (item.tipo === 'reserva') {
         const novoStatus = item.statusReserva === 'guardado' ? 'Pendente' : 'Guardado';
-        await atualizarReserva(item.linhaPlanilha, novoStatus, mes);
+        await atualizarReserva(item.linhaPlanilha, novoStatus, mes, item.id);
       } else {
         const novoStatus = item.statusPagamento === 'pago' ? 'Pendente' : 'Pago';
-        await atualizarPagamento(item.linhaPlanilha, novoStatus, mes);
+        await atualizarPagamento(item.linhaPlanilha, novoStatus, mes, item.id);
       }
     } catch (e) {
       // Falhou: desfaz o otimista (aplicar de novo reverte) e mostra o erro.
@@ -368,15 +372,15 @@ export default function CalendarioPage() {
         else if (tipo === 'reserva') await criarReserva({ ...form, mes });
         else await criarRenda({ ...form, mes });
       } else {
-        const linhaPlanilha = painelItem.item.linhaPlanilha;
+        const { linhaPlanilha, id } = painelItem.item;
         if (tipo === 'custo') {
-          await editarCusto({ ...form, linhaPlanilha, mes });
-          if (statusPagamento) await atualizarPagamento(linhaPlanilha, statusPagamento, mes);
+          await editarCusto({ ...form, linhaPlanilha, id, mes });
+          if (statusPagamento) await atualizarPagamento(linhaPlanilha, statusPagamento, mes, id);
         } else if (tipo === 'reserva') {
-          await editarReserva({ ...form, linhaPlanilha, mes });
-          if (statusPagamento) await atualizarReserva(linhaPlanilha, statusPagamento, mes);
+          await editarReserva({ ...form, linhaPlanilha, id, mes });
+          if (statusPagamento) await atualizarReserva(linhaPlanilha, statusPagamento, mes, id);
         } else {
-          await editarRenda({ ...form, linhaPlanilha, mes });
+          await editarRenda({ ...form, linhaPlanilha, id, mes });
         }
       }
       fecharPainel();
@@ -391,14 +395,14 @@ export default function CalendarioPage() {
   };
 
   const confirmarExclusao = async () => {
-    const { tipo, form } = confirmExcluir;
+    const { tipo } = confirmExcluir;
     setConfirmExcluir(null);
     setErroAcao(null);
     try {
-      const linhaPlanilha = painelItem.item.linhaPlanilha;
-      if (tipo === 'custo') await editarCusto({ ...form, linhaPlanilha, mes, status: 'Inativo' });
-      else if (tipo === 'reserva') await editarReserva({ ...form, linhaPlanilha, mes, status: 'Inativo' });
-      else await editarRenda({ ...form, linhaPlanilha, mes, status: 'Inativo' });
+      const { linhaPlanilha, id } = painelItem.item;
+      if (tipo === 'custo') await excluirCusto(linhaPlanilha, id);
+      else if (tipo === 'reserva') await excluirReserva(linhaPlanilha, id);
+      else await excluirRenda(linhaPlanilha, id);
       fecharPainel();
       carregarMes(mes, linkToken);
     } catch (e) {
@@ -444,6 +448,9 @@ export default function CalendarioPage() {
           />
           <SummaryCards totals={dados.totals} moeda={dados.moeda} />
           <ViewToggle vista={vista} onChange={setVista} />
+          {vista === 'mes' && dados.semData.length > 0 && (
+            <SemData itens={dados.semData} moeda={dados.moeda} onEditar={abrirPainelEditar} onTogglePago={alternarPago} />
+          )}
           {vista === 'mes' ? (
             <>
               <div className={styles.desktopOnly}>
@@ -457,9 +464,6 @@ export default function CalendarioPage() {
             <AgendaView dados={dados} onEditar={abrirPainelEditar} onTogglePago={alternarPago} />
           )}
           <Legend categorias={dados.categorias} />
-          {vista === 'mes' && dados.semData.length > 0 && (
-            <SemData itens={dados.semData} moeda={dados.moeda} onEditar={abrirPainelEditar} onTogglePago={alternarPago} />
-          )}
           {erroAcao && !painelItem && <div className={styles.errorText}>{erroAcao}</div>}
         </main>
 
@@ -712,9 +716,7 @@ function Item({ item, moeda, onEditar, onTogglePago, onPedirAcao }) {
     }
   };
 
-  const titulo = acionavel
-    ? (item.tipo === 'reserva' ? 'Clique para guardar ou editar' : 'Clique para pagar ou editar')
-    : 'Editar lançamento';
+  const titulo = nomeComParcela(item);
 
   return (
     <div
@@ -945,25 +947,23 @@ function AgendaView({ dados, onEditar, onTogglePago }) {
   const vazio = diasComItens.length === 0 && dados.semData.length === 0;
   return (
     <div className={styles.agendaView}>
+      {dados.semData.length > 0 && (
+        <SemData itens={dados.semData} moeda={dados.moeda} onEditar={onEditar} onTogglePago={onTogglePago} />
+      )}
       {vazio ? (
         <div className={styles.dayListVazio}>Nenhum lançamento neste mês.</div>
       ) : (
-        <>
-          {diasComItens.map((dia) => (
-            <DayList
-              key={dia.data}
-              dia={dia}
-              hoje={dados.hoje}
-              moeda={dados.moeda}
-              onEditar={onEditar}
-              onTogglePago={onTogglePago}
-              comIcone
-            />
-          ))}
-          {dados.semData.length > 0 && (
-            <SemData itens={dados.semData} moeda={dados.moeda} onEditar={onEditar} onTogglePago={onTogglePago} />
-          )}
-        </>
+        diasComItens.map((dia) => (
+          <DayList
+            key={dia.data}
+            dia={dia}
+            hoje={dados.hoje}
+            moeda={dados.moeda}
+            onEditar={onEditar}
+            onTogglePago={onTogglePago}
+            comIcone
+          />
+        ))
       )}
     </div>
   );
@@ -993,38 +993,47 @@ function Legend({ categorias }) {
 function SemData({ itens, moeda, onEditar, onTogglePago }) {
   return (
     <div className={styles.semDataBox}>
-      <div className={styles.semDataTitle}>Sem data definida ({itens.length})</div>
-      {itens.map((item) => (
-        <div
-          key={item.linhaPlanilha}
-          className={`${styles.semDataRow} ${styles.itemClickable}`}
-          onClick={() => onEditar(item)}
-          onKeyDown={(ev) => {
-            if (ev.key === 'Enter' || ev.key === ' ') {
-              ev.preventDefault();
-              onEditar(item);
-            }
-          }}
-          role="button"
-          tabIndex={0}
-        >
-          <span className={styles.itemDot} style={{ background: item.categoria.cor }} />
-          <div className={styles.itemBody} style={{ flex: 1 }}>
-            <div className={styles.itemName}>{nomeComParcela(item)}</div>
-            <div className={styles.semDataMeta}>{item.diaTexto}</div>
-          </div>
-          <button
-            className={`${styles.btnGhost} ${styles.btnCompact}`}
-            onClick={(ev) => {
-              ev.stopPropagation();
-              onTogglePago(item);
+      <div className={styles.semDataTitle}>
+        <TriangleAlert size={13} strokeWidth={2.4} aria-hidden="true" />
+        Sem data definida ({itens.length})
+      </div>
+      {itens.map((item) => {
+        const concluido = itemConcluido(item);
+        const alternavel = item.tipo === 'custo' || item.tipo === 'reserva';
+        return (
+          <div
+            key={item.linhaPlanilha}
+            className={`${styles.semDataRow} ${styles.itemClickable}`}
+            onClick={() => onEditar(item)}
+            onKeyDown={(ev) => {
+              if (ev.key === 'Enter' || ev.key === ' ') {
+                ev.preventDefault();
+                onEditar(item);
+              }
             }}
+            role="button"
+            tabIndex={0}
           >
-            {item.statusPagamento === 'pago' ? 'Pago' : 'Marcar pago'}
-          </button>
-          <span className={styles.semDataAmount}>{formatarMoeda(item.valor, moeda)}</span>
-        </div>
-      ))}
+            <span className={styles.itemDot} style={{ background: item.categoria.cor }} />
+            <div className={styles.itemBody} style={{ flex: 1 }}>
+              <div className={`${styles.itemName} ${concluido ? styles.itemNamePago : ''}`}>{nomeComParcela(item)}</div>
+              <div className={styles.semDataMeta}>{item.diaTexto}</div>
+            </div>
+            <span className={styles.semDataAmount}>{formatarMoeda(item.valor, moeda)}</span>
+            {alternavel && (
+              <button
+                type="button"
+                className={`${styles.agendaCheck} ${styles.semDataCheck} ${item.tipo === 'reserva' ? styles.agendaCheckReserva : ''} ${concluido ? styles.agendaCheckOn : ''}`}
+                onClick={(ev) => { ev.stopPropagation(); onTogglePago(item); }}
+                aria-pressed={concluido}
+                aria-label={`${concluido ? 'Desmarcar' : 'Marcar'} ${item.tipo === 'reserva' ? 'guardado' : 'pago'}: ${item.nome}`}
+              >
+                <Check size={10} strokeWidth={2.5} aria-hidden="true" />
+              </button>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }

@@ -56,6 +56,28 @@ describe('atualizarReserva', () => {
     expect(sheets.appendRow).not.toHaveBeenCalled();
   });
 
+  test('id enviado não bate com o ID atual da linha -> 409, sem tocar na planilha', async () => {
+    const reservas = [
+      ['Nome', 'Valor', 'Frequência', 'Dia', 'Status', 'ID'],
+      ['Reserva de emergência', 350, 'Mensal', 10, 'Ativo', 'r-abc12345'],
+    ];
+    mockPlanilha({ reservas });
+    const r = await atualizarReserva(pedido({ id: 'r-outro999' }));
+    expect(r.status).toBe(409);
+    expect(sheets.updateCell).not.toHaveBeenCalled();
+    expect(sheets.appendRow).not.toHaveBeenCalled();
+  });
+
+  test('id enviado bate com o ID atual da linha -> segue normalmente', async () => {
+    const reservas = [
+      ['Nome', 'Valor', 'Frequência', 'Dia', 'Status', 'ID'],
+      ['Reserva de emergência', 350, 'Mensal', 10, 'Ativo', 'r-abc12345'],
+    ];
+    mockPlanilha({ reservas });
+    const r = await atualizarReserva(pedido({ id: 'r-abc12345', mes: '2026-10' }));
+    expect(r.status).toBe(200);
+  });
+
   test('Guardado sem registro no mês -> cria linha no histórico', async () => {
     const r = await atualizarReserva(pedido({ statusReserva: 'Guardado', mes: '2026-10' }));
     expect(r.status).toBe(200);
