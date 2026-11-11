@@ -1037,6 +1037,9 @@
 .loadingLogo {
   width: 160px;
   height: 160px;
+  /* some com a barra de progresso padrão do model-viewer durante o carregamento do GLB */
+  --progress-bar-height: 0px;
+  --progress-bar-color: transparent;
 }
 
 /* Grade de 7 colunas com texto inline (desktop) não cabe em ~400px sem
@@ -1194,6 +1197,12 @@
 
 .miniCell.miniCellSelecionado {
   border-color: var(--border-strong);
+}
+
+/* Hoje selecionado: a faixa terracota do topo já marca "hoje" — a borda clara
+   de seleção por cima ficava parecendo um contorno branco sobrando. */
+.cellToday.miniCellSelecionado {
+  border-color: var(--border);
 }
 
 .miniDots {
