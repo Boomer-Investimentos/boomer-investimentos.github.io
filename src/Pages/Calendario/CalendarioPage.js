@@ -1,7 +1,10 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useId, useRef, useState, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import {
   CircleCheck, Clock, TriangleAlert, TrendingUp, PiggyBank, Wallet, Check,
-  Coins, House, Laptop, Clapperboard, HeartPulse, Wrench, ShoppingBag, Dumbbell, Tag,
+  Coins, House, Clapperboard, HeartPulse, Wrench, ShoppingBag, Dumbbell, Tag,
+  Briefcase, Landmark, PawPrint, GraduationCap, ChevronDown, ChevronLeft, ChevronRight,
+  CalendarDays, CalendarClock, Repeat, CreditCard, Layers, Hash,
 } from 'lucide-react';
 import '@google/model-viewer';
 import styles from './CalendarioPage.module.css';
@@ -89,12 +92,15 @@ function tituloDia(dataISO) {
 const ICONES_CATEGORIA = {
   recebimento: Coins,
   moradia: House,
-  tecnologia: Laptop,
   entretenimento: Clapperboard,
   saude: HeartPulse,
   software: Wrench,
   compras: ShoppingBag,
   esportes: Dumbbell,
+  servico: Briefcase,
+  imposto: Landmark,
+  pet: PawPrint,
+  educacao: GraduationCap,
   reserva: PiggyBank,
 };
 function normalizarTexto(txt) {
@@ -104,14 +110,6 @@ function iconeCategoria(nome) {
   const chave = normalizarTexto(nome);
   const achado = Object.keys(ICONES_CATEGORIA).find((k) => chave.includes(k));
   return achado ? ICONES_CATEGORIA[achado] : Tag;
-}
-
-// As cores de categoria vêm do backend em tons escuros (pensados pra fundo claro).
-// Como ícone sobre o navy, algumas ficam abaixo de 3:1 de contraste (Tecnologia
-// 1,7; Software 2,2). Clareia em direção ao creme da interface, mantendo o matiz
-// (todas passam de 4,8:1).
-function corIcone(cor) {
-  return `color-mix(in srgb, ${cor} 55%, var(--ink))`;
 }
 
 function round2(n) {
@@ -1046,13 +1044,13 @@ const OPCOES_TIPO = [
   { valor: 'reserva', label: 'Reserva' },
 ];
 
-// Interruptor terracota (Parcelado, Repetir todo mês). Mantém um <input
-// type="checkbox" role="switch"> escondido, então teclado e leitor de tela seguem
-// funcionando; o trilho desenhado ao lado reflete o estado via CSS. A linha
-// inteira é clicável. `fim`: última linha antes dos botões (mais espaço embaixo).
-function Interruptor({ marcado, onChange, fim, children }) {
+// Interruptor em linha do grupo (Parcelado, Repetir todo mês): ícone + rótulo à
+// esquerda, trilho à direita. Mantém um <input type="checkbox" role="switch">
+// escondido, então teclado e leitor de tela seguem funcionando; o trilho
+// desenhado reflete o estado via CSS. A linha inteira é clicável.
+function Interruptor({ marcado, onChange, icone: Icone, children }) {
   return (
-    <label className={`${styles.switchRow} ${fim ? styles.switchRowFim : ''}`}>
+    <label className={`${styles.linha} ${styles.linhaToggle}`}>
       <input
         type="checkbox"
         role="switch"
@@ -1063,20 +1061,23 @@ function Interruptor({ marcado, onChange, fim, children }) {
       <span className={styles.switchTrack} aria-hidden="true">
         <span className={styles.switchThumb} />
       </span>
-      <span className={styles.switchLabel}>{children}</span>
+      <span className={styles.linhaRotulo}>
+        <Icone size={18} strokeWidth={2} aria-hidden="true" />
+        {children}
+      </span>
     </label>
   );
 }
 
 // Seletor segmentado com a pílula deslizante (estilo "liquid glass"). `--n` ajusta
-// a largura da pílula ao número de opções (3 em Custo/Renda/Reserva e na
-// frequência de renda; 2 na de reserva). Se o valor atual não estiver entre as
-// opções, a pílula some em vez de marcar a primeira.
-function Segmentado({ opcoes, valor, onChange, ariaLabel, compacto }) {
+// a largura da pílula ao número de opções (hoje só o tipo: Custo/Renda/Reserva).
+// Se o valor atual não estiver entre as opções, a pílula some em vez de marcar a
+// primeira.
+function Segmentado({ opcoes, valor, onChange, ariaLabel }) {
   const indice = opcoes.findIndex((o) => o.valor === valor);
   return (
     <div
-      className={`${styles.segmented} ${compacto ? styles.segmentedSm : ''}`}
+      className={styles.segmented}
       role="tablist"
       aria-label={ariaLabel}
       style={{ '--n': opcoes.length }}
@@ -1101,6 +1102,290 @@ function Segmentado({ opcoes, valor, onChange, ariaLabel, compacto }) {
     </div>
   );
 }
+// Dropdown customizado (lista num portal pro document.body, pra não ser
+// cortada pelo overflow-y:auto do modal). Visual próprio: pílula igual aos
+// outros campos, lista com cantos arredondados e gap embaixo da pílula, item
+// em foco/hover usa o mesmo creme (--interactive) do resto do app em vez do
+// azul padrão do navegador.
+// Topo de um popup `position: fixed` ancorado num gatilho (rect `r`): abaixo do
+// gatilho; se não couber, acima; se também não couber (janela baixa), encosta na
+// borda de baixo da janela em vez de ficar cortado.
+function topoPopup(r, altura) {
+  const margem = 8;
+  const abaixo = r.bottom + 6;
+  if (abaixo + altura <= window.innerHeight - margem) return abaixo;
+  const acima = r.top - 6 - altura;
+  if (acima >= margem) return acima;
+  return Math.max(margem, window.innerHeight - altura - margem);
+}
+
+// `linha` ({ Icone, rotulo }): em vez da pílula, renderiza uma linha de grupo
+// (ícone + rótulo à esquerda, valor + seta à direita) e a lista abre alinhada à direita.
+function Dropdown({ opcoes, valor, onChange, ariaLabel, style, linha }) {
+  const [aberto, setAberto] = useState(false);
+  const [posicao, setPosicao] = useState(null);
+  const [indiceAtivo, setIndiceAtivo] = useState(0);
+  const gatilhoRef = useRef(null);
+  const listaRef = useRef(null);
+  const idBase = useId();
+
+  const selecionada = opcoes.find((o) => o.valor === valor);
+
+  const abrir = () => {
+    const r = gatilhoRef.current.getBoundingClientRect();
+    const largura = linha ? Math.min(r.width, 240) : r.width;
+    const altura = Math.min(280, opcoes.length * 38 + 16);
+    setPosicao({ top: topoPopup(r, altura), left: linha ? r.right - largura : r.left, width: largura });
+    setIndiceAtivo(Math.max(opcoes.findIndex((o) => o.valor === valor), 0));
+    setAberto(true);
+  };
+
+  const selecionar = (opcao) => {
+    onChange(opcao);
+    setAberto(false);
+    gatilhoRef.current?.focus();
+  };
+
+  useEffect(() => {
+    if (!aberto) return undefined;
+    const fechar = (e) => {
+      if (gatilhoRef.current?.contains(e.target) || listaRef.current?.contains(e.target)) return;
+      setAberto(false);
+    };
+    // Ignora o scroll interno da própria lista (ela rola — tem mais opções do
+    // que cabem no max-height); só fecha quando quem rolou foi o fundo do modal.
+    const fecharNoScroll = (e) => {
+      if (listaRef.current?.contains(e.target)) return;
+      setAberto(false);
+    };
+    document.addEventListener('mousedown', fechar);
+    window.addEventListener('scroll', fecharNoScroll, true);
+    window.addEventListener('resize', fecharNoScroll);
+    return () => {
+      document.removeEventListener('mousedown', fechar);
+      window.removeEventListener('scroll', fecharNoScroll, true);
+      window.removeEventListener('resize', fecharNoScroll);
+    };
+  }, [aberto]);
+
+  useEffect(() => {
+    if (!aberto) return;
+    listaRef.current?.querySelector(`[data-indice="${indiceAtivo}"]`)?.scrollIntoView({ block: 'nearest' });
+  }, [aberto, indiceAtivo]);
+
+  const aoTeclar = (e) => {
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      if (!aberto) abrir();
+      else setIndiceAtivo((i) => Math.min(i + 1, opcoes.length - 1));
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      if (!aberto) abrir();
+      else setIndiceAtivo((i) => Math.max(i - 1, 0));
+    } else if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      if (aberto) selecionar(opcoes[indiceAtivo].valor);
+      else abrir();
+    } else if (e.key === 'Escape' && aberto) {
+      e.preventDefault();
+      setAberto(false);
+    }
+  };
+
+  return (
+    <>
+      <button
+        type="button"
+        ref={gatilhoRef}
+        className={linha ? `${styles.linha} ${styles.linhaGatilho}` : `${styles.fieldInput} ${styles.dropdownGatilho}`}
+        style={style}
+        role="combobox"
+        aria-label={linha ? linha.rotulo : undefined}
+        aria-haspopup="listbox"
+        aria-expanded={aberto}
+        aria-controls={`${idBase}-listbox`}
+        aria-activedescendant={aberto ? `${idBase}-${indiceAtivo}` : undefined}
+        onClick={() => (aberto ? setAberto(false) : abrir())}
+        onKeyDown={aoTeclar}
+      >
+        {linha && (
+          <span className={styles.linhaRotulo}>
+            <linha.Icone size={18} strokeWidth={2} aria-hidden="true" />
+            {linha.rotulo}
+          </span>
+        )}
+        <span className={linha ? styles.linhaValor : styles.dropdownValor}>{selecionada?.label ?? valor}</span>
+        <ChevronDown
+          size={16}
+          strokeWidth={2.2}
+          className={`${styles.dropdownSeta} ${aberto ? styles.dropdownSetaAberta : ''}`}
+          aria-hidden="true"
+        />
+      </button>
+      {aberto && posicao && createPortal(
+        <div
+          ref={listaRef}
+          id={`${idBase}-listbox`}
+          role="listbox"
+          aria-label={ariaLabel}
+          className={styles.dropdownLista}
+          style={{ top: posicao.top, left: posicao.left, width: posicao.width }}
+        >
+          {opcoes.map((o, i) => (
+            <button
+              key={o.valor}
+              type="button"
+              id={`${idBase}-${i}`}
+              data-indice={i}
+              role="option"
+              aria-selected={o.valor === valor}
+              className={`${styles.dropdownOpcao} ${i === indiceAtivo ? styles.dropdownOpcaoAtiva : ''}`}
+              onMouseEnter={() => setIndiceAtivo(i)}
+              onClick={() => selecionar(o.valor)}
+            >
+              {o.label}
+            </button>
+          ))}
+        </div>,
+        // Precisa ficar dentro de .page: é lá que as custom properties de cor
+        // (--surface-raised, --border etc.) são definidas. Um portal direto pro
+        // document.body ficaria fora desse escopo e renderizaria sem cor nenhuma.
+        document.querySelector(`.${styles.page}`) || document.body
+      )}
+    </>
+  );
+}
+
+const MESES_ABREV = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+
+// Seletor de mês em formato de calendário: popup com navegação de ano e uma
+// grade com os 12 meses (em vez de uma lista comprida pra rolar). `valor` é
+// sempre "AAAA-MM".
+// `linha`: mesmo formato de linha de grupo do Dropdown; o popup alinha à direita.
+function SeletorMes({ valor, onChange, ariaLabel, style, linha }) {
+  const [aberto, setAberto] = useState(false);
+  const [posicao, setPosicao] = useState(null);
+  const [anoExibido, setAnoExibido] = useState(() => Number(valor.slice(0, 4)));
+  const gatilhoRef = useRef(null);
+  const popupRef = useRef(null);
+
+  const anoAtual = Number(mesAtual().slice(0, 4));
+  const anoMin = anoAtual - 5;
+  const anoMax = anoAtual + 10;
+  const anoSelecionado = Number(valor.slice(0, 4));
+  const mesSelecionado = Number(valor.slice(5, 7)) - 1;
+
+  const abrir = () => {
+    const r = gatilhoRef.current.getBoundingClientRect();
+    setPosicao({ top: topoPopup(r, 232), left: linha ? r.right - 240 : r.left });
+    setAnoExibido(anoSelecionado);
+    setAberto(true);
+  };
+
+  const selecionar = (mesIndice) => {
+    onChange(`${anoExibido}-${String(mesIndice + 1).padStart(2, '0')}`);
+    setAberto(false);
+    gatilhoRef.current?.focus();
+  };
+
+  useEffect(() => {
+    if (!aberto) return undefined;
+    const fechar = (e) => {
+      if (gatilhoRef.current?.contains(e.target) || popupRef.current?.contains(e.target)) return;
+      setAberto(false);
+    };
+    const fecharNoScroll = (e) => {
+      if (popupRef.current?.contains(e.target)) return;
+      setAberto(false);
+    };
+    document.addEventListener('mousedown', fechar);
+    window.addEventListener('scroll', fecharNoScroll, true);
+    window.addEventListener('resize', fecharNoScroll);
+    return () => {
+      document.removeEventListener('mousedown', fechar);
+      window.removeEventListener('scroll', fecharNoScroll, true);
+      window.removeEventListener('resize', fecharNoScroll);
+    };
+  }, [aberto]);
+
+  return (
+    <>
+      <button
+        type="button"
+        ref={gatilhoRef}
+        className={linha ? `${styles.linha} ${styles.linhaGatilho}` : `${styles.fieldInput} ${styles.dropdownGatilho}`}
+        style={style}
+        aria-label={linha ? linha.rotulo : undefined}
+        aria-haspopup="dialog"
+        aria-expanded={aberto}
+        onClick={() => (aberto ? setAberto(false) : abrir())}
+      >
+        {linha && (
+          <span className={styles.linhaRotulo}>
+            <linha.Icone size={18} strokeWidth={2} aria-hidden="true" />
+            {linha.rotulo}
+          </span>
+        )}
+        <span className={linha ? styles.linhaValor : styles.dropdownValor}>{tituloMes(valor)}</span>
+        <ChevronDown
+          size={16}
+          strokeWidth={2.2}
+          className={`${styles.dropdownSeta} ${aberto ? styles.dropdownSetaAberta : ''}`}
+          aria-hidden="true"
+        />
+      </button>
+      {aberto && posicao && createPortal(
+        <div
+          ref={popupRef}
+          role="dialog"
+          aria-label={ariaLabel}
+          className={styles.mesPopup}
+          style={{ top: posicao.top, left: posicao.left }}
+        >
+          <div className={styles.mesPopupHeader}>
+            <button
+              type="button"
+              className={styles.mesPopupNav}
+              disabled={anoExibido <= anoMin}
+              onClick={() => setAnoExibido((a) => a - 1)}
+              aria-label="Ano anterior"
+            >
+              <ChevronLeft size={16} strokeWidth={2.2} />
+            </button>
+            <span className={styles.mesPopupAno}>{anoExibido}</span>
+            <button
+              type="button"
+              className={styles.mesPopupNav}
+              disabled={anoExibido >= anoMax}
+              onClick={() => setAnoExibido((a) => a + 1)}
+              aria-label="Próximo ano"
+            >
+              <ChevronRight size={16} strokeWidth={2.2} />
+            </button>
+          </div>
+          <div className={styles.mesPopupGrid}>
+            {MESES_ABREV.map((label, i) => {
+              const ativo = anoExibido === anoSelecionado && i === mesSelecionado;
+              return (
+                <button
+                  key={label}
+                  type="button"
+                  aria-pressed={ativo}
+                  className={`${styles.mesPopupMes} ${ativo ? styles.mesPopupMesAtiva : ''}`}
+                  onClick={() => selecionar(i)}
+                >
+                  {label}
+                </button>
+              );
+            })}
+          </div>
+        </div>,
+        document.querySelector(`.${styles.page}`) || document.body
+      )}
+    </>
+  );
+}
+
 const DIAS_SEMANA_OPCOES = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'];
 
 function semAcentoLocal(s) {
@@ -1142,12 +1427,14 @@ function PaymentPanel({ mes, erro, nomesCusto = [], categoriasCusto, modo, tipoI
   const [parcelas, setParcelas] = useState(item?.parcela ? String(item.parcela.total) : '');
   const [parcelaAtual, setParcelaAtual] = useState(item?.parcela ? String(item.parcela.atual) : '1');
   const [statusGuardado, setStatusGuardado] = useState(item?.statusReserva === 'guardado');
+  const [inicio, setInicio] = useState(() => (item?.dataInicio ? item.dataInicio.slice(0, 7) : mes));
   const [salvando, setSalvando] = useState(false);
   const [excluindo, setExcluindo] = useState(false);
   const [confirmDuplicado, setConfirmDuplicado] = useState(false);
 
   const ehRenda = tipo === 'renda';
   const ehReserva = tipo === 'reserva';
+  const ehCusto = !ehRenda && !ehReserva;
   const ehSemanal = ehRenda && frequencia === 'Semanal';
   const comParcelas = !ehRenda && !ehReserva && parcelado;
   const parcelasValidas =
@@ -1164,6 +1451,7 @@ function PaymentPanel({ mes, erro, nomesCusto = [], categoriasCusto, modo, tipoI
         frequencia,
         diaRecebimento: ehSemanal ? diaSemana : Number(diaMes),
         repetirTodoMes,
+        dataInicio: inicio,
       };
     }
     if (ehReserva) {
@@ -1173,6 +1461,7 @@ function PaymentPanel({ mes, erro, nomesCusto = [], categoriasCusto, modo, tipoI
         frequencia,
         dia: Number(diaMes),
         repetirTodoMes,
+        dataInicio: inicio,
       };
     }
     return {
@@ -1181,6 +1470,7 @@ function PaymentPanel({ mes, erro, nomesCusto = [], categoriasCusto, modo, tipoI
       categoria,
       dia: Number(diaMes),
       repetirTodoMes,
+      dataInicio: inicio,
       ...(comParcelas && incluirParcelas && { parcelas: Number(parcelas), parcelaAtual: Number(parcelaAtual) }),
     };
   };
@@ -1279,97 +1569,32 @@ function PaymentPanel({ mes, erro, nomesCusto = [], categoriasCusto, modo, tipoI
         placeholder={ehRenda ? 'Salário' : ehReserva ? 'Reserva de emergência' : 'Assinatura de streaming'}
       />
 
-      <div className={styles.fieldRow}>
-        <div style={{ flex: 1.3 }}>
-          <label className={styles.fieldLabel}>{comParcelas ? 'Valor da parcela' : 'Valor'}</label>
-          <input
-            className={styles.fieldInput}
-            style={{ marginBottom: 0 }}
-            type="number"
-            min="0"
-            step="0.01"
-            value={valor}
-            onChange={(e) => setValor(e.target.value)}
-            placeholder="15,00"
+      <label className={styles.fieldLabel}>{comParcelas ? 'Valor da parcela' : 'Valor'}</label>
+      <input
+        className={styles.fieldInput}
+        type="number"
+        min="0"
+        step="0.01"
+        value={valor}
+        onChange={(e) => setValor(e.target.value)}
+        placeholder="15,00"
+      />
+
+      {/* Mesma estrutura nos três tipos: um cartão de linhas (rótulo com ícone à
+          esquerda, valor/controle à direita). A 1ª linha é Categoria (custo) ou
+          Frequência (renda/reserva); o resto é igual. */}
+      <div className={styles.grupo}>
+        {ehCusto ? (
+          <Dropdown
+            linha={{ Icone: Tag, rotulo: 'Categoria' }}
+            ariaLabel="Categoria"
+            opcoes={categoriasCusto.map((c) => ({ valor: c.nome, label: c.nome }))}
+            valor={categoria}
+            onChange={setCategoria}
           />
-        </div>
-        <div style={{ flex: 1 }}>
-          {ehSemanal ? (
-            <>
-              <label className={styles.fieldLabel}>Dia da semana</label>
-              <select
-                className={styles.fieldInput}
-                style={{ marginBottom: 0 }}
-                value={diaSemana}
-                onChange={(e) => setDiaSemana(e.target.value)}
-              >
-                {DIAS_SEMANA_OPCOES.map((d) => (
-                  <option key={d} value={d}>
-                    {d}
-                  </option>
-                ))}
-              </select>
-            </>
-          ) : (
-            <>
-              <label className={styles.fieldLabel}>Dia</label>
-              <input
-                className={styles.fieldInput}
-                style={{ marginBottom: 0 }}
-                type="number"
-                min="1"
-                max="31"
-                value={diaMes}
-                onChange={(e) => setDiaMes(e.target.value)}
-                placeholder="23"
-              />
-            </>
-          )}
-        </div>
-      </div>
-
-      {modo === 'criar' && !ehRenda && !ehReserva && (
-        <Interruptor marcado={parcelado} onChange={setParcelado}>
-          Parcelado
-        </Interruptor>
-      )}
-
-      {comParcelas && (
-        <div className={styles.fieldRow}>
-          <div style={{ flex: 1 }}>
-            <label className={styles.fieldLabel}>Parcelas</label>
-            <input
-              className={styles.fieldInput}
-              style={{ marginBottom: 0 }}
-              type="number"
-              min="2"
-              max="120"
-              value={parcelas}
-              onChange={(e) => setParcelas(e.target.value)}
-              placeholder="10"
-            />
-          </div>
-          <div style={{ flex: 1 }}>
-            <label className={styles.fieldLabel}>Parcela atual</label>
-            <input
-              className={styles.fieldInput}
-              style={{ marginBottom: 0 }}
-              type="number"
-              min="1"
-              max={parcelas || undefined}
-              value={parcelaAtual}
-              onChange={(e) => setParcelaAtual(e.target.value)}
-              placeholder="1"
-            />
-          </div>
-        </div>
-      )}
-
-      {ehRenda || ehReserva ? (
-        <>
-          <label className={styles.fieldLabel}>Frequência</label>
-          <Segmentado
-            compacto
+        ) : (
+          <Dropdown
+            linha={{ Icone: Clock, rotulo: 'Frequência' }}
             ariaLabel="Frequência"
             opcoes={(ehReserva ? FREQUENCIAS_RESERVA : FREQUENCIAS_RENDA).map((f) => ({ valor: f, label: f }))}
             valor={frequencia}
@@ -1378,30 +1603,87 @@ function PaymentPanel({ mes, erro, nomesCusto = [], categoriasCusto, modo, tipoI
               setRepetirTodoMes(f !== 'Única');
             }}
           />
-        </>
-      ) : (
-        <>
-          <label className={styles.fieldLabel}>Categoria</label>
-          <div className={styles.chipsRow}>
-            {categoriasCusto.map((c) => {
-              const IconeCat = iconeCategoria(c.nome);
-              return (
-                <button
-                  key={c.nome}
-                  type="button"
-                  className={`${styles.chip} ${categoria === c.nome ? styles.chipActive : ''}`}
-                  onClick={() => setCategoria(c.nome)}
-                >
-                  <IconeCat size={14} strokeWidth={2.2} style={{ color: corIcone(c.cor), flex: 'none' }} aria-hidden="true" />
-                  {c.nome}
-                </button>
-              );
-            })}
-          </div>
-        </>
-      )}
+        )}
+        {ehSemanal ? (
+          <Dropdown
+            linha={{ Icone: CalendarDays, rotulo: 'Dia da semana' }}
+            ariaLabel="Dia da semana"
+            opcoes={DIAS_SEMANA_OPCOES.map((d) => ({ valor: d, label: d }))}
+            valor={diaSemana}
+            onChange={setDiaSemana}
+          />
+        ) : (
+          <label className={styles.linha}>
+            <span className={styles.linhaRotulo}>
+              <CalendarDays size={18} strokeWidth={2} aria-hidden="true" />
+              Dia do mês
+            </span>
+            <input
+              className={styles.linhaInput}
+              type="number"
+              min="1"
+              max="31"
+              value={diaMes}
+              onChange={(e) => setDiaMes(e.target.value)}
+              placeholder="23"
+            />
+          </label>
+        )}
+        {!comParcelas && (
+          <SeletorMes
+            linha={{ Icone: CalendarClock, rotulo: 'Começa em' }}
+            ariaLabel="Começa em"
+            valor={inicio}
+            onChange={setInicio}
+          />
+        )}
+        {!comParcelas && (
+          <Interruptor icone={Repeat} marcado={repetirTodoMes} onChange={setRepetirTodoMes}>
+            Repetir todo mês
+          </Interruptor>
+        )}
+        {ehCusto && modo === 'criar' && (
+          <Interruptor icone={CreditCard} marcado={parcelado} onChange={setParcelado}>
+            Parcelado
+          </Interruptor>
+        )}
+        {comParcelas && (
+          <>
+            <label className={styles.linha}>
+              <span className={styles.linhaRotulo}>
+                <Layers size={18} strokeWidth={2} aria-hidden="true" />
+                Parcelas
+              </span>
+              <input
+                className={styles.linhaInput}
+                type="number"
+                min="2"
+                max="120"
+                value={parcelas}
+                onChange={(e) => setParcelas(e.target.value)}
+                placeholder="10"
+              />
+            </label>
+            <label className={styles.linha}>
+              <span className={styles.linhaRotulo}>
+                <Hash size={18} strokeWidth={2} aria-hidden="true" />
+                Parcela atual
+              </span>
+              <input
+                className={styles.linhaInput}
+                type="number"
+                min="1"
+                max={parcelas || undefined}
+                value={parcelaAtual}
+                onChange={(e) => setParcelaAtual(e.target.value)}
+                placeholder="1"
+              />
+            </label>
+          </>
+        )}
+      </div>
 
-      {modo === 'editar' && !ehRenda && !ehReserva && (
+      {modo === 'editar' && ehCusto && (
         <>
           <label className={styles.fieldLabel}>Status</label>
           <div className={styles.statusToggle}>
@@ -1443,12 +1725,6 @@ function PaymentPanel({ mes, erro, nomesCusto = [], categoriasCusto, modo, tipoI
             </button>
           </div>
         </>
-      )}
-
-      {!comParcelas && (
-        <Interruptor marcado={repetirTodoMes} onChange={setRepetirTodoMes} fim>
-          Repetir todo mês
-        </Interruptor>
       )}
 
       {erro && <div className={styles.errorText}>{erro}</div>}

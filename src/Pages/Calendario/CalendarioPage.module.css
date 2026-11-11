@@ -682,12 +682,6 @@
   display: block;
 }
 
-.fieldRow {
-  display: flex;
-  gap: var(--space-3);
-  margin-bottom: var(--space-4);
-}
-
 /* body-sm; campos/botões compactos usam space-4 de padding base. */
 .fieldInput {
   width: 100%;
@@ -725,33 +719,305 @@
   border-color: var(--border-strong);
 }
 
-.chipsRow {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-  margin-bottom: var(--space-4);
+/* Select nativo: substitui a seta do navegador por uma própria, com espaço
+   reservado (padding-right) pra ela não colar na borda arredondada da pílula. */
+select.fieldInput {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  padding-right: 44px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%238a93b0' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right var(--space-4) center;
+  background-size: 14px;
 }
 
-/* Pílula: radius-full. Padding de badges/chips = space-2 (token usage). */
-.chip {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-2);
-  border-radius: var(--radius-full);
-  font-size: 12px;
-  line-height: 17px;
-  font-weight: 600;
+/* Grupo de linhas (painel de custo): um cartão só, com divisórias, em que cada
+   linha tem rótulo (com ícone) à esquerda e o valor/controle à direita. Todas as
+   linhas têm a mesma altura e o mesmo alinhamento, então a coluna de valores
+   fica reta. */
+.grupo {
+  /* O painel é uma coluna flex com altura máxima: sem isto o overflow:hidden deixa
+     o cartão encolher e corta as últimas linhas em vez de o painel rolar. */
+  flex: none;
   background: var(--surface);
   border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  margin-bottom: var(--space-6);
+}
+
+.linha {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 46px;
+  padding: 0 var(--space-4);
+  margin: 0;
+  border: none;
+  border-top: 1px solid var(--border);
+  border-radius: 0;
+  background: none;
+  color: var(--ink);
+  font-family: inherit;
+  font-size: 13px;
+  line-height: 20px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.linha:first-child {
+  border-top: none;
+}
+
+.linha:hover {
+  background: color-mix(in srgb, var(--ink) 4%, transparent);
+}
+
+.linha:focus-within {
+  outline: none;
+  background: color-mix(in srgb, var(--ink) 6%, transparent);
+}
+
+.linha:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -2px;
+}
+
+.linhaRotulo {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex: 1;
+  min-width: 0;
+  color: var(--ink);
+}
+
+.linhaRotulo svg {
+  flex: none;
+  color: var(--ink-subtle);
+}
+
+.linhaValor {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--ink-subtle);
+}
+
+.linhaGatilho .dropdownSeta {
+  margin-left: calc(var(--space-2) * -1);
+}
+
+.linhaInput {
+  width: 72px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--ink-subtle);
+  font-family: inherit;
+  font-size: 13px;
+  line-height: 20px;
+  text-align: right;
+}
+
+/* `.page input:focus-visible` (anel global) tem mais especificidade que
+   `.linhaInput:focus`; o prefixo `.page` aqui empata e vence por ordem. O foco
+   aparece só na linha (fundo) e no valor mais claro, sem caixa nem sublinhado. */
+.page .linhaInput:focus,
+.page .linhaInput:focus-visible {
+  outline: none;
+  color: var(--ink);
+}
+
+.linhaInput::placeholder {
+  color: var(--ink-disabled);
+}
+
+.linhaInput[type='number'] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+.linhaInput[type='number']::-webkit-outer-spin-button,
+.linhaInput[type='number']::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* Interruptor em linha: o trilho vai pra direita sem mudar a ordem no DOM (o
+   seletor .switchInput:checked + .switchTrack depende do input vir antes). */
+.linhaToggle .switchTrack {
+  order: 2;
+}
+
+.linhaToggle .linhaRotulo {
+  order: 1;
+}
+
+.linhaToggle:hover .switchInput:not(:checked) + .switchTrack {
+  background: color-mix(in srgb, var(--ink-subtle) 42%, var(--surface-raised));
+}
+
+/* Dropdown customizado (categoria): pílula igual aos outros campos + lista
+   num portal, com gap/cantos arredondados que o <select> nativo não permite. */
+.dropdownGatilho {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  appearance: none;
+  -webkit-appearance: none;
+  cursor: pointer;
+  text-align: left;
+}
+
+.dropdownValor {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dropdownSeta {
+  flex: none;
+  color: var(--ink-subtle);
+  transition: transform 0.2s ease;
+}
+
+.dropdownSetaAberta {
+  transform: rotate(180deg);
+}
+
+.dropdownLista {
+  position: fixed;
+  z-index: 1000;
+  max-height: 280px;
+  overflow-y: auto;
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  padding: var(--space-2);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--ink-disabled) transparent;
+}
+
+.dropdownLista::-webkit-scrollbar {
+  width: 8px;
+}
+
+.dropdownLista::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.dropdownLista::-webkit-scrollbar-thumb {
+  background: var(--ink-disabled);
+  border-radius: var(--radius-full);
+}
+
+.dropdownOpcao {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  text-align: left;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  background: none;
+  border: none;
+  color: var(--ink);
+  font-size: 13px;
+  line-height: 20px;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.dropdownOpcao:hover,
+.dropdownOpcaoAtiva {
+  background: var(--interactive);
+  color: var(--interactive-fg);
+  font-weight: 600;
+}
+
+/* Seletor de mês "Começa em": popup em formato de calendário (nav de ano +
+   grade de meses) em vez de lista comprida de rolar. */
+.mesPopup {
+  position: fixed;
+  z-index: 1000;
+  width: 240px;
+  box-sizing: border-box;
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  padding: var(--space-3);
+}
+
+.mesPopupHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-3);
+}
+
+.mesPopupAno {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.mesPopupNav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-full);
+  border: none;
+  background: none;
   color: var(--ink-subtle);
   cursor: pointer;
 }
 
-.chipActive {
+.mesPopupNav:hover:not(:disabled) {
+  background: var(--surface-inset);
   color: var(--ink);
-  border-color: var(--border-strong);
-  background: var(--surface-raised);
+}
+
+.mesPopupNav:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.mesPopupGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-2);
+}
+
+.mesPopupMes {
+  padding: var(--space-2) 0;
+  border-radius: var(--radius-md);
+  border: none;
+  background: none;
+  color: var(--ink);
+  font-size: 13px;
+  font-family: inherit;
+  cursor: pointer;
+  text-align: center;
+}
+
+.mesPopupMes:hover,
+.mesPopupMesAtiva {
+  background: var(--interactive);
+  color: var(--interactive-fg);
+  font-weight: 600;
 }
 
 /* Seletor de tipo (Custo/Renda/Reserva): segmented control estilo "liquid glass".
@@ -800,24 +1066,6 @@
   font-weight: 700;
 }
 
-/* Variante compacta (frequência): controle secundário, um pouco menor que o
-   seletor de tipo pra manter a hierarquia. */
-.segmentedSm {
-  padding: 3px;
-}
-
-.segmentedSm .segmentedThumb {
-  top: 3px;
-  bottom: 3px;
-  left: 3px;
-  width: calc((100% - 6px) / var(--n, 3));
-}
-
-.segmentedSm .segmentedBtn {
-  padding: 6px 0;
-  font-size: 13px;
-}
-
 @media (prefers-reduced-motion: reduce) {
   .segmentedThumb {
     transition: none;
@@ -852,23 +1100,9 @@
   color: var(--ink);
 }
 
-/* Interruptor terracota (Parcelado, Repetir todo mês). O <input> nativo fica
-   escondido (acessível por teclado/leitor de tela); .switchTrack desenha o
-   trilho e reflete o estado por CSS. A linha inteira (label) é clicável. */
-.switchRow {
-  position: relative;
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  margin-bottom: var(--space-4);
-  cursor: pointer;
-}
-
-/* Última linha antes dos botões: mais espaço embaixo. */
-.switchRowFim {
-  margin-bottom: var(--space-6);
-}
-
+/* Interruptor (Parcelado, Repetir todo mês), usado como linha do grupo. O <input>
+   nativo fica escondido (acessível por teclado/leitor de tela); .switchTrack
+   desenha o trilho e reflete o estado por CSS. A linha inteira (label) é clicável. */
 .switchInput {
   position: absolute;
   width: 1px;
@@ -910,10 +1144,6 @@
 .switchInput:checked + .switchTrack .switchThumb {
   transform: translateX(16px);
   background: var(--interactive-fg);
-}
-
-.switchRow:hover .switchInput:not(:checked) + .switchTrack {
-  background: color-mix(in srgb, var(--ink-subtle) 42%, var(--surface-raised));
 }
 
 .switchInput:focus-visible + .switchTrack {
@@ -968,6 +1198,8 @@
 
 /* label-lg */
 .btnGhost {
+  /* Mesmo peso do Salvar no painel (50/50): botões lado a lado simétricos. */
+  flex: 1;
   padding: var(--space-3) var(--space-5);
   border-radius: var(--radius-full);
   border: 1px solid var(--border);
@@ -1138,10 +1370,6 @@
   }
 
   .semDataRow {
-    flex-wrap: wrap;
-  }
-
-  .fieldRow {
     flex-wrap: wrap;
   }
 }
@@ -1416,19 +1644,6 @@
     min-height: 44px;
   }
 
-  /* Painel de adicionar/editar. Interruptores (Parcelado, Repetir todo mês): a
-     linha inteira (label) é o alvo, então ganha altura; as margens compensam o
-     que cresce ((44 - 20) / 2 = 12px), pra nada sair do lugar visualmente. */
-  .switchRow {
-    min-height: 44px;
-    margin-top: -12px;
-    margin-bottom: 4px;
-  }
-
-  .switchRowFim {
-    margin-bottom: 12px;
-  }
-
   /* Chips (35px): área clicável maior via pseudo-elemento invisível. O chip tem
      borda de 1px (inset -5.5px fecha 44px). O espaço entre as linhas de chips
      sobe de 8 para 9px: assim as áreas de 44px se encostam sem se sobrepor. */
@@ -1446,15 +1661,4 @@
     row-gap: 9px;
   }
 
-  /* Seletor compacto (frequência): mantém o tamanho visual menor e amplia só a
-     área clicável (o botão não tem borda, então -6.5px fecha ~44px). */
-  .segmentedSm .segmentedBtn {
-    min-height: 0;
-  }
-
-  .segmentedSm .segmentedBtn::after {
-    content: '';
-    position: absolute;
-    inset: -6.5px 0;
-  }
 }
