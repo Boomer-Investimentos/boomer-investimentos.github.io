@@ -6,7 +6,7 @@ import {
 import '@google/model-viewer';
 import styles from './CalendarioPage.module.css';
 import boomerBMark from '../../assets/imgs/boomer-b-mark.png';
-import boomerLogo3D from '../../assets/3d/Logo Boomer 20_PNG-terracota.glb';
+import boomerLogo3D from '../../assets/3d/Logo Boomer - metal.glb';
 import {
   obterMes,
   verificarAcesso,
@@ -159,16 +159,17 @@ function LoadingLogo() {
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
-    // Só reduz o brilho/verniz (roughness/metallic) do material já vindo
-    // colorido certo do arquivo — não mexe na cor base.
-    const fosco = () => {
+    // Metal de verdade (reflete o ambiente tingido pela cor base = prateado),
+    // em vez do fosco não-metálico calibrado pro logo antigo (que achatava
+    // esse material num plástico branco).
+    const metalico = () => {
       (el.model?.materials || []).forEach((m) => {
-        m.pbrMetallicRoughness.setRoughnessFactor(0.95);
-        m.pbrMetallicRoughness.setMetallicFactor(0);
+        m.pbrMetallicRoughness.setRoughnessFactor(0.4);
+        m.pbrMetallicRoughness.setMetallicFactor(0.9);
       });
     };
-    el.addEventListener('load', fosco);
-    return () => el.removeEventListener('load', fosco);
+    el.addEventListener('load', metalico);
+    return () => el.removeEventListener('load', metalico);
   }, []);
 
   return (
