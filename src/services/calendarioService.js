@@ -28,11 +28,11 @@ export function encerrarSessao() {
   return fetch(`${BASE}/logout`, { method: 'POST' }).then(tratarResposta);
 }
 
-export function atualizarPagamento(linhaPlanilha, statusPagamento, mes) {
+export function atualizarPagamento(linhaPlanilha, statusPagamento, mes, id) {
   return fetch(`${BASE}/pagamento`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ linhaPlanilha, statusPagamento, mes }),
+    body: JSON.stringify({ linhaPlanilha, statusPagamento, mes, id }),
   }).then(tratarResposta);
 }
 
@@ -84,10 +84,34 @@ export function editarReserva(dados) {
   }).then(tratarResposta);
 }
 
-export function atualizarReserva(linhaPlanilha, statusReserva, mes) {
+export function atualizarReserva(linhaPlanilha, statusReserva, mes, id) {
   return fetch(`${BASE}/reserva`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ acao: 'guardar', linhaPlanilha, statusReserva, mes }),
+    body: JSON.stringify({ acao: 'guardar', linhaPlanilha, statusReserva, mes, id }),
+  }).then(tratarResposta);
+}
+
+export function excluirCusto(linhaPlanilha, id) {
+  return fetch(`${BASE}/custo-editar`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ acao: 'excluir', linhaPlanilha, id }),
+  }).then(tratarResposta);
+}
+
+export function excluirRenda(linhaPlanilha, id) {
+  return fetch(`${BASE}/renda-editar`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ acao: 'excluir', linhaPlanilha, id }),
+  }).then(tratarResposta);
+}
+
+export function excluirReserva(linhaPlanilha, id) {
+  return fetch(`${BASE}/reserva`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ acao: 'excluir', linhaPlanilha, id }),
   }).then(tratarResposta);
 }

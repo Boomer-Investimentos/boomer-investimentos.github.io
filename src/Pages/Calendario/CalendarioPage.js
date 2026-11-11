@@ -19,6 +19,9 @@ import {
   criarReserva,
   editarReserva,
   atualizarReserva,
+  excluirCusto,
+  excluirRenda,
+  excluirReserva,
 } from '../../services/calendarioService';
 
 const LINK_TOKEN_KEY = 'cal_link_token';
@@ -319,10 +322,10 @@ export default function CalendarioPage() {
     try {
       if (item.tipo === 'reserva') {
         const novoStatus = item.statusReserva === 'guardado' ? 'Pendente' : 'Guardado';
-        await atualizarReserva(item.linhaPlanilha, novoStatus, mes);
+        await atualizarReserva(item.linhaPlanilha, novoStatus, mes, item.id);
       } else {
         const novoStatus = item.statusPagamento === 'pago' ? 'Pendente' : 'Pago';
-        await atualizarPagamento(item.linhaPlanilha, novoStatus, mes);
+        await atualizarPagamento(item.linhaPlanilha, novoStatus, mes, item.id);
       }
     } catch (e) {
       // Falhou: desfaz o otimista (aplicar de novo reverte) e mostra o erro.
@@ -368,15 +371,15 @@ export default function CalendarioPage() {
         else if (tipo === 'reserva') await criarReserva({ ...form, mes });
         else await criarRenda({ ...form, mes });
       } else {
-        const linhaPlanilha = painelItem.item.linhaPlanilha;
+        const { linhaPlanilha, id } = painelItem.item;
         if (tipo === 'custo') {
-          await editarCusto({ ...form, linhaPlanilha, mes });
-          if (statusPagamento) await atualizarPagamento(linhaPlanilha, statusPagamento, mes);
+          await editarCusto({ ...form, linhaPlanilha, id, mes });
+          if (statusPagamento) await atualizarPagamento(linhaPlanilha, statusPagamento, mes, id);
         } else if (tipo === 'reserva') {
-          await editarReserva({ ...form, linhaPlanilha, mes });
-          if (statusPagamento) await atualizarReserva(linhaPlanilha, statusPagamento, mes);
+          await editarReserva({ ...form, linhaPlanilha, id, mes });
+          if (statusPagamento) await atualizarReserva(linhaPlanilha, statusPagamento, mes, id);
         } else {
-          await editarRenda({ ...form, linhaPlanilha, mes });
+          await editarRenda({ ...form, linhaPlanilha, id, mes });
         }
       }
       fecharPainel();
@@ -391,14 +394,14 @@ export default function CalendarioPage() {
   };
 
   const confirmarExclusao = async () => {
-    const { tipo, form } = confirmExcluir;
+    const { tipo } = confirmExcluir;
     setConfirmExcluir(null);
     setErroAcao(null);
     try {
-      const linhaPlanilha = painelItem.item.linhaPlanilha;
-      if (tipo === 'custo') await editarCusto({ ...form, linhaPlanilha, mes, status: 'Inativo' });
-      else if (tipo === 'reserva') await editarReserva({ ...form, linhaPlanilha, mes, status: 'Inativo' });
-      else await editarRenda({ ...form, linhaPlanilha, mes, status: 'Inativo' });
+      const { linhaPlanilha, id } = painelItem.item;
+      if (tipo === 'custo') await excluirCusto(linhaPlanilha, id);
+      else if (tipo === 'reserva') await excluirReserva(linhaPlanilha, id);
+      else await excluirRenda(linhaPlanilha, id);
       fecharPainel();
       carregarMes(mes, linkToken);
     } catch (e) {
