@@ -10,6 +10,7 @@ const auth = require('../../lib/cal/auth');
 const { criarReserva } = require('../../lib/cal/handlers/lancamentoReserva');
 const { editarReserva } = require('../../lib/cal/handlers/editarReserva');
 const { atualizarReserva } = require('../../lib/cal/handlers/reservaGuardado');
+const { excluirReserva } = require('../../lib/cal/handlers/excluirReserva');
 
 module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
@@ -22,6 +23,7 @@ module.exports = async (req, res) => {
     if (body.acao === 'criar') r = await criarReserva({ cookies, ...body });
     else if (body.acao === 'editar') r = await editarReserva({ cookies, ...body });
     else if (body.acao === 'guardar') r = await atualizarReserva({ cookies, ...body });
+    else if (body.acao === 'excluir') r = await excluirReserva({ cookies, ...body });
     else return res.status(400).json({ error: 'Ação de reserva inválida.' });
     return res.status(r.status).json(r.body);
   } catch (err) {
