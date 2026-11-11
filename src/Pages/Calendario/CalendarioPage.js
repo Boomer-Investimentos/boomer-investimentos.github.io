@@ -715,9 +715,7 @@ function Item({ item, moeda, onEditar, onTogglePago, onPedirAcao }) {
     }
   };
 
-  const titulo = acionavel
-    ? (item.tipo === 'reserva' ? 'Clique para guardar ou editar' : 'Clique para pagar ou editar')
-    : 'Editar lançamento';
+  const titulo = nomeComParcela(item);
 
   return (
     <div
