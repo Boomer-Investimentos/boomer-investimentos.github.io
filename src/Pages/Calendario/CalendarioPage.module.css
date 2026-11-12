@@ -1239,6 +1239,40 @@ select.fieldInput {
   font-size: 13px;
 }
 
+/* No desktop o Mês/Agenda volta ao visual antigo (pílula pequena, centralizada,
+   sem esticar a largura toda): só o mobile ganhou a versão "compacta" esticada. */
+@media (min-width: 641px) and (pointer: fine) {
+  .segmentedCompacto {
+    display: flex;
+    width: fit-content;
+    gap: 2px;
+    padding: 3px;
+    margin: 0 auto var(--space-4);
+  }
+
+  .segmentedCompacto .segmentedThumb {
+    display: none;
+  }
+
+  .segmentedCompacto .segmentedBtn {
+    flex: none;
+    padding: var(--space-2) var(--space-5);
+    letter-spacing: 0.01em;
+    border-radius: var(--radius-full);
+    transition: color 0.12s ease, background 0.12s ease;
+  }
+
+  .segmentedCompacto .segmentedBtn:hover {
+    color: var(--ink);
+  }
+
+  .segmentedCompacto .segmentedBtnActive,
+  .segmentedCompacto .segmentedBtnActive:hover {
+    background: var(--interactive);
+    color: var(--interactive-fg);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .segmentedThumb {
     transition: none;
