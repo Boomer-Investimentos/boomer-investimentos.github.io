@@ -1518,17 +1518,18 @@ select.fieldInput {
      inferior direito, acima do conteúdo e abaixo dos modais (z-index 50). */
   .addSlot {
     /* Tamanho fixo não estica igual o grid pede por padrão, então sem
-       justify-self ele ia pro início da coluna (colado nas setas) em vez do
-       fim — fica uma ilha de espaço vazio à direita e o "+" parece espremido
-       perto do mês. */
-    justify-self: end;
+       justify-self ele ia pro início da coluna (colado nas setas) em vez de
+       ficar no meio do espaço entre a seta ">" e a margem direita. */
+    justify-self: center;
     display: inline-flex;
     width: 44px;
     height: 44px;
     flex: none;
-    /* Afasta o "+" da borda: 16px do conteúdo + 16px = 32px, a mesma distância
-       do botão flutuante, então ele não muda de lado ao rolar. */
-    margin-right: var(--space-4);
+    /* `justify-self: center` centraliza dentro da 3ª coluna, mas o `gap` do
+       grid entre ela e a coluna do mês não conta como parte da coluna — sem
+       compensar, o botão fica ~metade do gap puxado pra direita do meio
+       exato entre a seta ">" e a margem. */
+    transform: translateX(calc(var(--space-3) / -2));
   }
 
   .addLabel {
