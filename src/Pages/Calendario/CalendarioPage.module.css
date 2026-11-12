@@ -130,12 +130,84 @@
   min-width: 640px;
 }
 
+/* 3 colunas de verdade em qualquer largura — o bloco do meio (seta-mês-seta)
+   fica centralizado na barra inteira, não só "sobrando" entre os outros dois.
+   A 1ª coluna fica vazia só pra sobrar espaço simétrico dos dois lados. */
 .toolbar {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  margin-bottom: var(--space-5);
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
   gap: var(--space-3);
+  margin-bottom: var(--space-5);
+}
+
+/* Bloco do cliente no canto superior direito do Topbar. */
+.topbarCliente {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.clienteAvatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-full);
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 700;
+  /* Sem isso a caixa de linha herda a entrelinha padrão (~1.2×), que sobra
+     mais embaixo do que em cima e empurra o texto visualmente pra cima
+     dentro do círculo centralizado por flex. */
+  line-height: 1;
+}
+
+.clienteNome {
+  font-size: 14px;
+  line-height: 18px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.monthNav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  /* Explícito: sem bloco nenhum na 1ª coluna, o auto-placement colocaria o mês
+     aí em vez de no meio. */
+  grid-column: 2;
+}
+
+.monthNavBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-full);
+  /* surface-inset (quase preto) deixava a seta praticamente invisível contra
+     o fundo da página; surface-raised é o mesmo tom já usado no avatar do
+     cliente, e a seta em --ink (em vez de ink-subtle) fica bem mais visível. */
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.monthNavBtn:hover {
+  background: var(--surface-inset);
+}
+
+.monthNavBtn:disabled {
+  color: var(--ink-disabled);
+  cursor: default;
 }
 
 /* display-md */
@@ -148,52 +220,12 @@
   color: var(--ink);
 }
 
-/* caption, ink-subtle */
-.monthSubtitle {
-  font-size: 12px;
-  line-height: 17px;
-  color: var(--ink-subtle);
-  margin-top: var(--space-1);
-}
-
-.toolbarActions {
-  display: flex;
-  gap: var(--space-2);
-  align-items: center;
-}
-
-.navGroup {
-  display: flex;
-  background: var(--surface-inset);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-full);
-  overflow: hidden;
-}
-
-.navButton {
-  padding: var(--space-2) var(--space-3);
-  color: var(--ink-subtle);
-  font-size: 14px;
-  background: none;
-  border: none;
-  cursor: pointer;
-}
-
-.navButton:first-child {
-  border-right: 1px solid var(--border);
-}
-
-.navButton:hover {
-  color: var(--ink);
-}
-
-.navButton:disabled {
-  color: var(--ink-disabled);
-  cursor: default;
-}
-
 /* label-lg — rótulo de botão */
 .addButton {
+  /* No grid de 3 colunas do .toolbar os itens esticam pra preencher a coluna
+     por padrão — sem isso o botão vira uma pílula gigante até a borda. */
+  justify-self: end;
+  grid-column: 3;
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
@@ -1158,7 +1190,9 @@ select.fieldInput {
   position: relative;
   display: flex;
   padding: 4px;
-  background: var(--surface-inset);
+  /* surface-inset (quase preto) ficava escuro demais contra o fundo da
+     página; surface-raised é o mesmo tom já usado nos cards e no avatar. */
+  background: var(--surface-raised);
   border: 1px solid var(--border);
   border-radius: var(--radius-full);
   margin-bottom: var(--space-4);
@@ -1196,6 +1230,13 @@ select.fieldInput {
 .segmentedBtnActive {
   color: var(--interactive-fg);
   font-weight: 700;
+}
+
+/* Variante mais sutil (ex.: Mês/Agenda) — mesma pílula, só mais fina/discreta
+   que a versão padrão (usada no Tipo/Status do painel de lançamento). */
+.segmentedCompacto .segmentedBtn {
+  padding: 6px 0;
+  font-size: 13px;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1409,13 +1450,23 @@ select.fieldInput {
     padding: var(--space-3) var(--space-4);
   }
 
+  /* Abre espaço pro cliente (nome + avatar) à direita, que agora também
+     aparece no mobile — sem isso "boomer | Calendário Financeiro | Nome"
+     não cabe numa tela estreita. */
+  .brandDivider,
+  .brandSection {
+    display: none;
+  }
+
+  /* Só a bolinha com as iniciais no mobile — sem o nome, pra caber numa barra
+     estreita. */
+  .clienteNome {
+    display: none;
+  }
+
   .content {
     padding: var(--space-4);
     gap: var(--space-4);
-  }
-
-  .toolbar {
-    flex-wrap: wrap;
   }
 
   .monthTitle {
@@ -1423,22 +1474,27 @@ select.fieldInput {
     line-height: 28px;
   }
 
-  .toolbarActions {
-    width: 100%;
-    justify-content: space-between;
+  /* Não cabe tão bem numa tela estreita — só o nome do mês. */
+  .monthAno {
+    display: none;
   }
 
   /* "Adicionar" vira só "+": botão redondo. O slot guarda o espaço no fluxo; assim
      que a página rola, o botão (.addButtonFlutuante) passa a ficar fixo no canto
      inferior direito, acima do conteúdo e abaixo dos modais (z-index 50). */
   .addSlot {
+    /* Tamanho fixo não estica igual o grid pede por padrão, então sem
+       justify-self ele ia pro início da coluna (colado nas setas) em vez do
+       fim — fica uma ilha de espaço vazio à direita e o "+" parece espremido
+       perto do mês. */
+    justify-self: end;
     display: inline-flex;
     width: 44px;
     height: 44px;
     flex: none;
-    /* Afasta o "+" da borda: 16px do conteúdo + 8px = 24px, a mesma distância do
-       botão flutuante, então ele não muda de lado ao rolar. */
-    margin-right: var(--space-2);
+    /* Afasta o "+" da borda: 16px do conteúdo + 16px = 32px, a mesma distância
+       do botão flutuante, então ele não muda de lado ao rolar. */
+    margin-right: var(--space-4);
   }
 
   .addLabel {
@@ -1459,8 +1515,10 @@ select.fieldInput {
 
   .addButtonFlutuante {
     position: fixed;
-    right: var(--space-6);
-    bottom: calc(var(--space-6) + env(safe-area-inset-bottom, 0px));
+    right: var(--space-8);
+    /* --vv-offset-bottom (JS, via visualViewport) compensa a barra de
+       endereço do navegador somando/reaparecendo durante o scroll. */
+    bottom: calc(var(--space-8) + env(safe-area-inset-bottom, 0px) + var(--vv-offset-bottom, 0px));
     z-index: 40;
     width: 52px;
     height: 52px;
@@ -1496,13 +1554,30 @@ select.fieldInput {
     line-height: 24px;
   }
 
+  /* Disponível sobe pro topo (card de destaque primeiro); Reservas desce pro
+     fim, com largura total e numa linha só (rótulo+ícone à esquerda, valor à
+     direita) em vez de empilhado como os outros. */
   .summaryCardHero {
     flex: 1 1 100%;
+    order: -1;
+    padding: var(--space-5);
   }
 
   .summaryCardHero .summaryValue {
-    font-size: 22px;
-    line-height: 28px;
+    font-size: 28px;
+    line-height: 34px;
+  }
+
+  .summaryCardLarga {
+    flex: 1 1 100%;
+    order: 1;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .summaryCardLarga .summaryValue {
+    margin-top: 0;
   }
 
   .dowRow {
@@ -1654,41 +1729,6 @@ select.fieldInput {
   border-bottom: none;
 }
 
-/* Segmented control Mês / Agenda */
-.viewToggle {
-  display: flex;
-  width: fit-content;
-  gap: 2px;
-  padding: 3px;
-  background: var(--surface-raised);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-full);
-  margin: 0 auto var(--space-5);
-}
-
-.viewToggleBtn {
-  padding: var(--space-2) var(--space-5);
-  border: none;
-  background: none;
-  color: var(--ink-subtle);
-  font-size: 13px;
-  font-weight: 600;
-  letter-spacing: 0.01em;
-  border-radius: var(--radius-full);
-  cursor: pointer;
-  transition: color 0.12s ease, background 0.12s ease;
-}
-
-.viewToggleBtn:hover {
-  color: var(--ink);
-}
-
-.viewToggleBtnActive,
-.viewToggleBtnActive:hover {
-  background: var(--interactive);
-  color: var(--interactive-fg);
-}
-
 /* Visão Agenda: dias empilhados numa coluna única, centralizada. */
 .agendaView {
   display: flex;
@@ -1767,20 +1807,8 @@ select.fieldInput {
    pseudo-elemento invisível; as setas de mês e as linhas crescem de verdade.
    Fica no fim do arquivo pra vencer as regras base de mesma especificidade. */
 @media (max-width: 640px), (pointer: coarse) {
-  .navButton {
-    min-width: 44px;
-    min-height: 44px;
-  }
-
-  .viewToggleBtn,
   .agendaCheck {
     position: relative;
-  }
-
-  .viewToggleBtn::after {
-    content: '';
-    position: absolute;
-    inset: -4px 0;
   }
 
   /* `inset` conta a partir da borda interna: com a borda de 2px do check, -11px
@@ -1794,6 +1822,12 @@ select.fieldInput {
   .dayListRow,
   .segmentedBtn {
     min-height: 44px;
+  }
+
+  /* Mês/Agenda: mais sutil mesmo no mobile — vale a pena abrir mão de um
+     pouco da área de toque recomendada (44px) por um controle mais discreto. */
+  .segmentedCompacto .segmentedBtn {
+    min-height: 36px;
   }
 
   /* Chips (35px): área clicável maior via pseudo-elemento invisível. O chip tem

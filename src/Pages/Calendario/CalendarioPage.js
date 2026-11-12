@@ -77,6 +77,14 @@ function tituloMes(mes) {
   return nome.charAt(0).toUpperCase() + nome.slice(1);
 }
 
+function iniciais(nome) {
+  const partes = (nome || '').trim().split(/\s+/).filter(Boolean);
+  if (partes.length === 0) return '';
+  const primeira = partes[0][0];
+  const ultima = partes.length > 1 ? partes[partes.length - 1][0] : '';
+  return (primeira + ultima).toUpperCase();
+}
+
 function tituloDia(dataISO) {
   const nome = new Date(`${dataISO}T00:00:00Z`).toLocaleDateString('pt-BR', {
     weekday: 'long',
@@ -439,7 +447,7 @@ export default function CalendarioPage() {
 
   return (
     <div className={styles.page}>
-      <Topbar />
+      <Topbar cliente={dados.cliente} />
       <div className={styles.content}>
         <main className={styles.main}>
           <Toolbar
@@ -450,7 +458,13 @@ export default function CalendarioPage() {
             carregando={carregando}
           />
           <SummaryCards totals={dados.totals} moeda={dados.moeda} />
-          <ViewToggle vista={vista} onChange={setVista} />
+          <Segmentado
+            ariaLabel="Visualização"
+            opcoes={[{ valor: 'mes', label: 'Mês' }, { valor: 'agenda', label: 'Agenda' }]}
+            valor={vista}
+            onChange={setVista}
+            compacto
+          />
           {vista === 'mes' && dados.semData.length > 0 && (
             <SemData itens={dados.semData} moeda={dados.moeda} onEditar={abrirPainelEditar} onTogglePago={alternarPago} />
           )}
@@ -528,7 +542,7 @@ export default function CalendarioPage() {
   );
 }
 
-function Topbar() {
+function Topbar({ cliente }) {
   return (
     <header className={styles.topbar}>
       <div className={styles.brandGroup}>
@@ -536,6 +550,12 @@ function Topbar() {
         <span className={styles.brandName}>boomer</span>
         <span className={styles.brandDivider} />
         <span className={styles.brandSection}>Calendário Financeiro</span>
+      </div>
+      <div className={styles.topbarCliente}>
+        <span className={styles.clienteAvatar} aria-hidden="true">
+          {iniciais(cliente)}
+        </span>
+        <span className={styles.clienteNome}>{cliente}</span>
       </div>
     </header>
   );
@@ -553,37 +573,67 @@ function Toolbar({ mes, dados, onNav, onAdicionar, carregando }) {
     return () => window.removeEventListener('scroll', aoRolar);
   }, []);
 
-  return (
-    <div className={styles.toolbar}>
-      <div>
-        <div className={styles.monthTitle}>{tituloMes(mes)}</div>
-        <div className={styles.monthSubtitle}>
-          {dados.cliente}
-          {dados.tituloEstrategia ? ` · ${dados.tituloEstrategia}` : ''}
-        </div>
-      </div>
-      <div className={styles.toolbarActions}>
-        <div className={styles.navGroup}>
-          <button className={styles.navButton} onClick={() => onNav(-1)} disabled={carregando} aria-label="Mês anterior">
-            ‹
-          </button>
-          <button className={styles.navButton} onClick={() => onNav(1)} disabled={carregando} aria-label="Próximo mês">
-            ›
-          </button>
-        </div>
-        <span className={styles.addSlot}>
-          <button
-            className={`${styles.addButton} ${flutuante ? styles.addButtonFlutuante : ''}`}
-            onClick={onAdicionar}
-            aria-label="Adicionar"
-          >
-            <Plus size={18} strokeWidth={2.5} aria-hidden="true" />
-            <span className={styles.addLabel} aria-hidden="true">
-              {' '}Adicionar
-            </span>
-          </button>
+  // No mobile, a barra de endereço do navegador soma/aparece ao rolar e o
+  // viewport "visual" (o que realmente aparece na tela) passa a diferir do
+  // viewport de layout — um `position: fixed` ancorado só por CSS pode ficar
+  // uns pixels fora do lugar durante essa transição. visualViewport dá o
+  // tamanho real visível; a diferença vira uma variável CSS que soma ao
+  // `bottom` do botão flutuante pra ele seguir grudado no rodapé de verdade.
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return undefined;
+    const atualizar = () => {
+      const diferenca = window.innerHeight - vv.height - vv.offsetTop;
+      document.documentElement.style.setProperty('--vv-offset-bottom', `${Math.max(diferenca, 0)}px`);
+    };
+    atualizar();
+    vv.addEventListener('resize', atualizar);
+    vv.addEventListener('scroll', atualizar);
+    return () => {
+      vv.removeEventListener('resize', atualizar);
+      vv.removeEventListener('scroll', atualizar);
+    };
+  }, []);
+
+  const botaoAdicionar = (
+    <span className={styles.addSlot}>
+      <button
+        className={`${styles.addButton} ${flutuante ? styles.addButtonFlutuante : ''}`}
+        onClick={onAdicionar}
+        aria-label="Adicionar"
+      >
+        <Plus size={18} strokeWidth={2.5} aria-hidden="true" />
+        <span className={styles.addLabel} aria-hidden="true">
+          {' '}Adicionar
         </span>
+      </button>
+    </span>
+  );
+
+  const [mesNome, ano] = tituloMes(mes).split(' de ');
+
+  return (
+    // Mesma estrutura em qualquer largura: seta-mês-seta centralizado (grid de
+    // 3 colunas, a 1ª vazia só pra sobrar espaço simétrico) + Adicionar à
+    // direita. No mobile o ano só fica escondido via CSS (.monthAno).
+    <div className={styles.toolbar}>
+      <div className={styles.monthNav}>
+        <button className={styles.monthNavBtn} onClick={() => onNav(-1)} disabled={carregando} aria-label="Mês anterior">
+          {/* Caixa já é matematicamente centralizada; o chevron (ponta de um
+              lado, "boca" aberta do outro) parece puxado pro lado oposto à
+              ponta se não compensar — por isso o nudge óptico de 1px na
+              direção que a seta aponta. */}
+          <ChevronLeft size={18} strokeWidth={2.2} style={{ transform: 'translateX(-1px)' }} aria-hidden="true" />
+        </button>
+        <div className={styles.monthTitle}>
+          {mesNome}
+          <span className={styles.monthAno}> de {ano}</span>
+        </div>
+        <button className={styles.monthNavBtn} onClick={() => onNav(1)} disabled={carregando} aria-label="Próximo mês">
+          <ChevronRight size={18} strokeWidth={2.2} style={{ transform: 'translateX(1px)' }} aria-hidden="true" />
+        </button>
       </div>
+      {botaoAdicionar}
     </div>
   );
 }
@@ -595,7 +645,14 @@ function SummaryCards({ totals, moeda }) {
       <SummaryCard label="A pagar" icone={Clock} valor={totals.pendente} moeda={moeda} cor="var(--ink)" />
       <SummaryCard label="Em atraso" icone={TriangleAlert} valor={totals.atrasado} moeda={moeda} cor="var(--status-atrasado)" />
       <SummaryCard label="Entradas" icone={TrendingUp} valor={totals.receita} moeda={moeda} cor="var(--status-receita)" />
-      <SummaryCard label="Reservas" icone={PiggyBank} valor={totals.reservado || 0} moeda={moeda} cor="var(--status-reserva)" />
+      <SummaryCard
+        label="Reservas"
+        icone={PiggyBank}
+        valor={totals.reservado || 0}
+        moeda={moeda}
+        cor="var(--status-reserva)"
+        larguraTotalMobile
+      />
       <div className={styles.summaryDivider} aria-hidden="true" />
       <SummaryCard
         label="Disponível"
@@ -609,10 +666,10 @@ function SummaryCards({ totals, moeda }) {
   );
 }
 
-function SummaryCard({ label, icone: Icone, valor, moeda, cor, destaque, heroi }) {
+function SummaryCard({ label, icone: Icone, valor, moeda, cor, destaque, heroi, larguraTotalMobile }) {
   return (
     <div
-      className={`${styles.summaryCard} ${heroi ? styles.summaryCardHero : destaque ? styles.summaryCardDestaque : ''}`}
+      className={`${styles.summaryCard} ${heroi ? styles.summaryCardHero : destaque ? styles.summaryCardDestaque : ''} ${larguraTotalMobile ? styles.summaryCardLarga : ''}`}
       style={heroi ? { borderColor: cor, background: `color-mix(in srgb, ${cor} 8%, var(--surface-raised))` } : undefined}
     >
       <div className={styles.summaryLabel}>
@@ -946,26 +1003,6 @@ function DayListRow({ item, moeda, onEditar, onTogglePago, comIcone }) {
   );
 }
 
-function ViewToggle({ vista, onChange }) {
-  const opcoes = [['mes', 'Mês'], ['agenda', 'Agenda']];
-  return (
-    <div className={styles.viewToggle} role="tablist" aria-label="Visualização">
-      {opcoes.map(([valor, label]) => (
-        <button
-          key={valor}
-          type="button"
-          role="tab"
-          aria-selected={vista === valor}
-          className={`${styles.viewToggleBtn} ${vista === valor ? styles.viewToggleBtnActive : ''}`}
-          onClick={() => onChange(valor)}
-        >
-          {label}
-        </button>
-      ))}
-    </div>
-  );
-}
-
 function AgendaView({ dados, onEditar, onTogglePago }) {
   const diasComItens = dados.dias.filter((d) => d.itens.length > 0);
   const vazio = diasComItens.length === 0 && dados.semData.length === 0;
@@ -1107,11 +1144,11 @@ function Interruptor({ marcado, onChange, icone: Icone, children }) {
 // a largura da pílula ao número de opções (hoje só o tipo: Custo/Renda/Reserva).
 // Se o valor atual não estiver entre as opções, a pílula some em vez de marcar a
 // primeira.
-function Segmentado({ opcoes, valor, onChange, ariaLabel }) {
+function Segmentado({ opcoes, valor, onChange, ariaLabel, compacto }) {
   const indice = opcoes.findIndex((o) => o.valor === valor);
   return (
     <div
-      className={styles.segmented}
+      className={`${styles.segmented} ${compacto ? styles.segmentedCompacto : ''}`}
       role="tablist"
       aria-label={ariaLabel}
       style={{ '--n': opcoes.length }}
