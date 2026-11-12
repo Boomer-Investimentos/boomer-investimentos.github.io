@@ -364,11 +364,15 @@ export default function CalendarioPage() {
 
   const salvarPainel = async (tipo, form, statusPagamento) => {
     setErroAcao(null);
+    let aviso = null;
     try {
       if (painelItem.modo === 'criar') {
-        if (tipo === 'custo') await criarLancamento({ ...form, mes });
-        else if (tipo === 'reserva') await criarReserva({ ...form, mes });
-        else await criarRenda({ ...form, mes });
+        let resposta;
+        if (tipo === 'custo') resposta = await criarLancamento({ ...form, mes });
+        else if (tipo === 'reserva') resposta = await criarReserva({ ...form, mes });
+        else resposta = await criarRenda({ ...form, mes });
+        // Criou, mas não conseguiu marcar como pago/guardado: avisa depois de fechar.
+        aviso = resposta?.aviso || null;
       } else {
         const { linhaPlanilha, id } = painelItem.item;
         if (tipo === 'custo') {
@@ -382,6 +386,7 @@ export default function CalendarioPage() {
         }
       }
       fecharPainel();
+      if (aviso) setErroAcao(aviso);
       carregarMes(mes, linkToken);
     } catch (e) {
       setErroAcao(e.message);
@@ -461,7 +466,7 @@ export default function CalendarioPage() {
           ) : (
             <AgendaView dados={dados} onEditar={abrirPainelEditar} onTogglePago={alternarPago} />
           )}
-          <Legend categorias={dados.categorias} />
+          {vista === 'mes' && <Legend categorias={dados.categorias} />}
           {erroAcao && !painelItem && <div className={styles.errorText}>{erroAcao}</div>}
         </main>
 
@@ -472,6 +477,7 @@ export default function CalendarioPage() {
             erro={erroAcao}
             nomesCusto={dados.nomesCusto || []}
             categoriasCusto={dados.categorias.filter((c) => c.nome !== 'Recebimento' && c.nome !== 'Reserva')}
+            moeda={dados.moeda}
             modo={painelItem.modo}
             tipoInicial={painelItem.tipo}
             item={painelItem.item}
@@ -753,7 +759,7 @@ function Item({ item, moeda, onEditar, onTogglePago, onPedirAcao }) {
           onClick={(ev) => { ev.stopPropagation(); onTogglePago(item); }}
           onKeyDown={(ev) => ev.stopPropagation()}
           aria-pressed={concluido}
-          aria-label={`${concluido ? 'Desmarcar' : 'Marcar'} ${item.tipo === 'reserva' ? 'guardado' : 'pago'}: ${item.nome}`}
+          aria-label={`${concluido ? 'Desmarcar' : 'Marcar'} ${item.tipo === 'reserva' ? 'reservado' : 'pago'}: ${item.nome}`}
         >
           <Check size={8} strokeWidth={3.5} aria-hidden="true" />
         </button>
@@ -931,7 +937,7 @@ function DayListRow({ item, moeda, onEditar, onTogglePago, comIcone }) {
           className={`${styles.agendaCheck} ${item.tipo === 'reserva' ? styles.agendaCheckReserva : ''} ${concluido ? styles.agendaCheckOn : ''}`}
           onClick={(ev) => { ev.stopPropagation(); onTogglePago(item); }}
           aria-pressed={concluido}
-          aria-label={`${concluido ? 'Desmarcar' : 'Marcar'} ${item.tipo === 'reserva' ? 'guardado' : 'pago'}: ${item.nome}`}
+          aria-label={`${concluido ? 'Desmarcar' : 'Marcar'} ${item.tipo === 'reserva' ? 'reservado' : 'pago'}: ${item.nome}`}
         >
           <Check size={14} strokeWidth={2.5} aria-hidden="true" />
         </button>
@@ -1044,7 +1050,7 @@ function SemData({ itens, moeda, onEditar, onTogglePago }) {
                 className={`${styles.agendaCheck} ${styles.semDataCheck} ${item.tipo === 'reserva' ? styles.agendaCheckReserva : ''} ${concluido ? styles.agendaCheckOn : ''}`}
                 onClick={(ev) => { ev.stopPropagation(); onTogglePago(item); }}
                 aria-pressed={concluido}
-                aria-label={`${concluido ? 'Desmarcar' : 'Marcar'} ${item.tipo === 'reserva' ? 'guardado' : 'pago'}: ${item.nome}`}
+                aria-label={`${concluido ? 'Desmarcar' : 'Marcar'} ${item.tipo === 'reserva' ? 'reservado' : 'pago'}: ${item.nome}`}
               >
                 <Check size={10} strokeWidth={2.5} aria-hidden="true" />
               </button>
@@ -1062,6 +1068,14 @@ const OPCOES_TIPO = [
   { valor: 'custo', label: 'Custo' },
   { valor: 'renda', label: 'Renda' },
   { valor: 'reserva', label: 'Reserva' },
+];
+const OPCOES_STATUS_CUSTO = [
+  { valor: 'nao', label: 'Não pago' },
+  { valor: 'sim', label: 'Pago' },
+];
+const OPCOES_STATUS_RESERVA = [
+  { valor: 'nao', label: 'Não reservado' },
+  { valor: 'sim', label: 'Reservado' },
 ];
 
 // Interruptor em linha do grupo (Parcelado, Repetir todo mês): ícone + rótulo à
@@ -1433,7 +1447,68 @@ function normalizarNome(s) {
   return String(s == null ? '' : s).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
 }
 
-function PaymentPanel({ mes, erro, nomesCusto = [], categoriasCusto, modo, tipoInicial, item, onSalvar, onExcluir, onCancelar }) {
+// Valor em destaque (centro, grande): símbolo + inteiro em tinta cheia, centavos
+// em cinza e um cursor laranja. A digitação é por centavos (digita 1500 → 15,00),
+// como em apps de banco; o <input> real fica transparente por cima e só recebe o
+// foco/teclado (inputMode numérico).
+const MAX_DIGITOS_VALOR = 9;
+
+function partesDoValor(centavos, moeda) {
+  const valor = centavos / 100;
+  try {
+    const partes = new Intl.NumberFormat(localeDaMoeda(moeda), { style: 'currency', currency: moeda || 'BRL' }).formatToParts(valor);
+    let simbolo = '';
+    let inteiro = '';
+    let decimal = '';
+    for (const p of partes) {
+      if (p.type === 'currency') simbolo = p.value;
+      else if (p.type === 'integer' || p.type === 'group') inteiro += p.value;
+      else if (p.type === 'decimal' || p.type === 'fraction') decimal += p.value;
+    }
+    return { simbolo, inteiro, decimal };
+  } catch (e) {
+    if (!(e instanceof RangeError)) throw e;
+    const [i, d] = valor.toFixed(2).split('.');
+    return { simbolo: moeda || 'BRL', inteiro: i, decimal: `,${d}` };
+  }
+}
+
+function CampoValor({ rotulo, valor, onChange, moeda }) {
+  const [focado, setFocado] = useState(false);
+  const centavos = Math.round((Number(valor) || 0) * 100);
+  const { simbolo, inteiro, decimal } = partesDoValor(centavos, moeda);
+
+  const aoDigitar = (e) => {
+    const digitos = e.target.value.replace(/\D/g, '').slice(0, MAX_DIGITOS_VALOR);
+    const c = digitos ? parseInt(digitos, 10) : 0;
+    onChange(c ? (c / 100).toFixed(2) : '');
+  };
+
+  return (
+    <label className={styles.valorCampo}>
+      <span className={styles.valorRotulo}>{rotulo}</span>
+      <span className={`${styles.valorDisplay} ${centavos === 0 ? styles.valorVazio : ''}`} aria-hidden="true">
+        <span className={styles.valorSimbolo}>{simbolo}</span>
+        <span>{inteiro}</span>
+        <span className={styles.valorCentavos}>{decimal}</span>
+        {focado && <span className={styles.valorCursor} />}
+      </span>
+      <input
+        className={styles.valorInput}
+        type="text"
+        inputMode="numeric"
+        autoComplete="off"
+        aria-label={rotulo}
+        value={centavos ? String(centavos) : ''}
+        onChange={aoDigitar}
+        onFocus={() => setFocado(true)}
+        onBlur={() => setFocado(false)}
+      />
+    </label>
+  );
+}
+
+function PaymentPanel({ mes, erro, nomesCusto = [], categoriasCusto, moeda, modo, tipoInicial, item, onSalvar, onExcluir, onCancelar }) {
   const [tipo, setTipo] = useState(item ? item.tipo : tipoInicial);
   const [descricao, setDescricao] = useState(item?.nome || '');
   const [valor, setValor] = useState(item ? String(item.valor) : '');
@@ -1503,8 +1578,12 @@ function PaymentPanel({ mes, erro, nomesCusto = [], categoriasCusto, modo, tipoI
     } else if (modo === 'editar' && tipo === 'reserva' && statusGuardado !== (item.statusReserva === 'guardado')) {
       statusExtra = statusGuardado ? 'Guardado' : 'Pendente';
     }
+    // Criar já pago/guardado: o status vai junto com o lançamento (o servidor marca).
+    let statusNaCriacao = {};
+    if (modo === 'criar' && tipo === 'custo' && statusPago) statusNaCriacao = { statusPagamento: 'Pago' };
+    else if (modo === 'criar' && tipo === 'reserva' && statusGuardado) statusNaCriacao = { statusReserva: 'Guardado' };
     try {
-      await onSalvar(tipo, montarForm(), statusExtra);
+      await onSalvar(tipo, { ...montarForm(), ...statusNaCriacao }, statusExtra);
     } finally {
       setSalvando(false);
     }
@@ -1541,32 +1620,70 @@ function PaymentPanel({ mes, erro, nomesCusto = [], categoriasCusto, modo, tipoI
     ? (ehRenda ? 'Nova renda' : ehReserva ? 'Nova reserva' : 'Novo pagamento')
     : `Editar ${substantivo}`;
 
+  // Mobile (folha de baixo): arrastar a alça pra baixo fecha, como no iOS. O painel
+  // acompanha o dedo; soltando longe o bastante ele desce e fecha, senão volta.
+  const painelRef = useRef(null);
+  const arrasto = useRef(null);
+  const ARRASTO_PARA_FECHAR = 100;
+
+  const comecarArrasto = (e) => {
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
+    arrasto.current = { y: e.clientY, dy: 0 };
+    e.currentTarget.setPointerCapture(e.pointerId);
+    painelRef.current.style.transition = 'none';
+  };
+  const arrastar = (e) => {
+    const a = arrasto.current;
+    if (!a) return;
+    a.dy = Math.max(0, e.clientY - a.y);
+    painelRef.current.style.transform = `translateY(${a.dy}px)`;
+  };
+  const soltarArrasto = () => {
+    const a = arrasto.current;
+    if (!a) return;
+    arrasto.current = null;
+    const el = painelRef.current;
+    el.style.transition = 'transform 0.25s cubic-bezier(0.32, 0.72, 0, 1)';
+    if (a.dy > ARRASTO_PARA_FECHAR) {
+      el.style.transform = 'translateY(100%)';
+      setTimeout(onCancelar, 220);
+    } else {
+      el.style.transform = '';
+      setTimeout(() => {
+        if (painelRef.current) painelRef.current.style.transition = '';
+      }, 260);
+    }
+  };
+
   return (
-    <div
-      style={{
-        position: 'fixed',
-        inset: 0,
-        background: 'var(--scrim)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        zIndex: 50,
-      }}
-      onClick={onCancelar}
-    >
+    <div className={styles.paymentOverlay} onClick={onCancelar}>
       <div
-        className={`${styles.panel} ${styles.modalPanel}`}
-        style={{
-          width: 440,
-          maxWidth: '90vw',
-          maxHeight: '90vh',
-          overflowY: 'auto',
-          boxSizing: 'border-box',
-        }}
+        ref={painelRef}
+        className={`${styles.panel} ${styles.modalPanel} ${styles.paymentPanel}`}
         onClick={(e) => e.stopPropagation()}
       >
-      {modo !== 'criar' && <div className={styles.panelTitle}>{titulo}</div>}
-      <div className={styles.panelSubtitle}>{tituloMes(mes)}</div>
+      {/* Mobile: alça + Cancelar | título | Salvar no topo (fixo ao rolar); os botões
+          de baixo somem. No desktop esta barra fica oculta. */}
+      <div className={styles.sheetTopo}>
+        <div
+          className={styles.sheetAlca}
+          onPointerDown={comecarArrasto}
+          onPointerMove={arrastar}
+          onPointerUp={soltarArrasto}
+          onPointerCancel={soltarArrasto}
+          aria-hidden="true"
+        />
+        <div className={styles.sheetHeader}>
+          <button type="button" className={styles.sheetCancelar} onClick={onCancelar}>
+            Cancelar
+          </button>
+          <span className={styles.sheetTitulo}>{titulo}</span>
+          <button type="button" className={styles.sheetSalvar} disabled={!valido || salvando} onClick={salvar}>
+            {salvando ? 'Salvando…' : 'Salvar'}
+          </button>
+        </div>
+      </div>
+      {modo !== 'criar' && <div className={`${styles.panelTitle} ${styles.tituloDesktop}`}>{titulo}</div>}
 
       {modo === 'criar' && (
         <Segmentado
@@ -1577,9 +1694,14 @@ function PaymentPanel({ mes, erro, nomesCusto = [], categoriasCusto, modo, tipoI
             setTipo(val);
             setFrequencia('Mensal');
             setRepetirTodoMes(true);
+            setStatusPago(false);
+            setStatusGuardado(false);
           }}
         />
       )}
+
+      <CampoValor rotulo={comParcelas ? 'Valor da parcela' : 'Valor'} valor={valor} onChange={setValor} moeda={moeda} />
+      {erro && <div className={`${styles.errorText} ${styles.erroTopo}`}>{erro}</div>}
 
       <label className={styles.fieldLabel}>{ehRenda ? 'Fonte' : 'Descrição'}</label>
       <input
@@ -1589,21 +1711,49 @@ function PaymentPanel({ mes, erro, nomesCusto = [], categoriasCusto, modo, tipoI
         placeholder={ehRenda ? 'Salário' : ehReserva ? 'Reserva de emergência' : 'Assinatura de streaming'}
       />
 
-      <label className={styles.fieldLabel}>{comParcelas ? 'Valor da parcela' : 'Valor'}</label>
-      <input
-        className={styles.fieldInput}
-        type="number"
-        min="0"
-        step="0.01"
-        value={valor}
-        onChange={(e) => setValor(e.target.value)}
-        placeholder="15,00"
-      />
-
       {/* Mesma estrutura nos três tipos: um cartão de linhas (rótulo com ícone à
           esquerda, valor/controle à direita). A 1ª linha é Categoria (custo) ou
           Frequência (renda/reserva); o resto é igual. */}
       <div className={styles.grupo}>
+        {ehCusto && modo === 'criar' && (
+          <Interruptor icone={CreditCard} marcado={parcelado} onChange={setParcelado}>
+            Parcelado
+          </Interruptor>
+        )}
+        {comParcelas && (
+          <>
+            <label className={styles.linha}>
+              <span className={styles.linhaRotulo}>
+                <Layers size={18} strokeWidth={2} aria-hidden="true" />
+                Parcelas
+              </span>
+              <input
+                className={styles.linhaInput}
+                type="number"
+                min="2"
+                max="120"
+                value={parcelas}
+                onChange={(e) => setParcelas(e.target.value)}
+                placeholder="10"
+              />
+            </label>
+            <label className={styles.linha}>
+              <span className={styles.linhaRotulo}>
+                <Hash size={18} strokeWidth={2} aria-hidden="true" />
+                Parcela atual
+              </span>
+              <input
+                className={styles.linhaInput}
+                type="number"
+                min="1"
+                max={parcelas || undefined}
+                value={parcelaAtual}
+                onChange={(e) => setParcelaAtual(e.target.value)}
+                placeholder="1"
+              />
+            </label>
+          </>
+        )}
         {ehCusto ? (
           <Dropdown
             linha={{ Icone: Tag, rotulo: 'Categoria' }}
@@ -1662,92 +1812,30 @@ function PaymentPanel({ mes, erro, nomesCusto = [], categoriasCusto, modo, tipoI
             Repetir todo mês
           </Interruptor>
         )}
-        {ehCusto && modo === 'criar' && (
-          <Interruptor icone={CreditCard} marcado={parcelado} onChange={setParcelado}>
-            Parcelado
-          </Interruptor>
-        )}
-        {comParcelas && (
-          <>
-            <label className={styles.linha}>
-              <span className={styles.linhaRotulo}>
-                <Layers size={18} strokeWidth={2} aria-hidden="true" />
-                Parcelas
-              </span>
-              <input
-                className={styles.linhaInput}
-                type="number"
-                min="2"
-                max="120"
-                value={parcelas}
-                onChange={(e) => setParcelas(e.target.value)}
-                placeholder="10"
-              />
-            </label>
-            <label className={styles.linha}>
-              <span className={styles.linhaRotulo}>
-                <Hash size={18} strokeWidth={2} aria-hidden="true" />
-                Parcela atual
-              </span>
-              <input
-                className={styles.linhaInput}
-                type="number"
-                min="1"
-                max={parcelas || undefined}
-                value={parcelaAtual}
-                onChange={(e) => setParcelaAtual(e.target.value)}
-                placeholder="1"
-              />
-            </label>
-          </>
-        )}
       </div>
 
-      {modo === 'editar' && ehCusto && (
+      {(ehCusto || ehReserva) && (
         <>
           <label className={styles.fieldLabel}>Status</label>
-          <div className={styles.statusToggle}>
-            <button
-              type="button"
-              className={`${styles.statusOption} ${!statusPago ? styles.statusOptionActive : ''}`}
-              onClick={() => setStatusPago(false)}
-            >
-              Não pago
-            </button>
-            <button
-              type="button"
-              className={`${styles.statusOption} ${statusPago ? styles.statusOptionActive : ''}`}
-              onClick={() => setStatusPago(true)}
-            >
-              Pago
-            </button>
-          </div>
+          {ehCusto ? (
+            <Segmentado
+              ariaLabel="Status do pagamento"
+              opcoes={OPCOES_STATUS_CUSTO}
+              valor={statusPago ? 'sim' : 'nao'}
+              onChange={(v) => setStatusPago(v === 'sim')}
+            />
+          ) : (
+            <Segmentado
+              ariaLabel="Status da reserva"
+              opcoes={OPCOES_STATUS_RESERVA}
+              valor={statusGuardado ? 'sim' : 'nao'}
+              onChange={(v) => setStatusGuardado(v === 'sim')}
+            />
+          )}
         </>
       )}
 
-      {modo === 'editar' && ehReserva && (
-        <>
-          <label className={styles.fieldLabel}>Status</label>
-          <div className={styles.statusToggle}>
-            <button
-              type="button"
-              className={`${styles.statusOption} ${!statusGuardado ? styles.statusOptionActive : ''}`}
-              onClick={() => setStatusGuardado(false)}
-            >
-              Não guardado
-            </button>
-            <button
-              type="button"
-              className={`${styles.statusOption} ${statusGuardado ? styles.statusOptionActive : ''}`}
-              onClick={() => setStatusGuardado(true)}
-            >
-              Guardado
-            </button>
-          </div>
-        </>
-      )}
-
-      {erro && <div className={styles.errorText}>{erro}</div>}
+      {erro && <div className={`${styles.errorText} ${styles.erroBase}`}>{erro}</div>}
 
       <div className={styles.panelActions}>
         <button className={styles.btnPrimary} disabled={!valido || salvando} onClick={salvar}>
@@ -1863,7 +1951,7 @@ function ConfirmModal({ titulo, mensagem, confirmarLabel = 'Confirmar', cancelar
 
 function AcaoPagamentoModal({ item, onPagar, onEditar, onCancelar }) {
   const ehReserva = item.tipo === 'reserva';
-  const pagarLabel = ehReserva ? 'Guardado' : 'Pago';
+  const pagarLabel = ehReserva ? 'Reservado' : 'Pago';
   const [confirmando, setConfirmando] = useState(false);
 
   // Feedback: botão pisca verde e só então a ação (pagar/guardar) + fecha a tela.
