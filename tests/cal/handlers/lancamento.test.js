@@ -141,3 +141,60 @@ describe('criarLancamento — parcelado', () => {
     expect(sheets.appendRow).not.toHaveBeenCalled();
   });
 });
+
+describe('criarLancamento — já pago', () => {
+  const schema = require('../../../lib/cal/schema');
+
+  // Planilha "viva": o que o handler acrescenta fica visível nas leituras seguintes.
+  function planilhaViva({ semHistorico = false } = {}) {
+    const planilha = fx.clone();
+    sheets.getValues.mockImplementation(async (_sid, range) => {
+      if (range.startsWith('HISTORICO_CUSTOS')) {
+        if (semHistorico) throw new Error('Unable to parse range: HISTORICO_CUSTOS!A1:Z2000');
+        return planilha.HISTORICO_CUSTOS;
+      }
+      return planilha.CUSTO_FIXO;
+    });
+    sheets.appendRow.mockImplementation(async (_sid, aba, linha) => {
+      planilha[aba].push(linha);
+    });
+    sheets.updateCell.mockResolvedValue();
+    return planilha;
+  }
+
+  test('statusPagamento Pago: cria o custo e marca o mês no histórico', async () => {
+    const planilha = planilhaViva();
+    const r = await criarLancamento({ ...base, statusPagamento: 'Pago' });
+    expect(r.status).toBe(201);
+    expect(r.body).toEqual({ ok: true });
+    expect(schema.parseCusto(planilha.CUSTO_FIXO).some((c) => c.custo === 'Streaming')).toBe(true);
+    expect(schema.parseHistorico(planilha.HISTORICO_CUSTOS)['streaming|2026'].meses).toEqual({ 9: 15 });
+  });
+
+  test('sem statusPagamento: não mexe no histórico', async () => {
+    const planilha = planilhaViva();
+    await criarLancamento(base);
+    expect(planilha.HISTORICO_CUSTOS).toEqual(fx.clone().HISTORICO_CUSTOS);
+  });
+
+  test('começando em outro mês: marca o mês de início', async () => {
+    const planilha = planilhaViva();
+    await criarLancamento({ ...base, dataInicio: '2026-11', statusPagamento: 'Pago' });
+    expect(schema.parseHistorico(planilha.HISTORICO_CUSTOS)['streaming|2026'].meses).toEqual({ 11: 15 });
+  });
+
+  test('parcelado: marca a parcela atual (mês aberto), não o início recuado', async () => {
+    const planilha = planilhaViva();
+    await criarLancamento({ ...base, parcelas: 3, parcelaAtual: 2, statusPagamento: 'Pago' });
+    expect(schema.parseHistorico(planilha.HISTORICO_CUSTOS)['streaming|2026'].meses).toEqual({ 9: 15 });
+  });
+
+  test('falha ao marcar: custo continua criado e a resposta traz aviso', async () => {
+    const planilha = planilhaViva({ semHistorico: true });
+    const r = await criarLancamento({ ...base, statusPagamento: 'Pago' });
+    expect(r.status).toBe(201);
+    expect(r.body.ok).toBe(true);
+    expect(r.body.aviso).toMatch(/não deu para marcá-lo como pago/);
+    expect(schema.parseCusto(planilha.CUSTO_FIXO).some((c) => c.custo === 'Streaming')).toBe(true);
+  });
+});

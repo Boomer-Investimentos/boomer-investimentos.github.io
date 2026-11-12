@@ -64,3 +64,50 @@ describe('criarReserva', () => {
     expect(sheets.appendRow.mock.calls[0][2][header.indexOf('data_fim')]).toBe('30/09/2026');
   });
 });
+
+describe('criarReserva — já guardada', () => {
+  const schema = require('../../../lib/cal/schema');
+
+  function planilhaViva({ semHistorico = false } = {}) {
+    const planilha = fx.clone();
+    sheets.getValues.mockImplementation(async (_sid, range) => {
+      if (range.startsWith('HISTORICO_RESERVAS')) {
+        if (semHistorico) throw new Error('Unable to parse range: HISTORICO_RESERVAS!A1:Z2000');
+        return planilha.HISTORICO_RESERVAS;
+      }
+      return planilha.RESERVAS;
+    });
+    sheets.appendRow.mockImplementation(async (_sid, aba, linha) => {
+      planilha[aba].push(linha);
+    });
+    sheets.updateCell.mockResolvedValue();
+    return planilha;
+  }
+
+  const meses = (planilha, nome) => {
+    const h = schema.parseHistorico(planilha.HISTORICO_RESERVAS, ['Reserva', 'Nome']);
+    return Object.values(h).find((r) => schema.norm(r.nome || r.custo || '') === schema.norm(nome))?.meses;
+  };
+
+  test('statusReserva Guardado: cria a reserva e marca o mês no histórico', async () => {
+    const planilha = planilhaViva();
+    const r = await criarReserva({ ...base, statusReserva: 'Guardado' });
+    expect(r.status).toBe(201);
+    expect(r.body).toEqual({ ok: true });
+    expect(meses(planilha, 'Fundo de viagem')).toEqual({ 9: 200 });
+  });
+
+  test('sem statusReserva: não mexe no histórico', async () => {
+    const planilha = planilhaViva();
+    await criarReserva(base);
+    expect(planilha.HISTORICO_RESERVAS).toEqual(fx.clone().HISTORICO_RESERVAS);
+  });
+
+  test('falha ao marcar: reserva continua criada e a resposta traz aviso', async () => {
+    const planilha = planilhaViva({ semHistorico: true });
+    const r = await criarReserva({ ...base, statusReserva: 'Guardado' });
+    expect(r.status).toBe(201);
+    expect(r.body.aviso).toMatch(/não deu para marcá-la como reservada/);
+    expect(schema.parseReserva(planilha.RESERVAS).some((x) => x.nome === 'Fundo de viagem')).toBe(true);
+  });
+});

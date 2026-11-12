@@ -7,10 +7,10 @@ module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   const cookies = auth.parseCookies(req.headers.cookie);
-  const { nome, valor, categoria, dia, mes, repetirTodoMes, parcelas, parcelaAtual } = req.body || {};
+  const { nome, valor, categoria, dia, mes, repetirTodoMes, parcelas, parcelaAtual, dataInicio, statusPagamento } = req.body || {};
 
   try {
-    const r = await criarLancamento({ cookies, nome, valor, categoria, dia, mes, repetirTodoMes, parcelas, parcelaAtual });
+    const r = await criarLancamento({ cookies, nome, valor, categoria, dia, mes, repetirTodoMes, parcelas, parcelaAtual, dataInicio, statusPagamento });
     return res.status(r.status).json(r.body);
   } catch (err) {
     console.error('cal/lancamento error:', err.message);
