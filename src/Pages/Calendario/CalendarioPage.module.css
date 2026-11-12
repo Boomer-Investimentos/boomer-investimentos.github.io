@@ -194,6 +194,9 @@
 
 /* label-lg — rótulo de botão */
 .addButton {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
   padding: var(--space-3) var(--space-5);
   background: var(--interactive);
   color: var(--interactive-fg);
@@ -204,6 +207,10 @@
   font-weight: 600;
   letter-spacing: 0.005em;
   cursor: pointer;
+}
+
+.addButton svg {
+  flex: none;
 }
 
 .addButton:hover {
@@ -1442,12 +1449,12 @@ select.fieldInput {
     width: 44px;
     height: 44px;
     padding: 0;
-    display: flex;
-    align-items: center;
     justify-content: center;
-    font-size: 26px;
-    line-height: 1;
-    font-weight: 500;
+  }
+
+  .addButton svg {
+    width: 20px;
+    height: 20px;
   }
 
   .addButtonFlutuante {
@@ -1458,6 +1465,11 @@ select.fieldInput {
     width: 52px;
     height: 52px;
     box-shadow: var(--shadow-lg);
+  }
+
+  .addButtonFlutuante svg {
+    width: 24px;
+    height: 24px;
   }
 
   /* Folga no fim da página pro botão flutuante não cobrir o último item. */
@@ -1829,6 +1841,11 @@ select.fieldInput {
   .paymentPanel {
     width: 100%;
     max-width: none;
+    /* Custo (o tipo com mais campos) ocupa ~708px; Renda e Reserva têm menos
+       campos e ficariam bem mais baixos. Fixa um piso pra não "pular" de
+       tamanho ao trocar o tipo — a sobra fica só no fim do cartão, nunca no
+       meio do formulário. */
+    min-height: 720px;
     max-height: 92vh;
     max-height: 92dvh;
     border-radius: var(--radius-lg) var(--radius-lg) 0 0;

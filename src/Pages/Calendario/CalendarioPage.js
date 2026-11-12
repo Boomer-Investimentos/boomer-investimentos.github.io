@@ -4,7 +4,7 @@ import {
   CircleCheck, Clock, TriangleAlert, TrendingUp, PiggyBank, Wallet, Check,
   Coins, House, Clapperboard, HeartPulse, Wrench, ShoppingBag, Dumbbell, Tag,
   Briefcase, Landmark, PawPrint, GraduationCap, ChevronDown, ChevronLeft, ChevronRight,
-  CalendarDays, CalendarClock, Repeat, CreditCard, Layers, Hash,
+  CalendarDays, CalendarClock, Repeat, CreditCard, Layers, Hash, Plus,
 } from 'lucide-react';
 import '@google/model-viewer';
 import styles from './CalendarioPage.module.css';
@@ -577,7 +577,7 @@ function Toolbar({ mes, dados, onNav, onAdicionar, carregando }) {
             onClick={onAdicionar}
             aria-label="Adicionar"
           >
-            <span aria-hidden="true">+</span>
+            <Plus size={18} strokeWidth={2.5} aria-hidden="true" />
             <span className={styles.addLabel} aria-hidden="true">
               {' '}Adicionar
             </span>
