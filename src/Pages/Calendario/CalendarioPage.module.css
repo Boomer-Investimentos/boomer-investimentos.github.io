@@ -130,12 +130,84 @@
   min-width: 640px;
 }
 
+/* 3 colunas de verdade em qualquer largura — o bloco do meio (seta-mês-seta)
+   fica centralizado na barra inteira, não só "sobrando" entre os outros dois.
+   A 1ª coluna fica vazia só pra sobrar espaço simétrico dos dois lados. */
 .toolbar {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  margin-bottom: var(--space-5);
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
   gap: var(--space-3);
+  margin-bottom: var(--space-5);
+}
+
+/* Bloco do cliente no canto superior direito do Topbar. */
+.topbarCliente {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.clienteAvatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-full);
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 700;
+  /* Sem isso a caixa de linha herda a entrelinha padrão (~1.2×), que sobra
+     mais embaixo do que em cima e empurra o texto visualmente pra cima
+     dentro do círculo centralizado por flex. */
+  line-height: 1;
+}
+
+.clienteNome {
+  font-size: 14px;
+  line-height: 18px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.monthNav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  /* Explícito: sem bloco nenhum na 1ª coluna, o auto-placement colocaria o mês
+     aí em vez de no meio. */
+  grid-column: 2;
+}
+
+.monthNavBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-full);
+  /* surface-inset (quase preto) deixava a seta praticamente invisível contra
+     o fundo da página; surface-raised é o mesmo tom já usado no avatar do
+     cliente, e a seta em --ink (em vez de ink-subtle) fica bem mais visível. */
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.monthNavBtn:hover {
+  background: var(--surface-inset);
+}
+
+.monthNavBtn:disabled {
+  color: var(--ink-disabled);
+  cursor: default;
 }
 
 /* display-md */
@@ -148,52 +220,15 @@
   color: var(--ink);
 }
 
-/* caption, ink-subtle */
-.monthSubtitle {
-  font-size: 12px;
-  line-height: 17px;
-  color: var(--ink-subtle);
-  margin-top: var(--space-1);
-}
-
-.toolbarActions {
-  display: flex;
-  gap: var(--space-2);
-  align-items: center;
-}
-
-.navGroup {
-  display: flex;
-  background: var(--surface-inset);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-full);
-  overflow: hidden;
-}
-
-.navButton {
-  padding: var(--space-2) var(--space-3);
-  color: var(--ink-subtle);
-  font-size: 14px;
-  background: none;
-  border: none;
-  cursor: pointer;
-}
-
-.navButton:first-child {
-  border-right: 1px solid var(--border);
-}
-
-.navButton:hover {
-  color: var(--ink);
-}
-
-.navButton:disabled {
-  color: var(--ink-disabled);
-  cursor: default;
-}
-
 /* label-lg — rótulo de botão */
 .addButton {
+  /* No grid de 3 colunas do .toolbar os itens esticam pra preencher a coluna
+     por padrão — sem isso o botão vira uma pílula gigante até a borda. */
+  justify-self: end;
+  grid-column: 3;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
   padding: var(--space-3) var(--space-5);
   background: var(--interactive);
   color: var(--interactive-fg);
@@ -206,8 +241,17 @@
   cursor: pointer;
 }
 
+.addButton svg {
+  flex: none;
+}
+
 .addButton:hover {
   background: var(--interactive-hover);
+}
+
+/* Fora do mobile o slot não existe como caixa: o botão fica direto na barra. */
+.addSlot {
+  display: contents;
 }
 
 .summaryRow {
@@ -682,12 +726,6 @@
   display: block;
 }
 
-.fieldRow {
-  display: flex;
-  gap: var(--space-3);
-  margin-bottom: var(--space-4);
-}
-
 /* body-sm; campos/botões compactos usam space-4 de padding base. */
 .fieldInput {
   width: 100%;
@@ -725,33 +763,425 @@
   border-color: var(--border-strong);
 }
 
-.chipsRow {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-  margin-bottom: var(--space-4);
+/* Select nativo: substitui a seta do navegador por uma própria, com espaço
+   reservado (padding-right) pra ela não colar na borda arredondada da pílula. */
+select.fieldInput {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  padding-right: 44px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%238a93b0' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right var(--space-4) center;
+  background-size: 14px;
 }
 
-/* Pílula: radius-full. Padding de badges/chips = space-2 (token usage). */
-.chip {
+/* Valor em destaque no topo do painel: rótulo pequeno + número grande centrado.
+   O input real fica transparente por cima (recebe foco/teclado); quem aparece é
+   o .valorDisplay, com centavos em cinza e cursor laranja. */
+.valorCampo {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  cursor: text;
+  margin-bottom: var(--space-5);
+}
+
+.valorRotulo {
+  font-size: 11px;
+  line-height: 16px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-subtle);
+  margin-bottom: var(--space-1);
+}
+
+.valorDisplay {
+  display: inline-flex;
+  align-items: baseline;
+  white-space: pre;
+  font-family: var(--font-display);
+  font-size: clamp(30px, 9.5vw, 40px);
+  line-height: 1.2;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+
+.valorVazio {
+  color: var(--ink-disabled);
+}
+
+.valorVazio .valorCentavos {
+  color: inherit;
+}
+
+.valorSimbolo {
+  margin-right: 0.2em;
+}
+
+.valorCentavos {
+  color: var(--ink-subtle);
+}
+
+.valorCursor {
+  align-self: center;
+  width: 2px;
+  height: 1em;
+  margin-left: 3px;
+  background: var(--accent);
+  animation: valorPisca 1s steps(1) infinite;
+}
+
+@keyframes valorPisca {
+  50% {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .valorCursor {
+    animation: none;
+  }
+}
+
+/* Cobre o campo todo e fica invisível; 16px evita o zoom automático do iOS. */
+.page .valorInput {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  border: 0;
+  padding: 0;
+  font-size: 16px;
+  caret-color: transparent;
+  cursor: text;
+}
+
+/* Barra de topo do painel (só no mobile, ver o @media no fim do arquivo). */
+.sheetTopo {
+  display: none;
+}
+
+/* Modal de lançamento: centralizado no desktop; no mobile vira folha de baixo
+   (ver o @media no fim do arquivo). */
+.paymentOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
   display: flex;
   align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-2);
-  border-radius: var(--radius-full);
-  font-size: 12px;
-  line-height: 17px;
-  font-weight: 600;
+  justify-content: center;
+  background: var(--scrim);
+}
+
+.paymentPanel {
+  width: 440px;
+  max-width: 90vw;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-sizing: border-box;
+}
+
+.erroTopo {
+  display: none;
+}
+
+/* Título do painel no desktop (modo editar): sem o subtítulo do mês, ganha o
+   espaço de baixo que ele dava. */
+.tituloDesktop {
+  margin-bottom: var(--space-5);
+}
+
+/* Grupo de linhas (painel de custo): um cartão só, com divisórias, em que cada
+   linha tem rótulo (com ícone) à esquerda e o valor/controle à direita. Todas as
+   linhas têm a mesma altura e o mesmo alinhamento, então a coluna de valores
+   fica reta. */
+.grupo {
+  /* O painel é uma coluna flex com altura máxima: sem isto o overflow:hidden deixa
+     o cartão encolher e corta as últimas linhas em vez de o painel rolar. */
+  flex: none;
   background: var(--surface);
   border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  margin-bottom: var(--space-6);
+}
+
+.linha {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 46px;
+  padding: 0 var(--space-4);
+  margin: 0;
+  border: none;
+  border-top: 1px solid var(--border);
+  border-radius: 0;
+  background: none;
+  color: var(--ink);
+  font-family: inherit;
+  font-size: 13px;
+  line-height: 20px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.linha:first-child {
+  border-top: none;
+}
+
+.linha:hover {
+  background: color-mix(in srgb, var(--ink) 4%, transparent);
+}
+
+.linha:focus-within {
+  outline: none;
+  background: color-mix(in srgb, var(--ink) 6%, transparent);
+}
+
+.linha:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -2px;
+}
+
+.linhaRotulo {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex: 1;
+  min-width: 0;
+  color: var(--ink);
+}
+
+.linhaRotulo svg {
+  flex: none;
+  color: var(--ink-subtle);
+}
+
+.linhaValor {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--ink-subtle);
+}
+
+.linhaGatilho .dropdownSeta {
+  margin-left: calc(var(--space-2) * -1);
+}
+
+.linhaInput {
+  width: 72px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--ink-subtle);
+  font-family: inherit;
+  font-size: 13px;
+  line-height: 20px;
+  text-align: right;
+}
+
+/* `.page input:focus-visible` (anel global) tem mais especificidade que
+   `.linhaInput:focus`; o prefixo `.page` aqui empata e vence por ordem. O foco
+   aparece só na linha (fundo) e no valor mais claro, sem caixa nem sublinhado. */
+.page .linhaInput:focus,
+.page .linhaInput:focus-visible {
+  outline: none;
+  color: var(--ink);
+}
+
+.linhaInput::placeholder {
+  color: var(--ink-disabled);
+}
+
+.linhaInput[type='number'] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+.linhaInput[type='number']::-webkit-outer-spin-button,
+.linhaInput[type='number']::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* Interruptor em linha: o trilho vai pra direita sem mudar a ordem no DOM (o
+   seletor .switchInput:checked + .switchTrack depende do input vir antes). */
+.linhaToggle .switchTrack {
+  order: 2;
+}
+
+.linhaToggle .linhaRotulo {
+  order: 1;
+}
+
+.linhaToggle:hover .switchInput:not(:checked) + .switchTrack {
+  background: color-mix(in srgb, var(--ink-subtle) 42%, var(--surface-raised));
+}
+
+/* Dropdown customizado (categoria): pílula igual aos outros campos + lista
+   num portal, com gap/cantos arredondados que o <select> nativo não permite. */
+.dropdownGatilho {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  appearance: none;
+  -webkit-appearance: none;
+  cursor: pointer;
+  text-align: left;
+}
+
+.dropdownValor {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dropdownSeta {
+  flex: none;
+  color: var(--ink-subtle);
+  transition: transform 0.2s ease;
+}
+
+.dropdownSetaAberta {
+  transform: rotate(180deg);
+}
+
+.dropdownLista {
+  position: fixed;
+  z-index: 1000;
+  max-height: 280px;
+  overflow-y: auto;
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  padding: var(--space-2);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--ink-disabled) transparent;
+}
+
+.dropdownLista::-webkit-scrollbar {
+  width: 8px;
+}
+
+.dropdownLista::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.dropdownLista::-webkit-scrollbar-thumb {
+  background: var(--ink-disabled);
+  border-radius: var(--radius-full);
+}
+
+.dropdownOpcao {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  text-align: left;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  background: none;
+  border: none;
+  color: var(--ink);
+  font-size: 13px;
+  line-height: 20px;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.dropdownOpcao:hover,
+.dropdownOpcaoAtiva {
+  background: var(--interactive);
+  color: var(--interactive-fg);
+  font-weight: 600;
+}
+
+/* Seletor de mês "Começa em": popup em formato de calendário (nav de ano +
+   grade de meses) em vez de lista comprida de rolar. */
+.mesPopup {
+  position: fixed;
+  z-index: 1000;
+  width: 240px;
+  box-sizing: border-box;
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  padding: var(--space-3);
+}
+
+.mesPopupHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-3);
+}
+
+.mesPopupAno {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.mesPopupNav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-full);
+  border: none;
+  background: none;
   color: var(--ink-subtle);
   cursor: pointer;
 }
 
-.chipActive {
+.mesPopupNav:hover:not(:disabled) {
+  background: var(--surface-inset);
   color: var(--ink);
-  border-color: var(--border-strong);
-  background: var(--surface-raised);
+}
+
+.mesPopupNav:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.mesPopupGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-2);
+}
+
+.mesPopupMes {
+  padding: var(--space-2) 0;
+  border-radius: var(--radius-md);
+  border: none;
+  background: none;
+  color: var(--ink);
+  font-size: 13px;
+  font-family: inherit;
+  cursor: pointer;
+  text-align: center;
+}
+
+.mesPopupMes:hover,
+.mesPopupMesAtiva {
+  background: var(--interactive);
+  color: var(--interactive-fg);
+  font-weight: 600;
 }
 
 /* Seletor de tipo (Custo/Renda/Reserva): segmented control estilo "liquid glass".
@@ -760,7 +1190,9 @@
   position: relative;
   display: flex;
   padding: 4px;
-  background: var(--surface-inset);
+  /* surface-inset (quase preto) ficava escuro demais contra o fundo da
+     página; surface-raised é o mesmo tom já usado nos cards e no avatar. */
+  background: var(--surface-raised);
   border: 1px solid var(--border);
   border-radius: var(--radius-full);
   margin-bottom: var(--space-4);
@@ -800,20 +1232,9 @@
   font-weight: 700;
 }
 
-/* Variante compacta (frequência): controle secundário, um pouco menor que o
-   seletor de tipo pra manter a hierarquia. */
-.segmentedSm {
-  padding: 3px;
-}
-
-.segmentedSm .segmentedThumb {
-  top: 3px;
-  bottom: 3px;
-  left: 3px;
-  width: calc((100% - 6px) / var(--n, 3));
-}
-
-.segmentedSm .segmentedBtn {
+/* Variante mais sutil (ex.: Mês/Agenda) — mesma pílula, só mais fina/discreta
+   que a versão padrão (usada no Tipo/Status do painel de lançamento). */
+.segmentedCompacto .segmentedBtn {
   padding: 6px 0;
   font-size: 13px;
 }
@@ -824,51 +1245,9 @@
   }
 }
 
-.statusToggle {
-  display: flex;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-full);
-  padding: var(--space-1);
-  margin-bottom: var(--space-4);
-}
-
-.statusOption {
-  flex: 1;
-  text-align: center;
-  padding: var(--space-3) 0;
-  border-radius: var(--radius-full);
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--ink-subtle);
-  background: none;
-  border: none;
-  cursor: pointer;
-}
-
-.statusOptionActive {
-  font-weight: 700;
-  background: var(--surface-raised);
-  color: var(--ink);
-}
-
-/* Interruptor terracota (Parcelado, Repetir todo mês). O <input> nativo fica
-   escondido (acessível por teclado/leitor de tela); .switchTrack desenha o
-   trilho e reflete o estado por CSS. A linha inteira (label) é clicável. */
-.switchRow {
-  position: relative;
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  margin-bottom: var(--space-4);
-  cursor: pointer;
-}
-
-/* Última linha antes dos botões: mais espaço embaixo. */
-.switchRowFim {
-  margin-bottom: var(--space-6);
-}
-
+/* Interruptor (Parcelado, Repetir todo mês), usado como linha do grupo. O <input>
+   nativo fica escondido (acessível por teclado/leitor de tela); .switchTrack
+   desenha o trilho e reflete o estado por CSS. A linha inteira (label) é clicável. */
 .switchInput {
   position: absolute;
   width: 1px;
@@ -910,10 +1289,6 @@
 .switchInput:checked + .switchTrack .switchThumb {
   transform: translateX(16px);
   background: var(--interactive-fg);
-}
-
-.switchRow:hover .switchInput:not(:checked) + .switchTrack {
-  background: color-mix(in srgb, var(--ink-subtle) 42%, var(--surface-raised));
 }
 
 .switchInput:focus-visible + .switchTrack {
@@ -968,6 +1343,8 @@
 
 /* label-lg */
 .btnGhost {
+  /* Mesmo peso do Salvar no painel (50/50): botões lado a lado simétricos. */
+  flex: 1;
   padding: var(--space-3) var(--space-5);
   border-radius: var(--radius-full);
   border: 1px solid var(--border);
@@ -1073,13 +1450,23 @@
     padding: var(--space-3) var(--space-4);
   }
 
+  /* Abre espaço pro cliente (nome + avatar) à direita, que agora também
+     aparece no mobile — sem isso "boomer | Calendário Financeiro | Nome"
+     não cabe numa tela estreita. */
+  .brandDivider,
+  .brandSection {
+    display: none;
+  }
+
+  /* Só a bolinha com as iniciais no mobile — sem o nome, pra caber numa barra
+     estreita. */
+  .clienteNome {
+    display: none;
+  }
+
   .content {
     padding: var(--space-4);
     gap: var(--space-4);
-  }
-
-  .toolbar {
-    flex-wrap: wrap;
   }
 
   .monthTitle {
@@ -1087,9 +1474,65 @@
     line-height: 28px;
   }
 
-  .toolbarActions {
-    width: 100%;
-    justify-content: space-between;
+  /* Não cabe tão bem numa tela estreita — só o nome do mês. */
+  .monthAno {
+    display: none;
+  }
+
+  /* "Adicionar" vira só "+": botão redondo. O slot guarda o espaço no fluxo; assim
+     que a página rola, o botão (.addButtonFlutuante) passa a ficar fixo no canto
+     inferior direito, acima do conteúdo e abaixo dos modais (z-index 50). */
+  .addSlot {
+    /* Tamanho fixo não estica igual o grid pede por padrão, então sem
+       justify-self ele ia pro início da coluna (colado nas setas) em vez do
+       fim — fica uma ilha de espaço vazio à direita e o "+" parece espremido
+       perto do mês. */
+    justify-self: end;
+    display: inline-flex;
+    width: 44px;
+    height: 44px;
+    flex: none;
+    /* Afasta o "+" da borda: 16px do conteúdo + 16px = 32px, a mesma distância
+       do botão flutuante, então ele não muda de lado ao rolar. */
+    margin-right: var(--space-4);
+  }
+
+  .addLabel {
+    display: none;
+  }
+
+  .addButton {
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    justify-content: center;
+  }
+
+  .addButton svg {
+    width: 20px;
+    height: 20px;
+  }
+
+  .addButtonFlutuante {
+    position: fixed;
+    right: var(--space-8);
+    /* --vv-offset-bottom (JS, via visualViewport) compensa a barra de
+       endereço do navegador somando/reaparecendo durante o scroll. */
+    bottom: calc(var(--space-8) + env(safe-area-inset-bottom, 0px) + var(--vv-offset-bottom, 0px));
+    z-index: 40;
+    width: 52px;
+    height: 52px;
+    box-shadow: var(--shadow-lg);
+  }
+
+  .addButtonFlutuante svg {
+    width: 24px;
+    height: 24px;
+  }
+
+  /* Folga no fim da página pro botão flutuante não cobrir o último item. */
+  .content {
+    padding-bottom: 88px;
   }
 
   .summaryRow {
@@ -1111,13 +1554,30 @@
     line-height: 24px;
   }
 
+  /* Disponível sobe pro topo (card de destaque primeiro); Reservas desce pro
+     fim, com largura total e numa linha só (rótulo+ícone à esquerda, valor à
+     direita) em vez de empilhado como os outros. */
   .summaryCardHero {
     flex: 1 1 100%;
+    order: -1;
+    padding: var(--space-5);
   }
 
   .summaryCardHero .summaryValue {
-    font-size: 22px;
-    line-height: 28px;
+    font-size: 28px;
+    line-height: 34px;
+  }
+
+  .summaryCardLarga {
+    flex: 1 1 100%;
+    order: 1;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .summaryCardLarga .summaryValue {
+    margin-top: 0;
   }
 
   .dowRow {
@@ -1138,10 +1598,6 @@
   }
 
   .semDataRow {
-    flex-wrap: wrap;
-  }
-
-  .fieldRow {
     flex-wrap: wrap;
   }
 }
@@ -1273,41 +1729,6 @@
   border-bottom: none;
 }
 
-/* Segmented control Mês / Agenda */
-.viewToggle {
-  display: flex;
-  width: fit-content;
-  gap: 2px;
-  padding: 3px;
-  background: var(--surface-raised);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-full);
-  margin: 0 auto var(--space-5);
-}
-
-.viewToggleBtn {
-  padding: var(--space-2) var(--space-5);
-  border: none;
-  background: none;
-  color: var(--ink-subtle);
-  font-size: 13px;
-  font-weight: 600;
-  letter-spacing: 0.01em;
-  border-radius: var(--radius-full);
-  cursor: pointer;
-  transition: color 0.12s ease, background 0.12s ease;
-}
-
-.viewToggleBtn:hover {
-  color: var(--ink);
-}
-
-.viewToggleBtnActive,
-.viewToggleBtnActive:hover {
-  background: var(--interactive);
-  color: var(--interactive-fg);
-}
-
 /* Visão Agenda: dias empilhados numa coluna única, centralizada. */
 .agendaView {
   display: flex;
@@ -1386,20 +1807,8 @@
    pseudo-elemento invisível; as setas de mês e as linhas crescem de verdade.
    Fica no fim do arquivo pra vencer as regras base de mesma especificidade. */
 @media (max-width: 640px), (pointer: coarse) {
-  .navButton {
-    min-width: 44px;
-    min-height: 44px;
-  }
-
-  .viewToggleBtn,
   .agendaCheck {
     position: relative;
-  }
-
-  .viewToggleBtn::after {
-    content: '';
-    position: absolute;
-    inset: -4px 0;
   }
 
   /* `inset` conta a partir da borda interna: com a borda de 2px do check, -11px
@@ -1411,22 +1820,14 @@
   }
 
   .dayListRow,
-  .segmentedBtn,
-  .statusOption {
+  .segmentedBtn {
     min-height: 44px;
   }
 
-  /* Painel de adicionar/editar. Interruptores (Parcelado, Repetir todo mês): a
-     linha inteira (label) é o alvo, então ganha altura; as margens compensam o
-     que cresce ((44 - 20) / 2 = 12px), pra nada sair do lugar visualmente. */
-  .switchRow {
-    min-height: 44px;
-    margin-top: -12px;
-    margin-bottom: 4px;
-  }
-
-  .switchRowFim {
-    margin-bottom: 12px;
+  /* Mês/Agenda: mais sutil mesmo no mobile — vale a pena abrir mão de um
+     pouco da área de toque recomendada (44px) por um controle mais discreto. */
+  .segmentedCompacto .segmentedBtn {
+    min-height: 36px;
   }
 
   /* Chips (35px): área clicável maior via pseudo-elemento invisível. O chip tem
@@ -1446,15 +1847,139 @@
     row-gap: 9px;
   }
 
-  /* Seletor compacto (frequência): mantém o tamanho visual menor e amplia só a
-     área clicável (o botão não tem borda, então -6.5px fecha ~44px). */
-  .segmentedSm .segmentedBtn {
-    min-height: 0;
+}
+/* Painel de lançamento no mobile: Cancelar | título | Salvar numa barra no topo
+   (fixa ao rolar o painel). Os botões de baixo e o título duplicado somem; o
+   Excluir continua embaixo. Fica no fim pra vencer as regras base. */
+@keyframes folhaSobe {
+  from {
+    transform: translateY(100%);
+  }
+}
+
+@keyframes scrimEntra {
+  from {
+    opacity: 0;
+  }
+}
+
+@media (max-width: 640px) {
+  /* Folha de baixo (estilo iOS): encostada no rodapé, cantos arredondados só em
+     cima, sobe de baixo pra cima. Sem fill-mode: depois da animação o transform
+     fica livre pro arrastar-pra-fechar. */
+  .paymentOverlay {
+    align-items: flex-end;
+    animation: scrimEntra 0.25s ease-out;
   }
 
-  .segmentedSm .segmentedBtn::after {
+  .paymentPanel {
+    width: 100%;
+    max-width: none;
+    /* Custo (o tipo com mais campos) ocupa ~708px; Renda e Reserva têm menos
+       campos e ficariam bem mais baixos. Fixa um piso pra não "pular" de
+       tamanho ao trocar o tipo — a sobra fica só no fim do cartão, nunca no
+       meio do formulário. */
+    min-height: 720px;
+    max-height: 92vh;
+    max-height: 92dvh;
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    border-bottom: none;
+    padding-bottom: calc(var(--space-6) + env(safe-area-inset-bottom, 0px));
+    animation: folhaSobe 0.34s cubic-bezier(0.32, 0.72, 0, 1);
+  }
+
+  .sheetTopo {
+    display: block;
+    position: sticky;
+    /* O sticky respeita o padding do painel: -space-6 cola a barra na borda de cima. */
+    top: calc(-1 * var(--space-6));
+    z-index: 2;
+    margin: calc(-1 * var(--space-6)) calc(-1 * var(--space-6)) var(--space-4);
+    background: var(--surface-raised);
+  }
+
+  /* Alça (o "traço" no meio): área de toque de 28px; é por ela que se arrasta. */
+  .sheetAlca {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 28px;
+    touch-action: none;
+    cursor: grab;
+  }
+
+  .sheetAlca::before {
     content: '';
-    position: absolute;
-    inset: -6.5px 0;
+    width: 36px;
+    height: 5px;
+    border-radius: var(--radius-full);
+    background: var(--ink-subtle);
+    opacity: 0.55;
+  }
+
+  .sheetHeader {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    padding: 0 var(--space-4) var(--space-1);
+  }
+
+  .sheetTitulo {
+    font-family: var(--font-display);
+    font-size: 17px;
+    line-height: 24px;
+    font-weight: 600;
+    color: var(--ink);
+    text-align: center;
+  }
+
+  .sheetCancelar,
+  .sheetSalvar {
+    min-height: 44px;
+    padding: 0 var(--space-2);
+    background: none;
+    border: none;
+    font-family: inherit;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  .sheetCancelar {
+    justify-self: start;
+    color: var(--ink-subtle);
+  }
+
+  .sheetSalvar {
+    justify-self: end;
+    color: var(--accent);
+    font-weight: 700;
+  }
+
+  /* Desabilitado ainda precisa ser legível (--ink-disabled some no fundo do painel). */
+  .sheetSalvar:disabled {
+    color: var(--ink-subtle);
+    opacity: 0.6;
+    cursor: default;
+  }
+
+  .tituloDesktop,
+  .panelActions,
+  .erroBase {
+    display: none;
+  }
+
+  .erroTopo {
+    display: block;
+    text-align: center;
+    margin: 0 0 var(--space-4);
+  }
+}
+
+/* Depois do bloco mobile acima, pra vencer a animação da folha de baixo. */
+@media (prefers-reduced-motion: reduce) {
+  .paymentOverlay,
+  .paymentPanel {
+    animation: none;
   }
 }

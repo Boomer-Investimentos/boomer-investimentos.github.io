@@ -1,7 +1,10 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useId, useRef, useState, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import {
   CircleCheck, Clock, TriangleAlert, TrendingUp, PiggyBank, Wallet, Check,
-  Coins, House, Laptop, Clapperboard, HeartPulse, Wrench, ShoppingBag, Dumbbell, Tag,
+  Coins, House, Clapperboard, HeartPulse, Wrench, ShoppingBag, Dumbbell, Tag,
+  Briefcase, Landmark, PawPrint, GraduationCap, ChevronDown, ChevronLeft, ChevronRight,
+  CalendarDays, CalendarClock, Repeat, CreditCard, Layers, Hash, Plus,
 } from 'lucide-react';
 import '@google/model-viewer';
 import styles from './CalendarioPage.module.css';
@@ -74,6 +77,14 @@ function tituloMes(mes) {
   return nome.charAt(0).toUpperCase() + nome.slice(1);
 }
 
+function iniciais(nome) {
+  const partes = (nome || '').trim().split(/\s+/).filter(Boolean);
+  if (partes.length === 0) return '';
+  const primeira = partes[0][0];
+  const ultima = partes.length > 1 ? partes[partes.length - 1][0] : '';
+  return (primeira + ultima).toUpperCase();
+}
+
 function tituloDia(dataISO) {
   const nome = new Date(`${dataISO}T00:00:00Z`).toLocaleDateString('pt-BR', {
     weekday: 'long',
@@ -89,12 +100,15 @@ function tituloDia(dataISO) {
 const ICONES_CATEGORIA = {
   recebimento: Coins,
   moradia: House,
-  tecnologia: Laptop,
   entretenimento: Clapperboard,
   saude: HeartPulse,
   software: Wrench,
   compras: ShoppingBag,
   esportes: Dumbbell,
+  servico: Briefcase,
+  imposto: Landmark,
+  pet: PawPrint,
+  educacao: GraduationCap,
   reserva: PiggyBank,
 };
 function normalizarTexto(txt) {
@@ -104,14 +118,6 @@ function iconeCategoria(nome) {
   const chave = normalizarTexto(nome);
   const achado = Object.keys(ICONES_CATEGORIA).find((k) => chave.includes(k));
   return achado ? ICONES_CATEGORIA[achado] : Tag;
-}
-
-// As cores de categoria vêm do backend em tons escuros (pensados pra fundo claro).
-// Como ícone sobre o navy, algumas ficam abaixo de 3:1 de contraste (Tecnologia
-// 1,7; Software 2,2). Clareia em direção ao creme da interface, mantendo o matiz
-// (todas passam de 4,8:1).
-function corIcone(cor) {
-  return `color-mix(in srgb, ${cor} 55%, var(--ink))`;
 }
 
 function round2(n) {
@@ -366,11 +372,15 @@ export default function CalendarioPage() {
 
   const salvarPainel = async (tipo, form, statusPagamento) => {
     setErroAcao(null);
+    let aviso = null;
     try {
       if (painelItem.modo === 'criar') {
-        if (tipo === 'custo') await criarLancamento({ ...form, mes });
-        else if (tipo === 'reserva') await criarReserva({ ...form, mes });
-        else await criarRenda({ ...form, mes });
+        let resposta;
+        if (tipo === 'custo') resposta = await criarLancamento({ ...form, mes });
+        else if (tipo === 'reserva') resposta = await criarReserva({ ...form, mes });
+        else resposta = await criarRenda({ ...form, mes });
+        // Criou, mas não conseguiu marcar como pago/guardado: avisa depois de fechar.
+        aviso = resposta?.aviso || null;
       } else {
         const { linhaPlanilha, id } = painelItem.item;
         if (tipo === 'custo') {
@@ -384,6 +394,7 @@ export default function CalendarioPage() {
         }
       }
       fecharPainel();
+      if (aviso) setErroAcao(aviso);
       carregarMes(mes, linkToken);
     } catch (e) {
       setErroAcao(e.message);
@@ -436,7 +447,7 @@ export default function CalendarioPage() {
 
   return (
     <div className={styles.page}>
-      <Topbar />
+      <Topbar cliente={dados.cliente} />
       <div className={styles.content}>
         <main className={styles.main}>
           <Toolbar
@@ -447,7 +458,13 @@ export default function CalendarioPage() {
             carregando={carregando}
           />
           <SummaryCards totals={dados.totals} moeda={dados.moeda} />
-          <ViewToggle vista={vista} onChange={setVista} />
+          <Segmentado
+            ariaLabel="Visualização"
+            opcoes={[{ valor: 'mes', label: 'Mês' }, { valor: 'agenda', label: 'Agenda' }]}
+            valor={vista}
+            onChange={setVista}
+            compacto
+          />
           {vista === 'mes' && dados.semData.length > 0 && (
             <SemData itens={dados.semData} moeda={dados.moeda} onEditar={abrirPainelEditar} onTogglePago={alternarPago} />
           )}
@@ -463,7 +480,7 @@ export default function CalendarioPage() {
           ) : (
             <AgendaView dados={dados} onEditar={abrirPainelEditar} onTogglePago={alternarPago} />
           )}
-          <Legend categorias={dados.categorias} />
+          {vista === 'mes' && <Legend categorias={dados.categorias} />}
           {erroAcao && !painelItem && <div className={styles.errorText}>{erroAcao}</div>}
         </main>
 
@@ -474,6 +491,7 @@ export default function CalendarioPage() {
             erro={erroAcao}
             nomesCusto={dados.nomesCusto || []}
             categoriasCusto={dados.categorias.filter((c) => c.nome !== 'Recebimento' && c.nome !== 'Reserva')}
+            moeda={dados.moeda}
             modo={painelItem.modo}
             tipoInicial={painelItem.tipo}
             item={painelItem.item}
@@ -524,7 +542,7 @@ export default function CalendarioPage() {
   );
 }
 
-function Topbar() {
+function Topbar({ cliente }) {
   return (
     <header className={styles.topbar}>
       <div className={styles.brandGroup}>
@@ -533,33 +551,89 @@ function Topbar() {
         <span className={styles.brandDivider} />
         <span className={styles.brandSection}>Calendário Financeiro</span>
       </div>
+      <div className={styles.topbarCliente}>
+        <span className={styles.clienteAvatar} aria-hidden="true">
+          {iniciais(cliente)}
+        </span>
+        <span className={styles.clienteNome}>{cliente}</span>
+      </div>
     </header>
   );
 }
 
 function Toolbar({ mes, dados, onNav, onAdicionar, carregando }) {
+  // No mobile o botão é só "+" e, assim que a página rola um pouco, vira um botão
+  // flutuante (fixo no canto). O `slot` fica no fluxo e guarda o espaço do botão,
+  // então nada pula na troca.
+  const [flutuante, setFlutuante] = useState(false);
+  useEffect(() => {
+    const aoRolar = () => setFlutuante(window.scrollY > 24);
+    aoRolar();
+    window.addEventListener('scroll', aoRolar, { passive: true });
+    return () => window.removeEventListener('scroll', aoRolar);
+  }, []);
+
+  // No mobile, a barra de endereço do navegador soma/aparece ao rolar e o
+  // viewport "visual" (o que realmente aparece na tela) passa a diferir do
+  // viewport de layout — um `position: fixed` ancorado só por CSS pode ficar
+  // uns pixels fora do lugar durante essa transição. visualViewport dá o
+  // tamanho real visível; a diferença vira uma variável CSS que soma ao
+  // `bottom` do botão flutuante pra ele seguir grudado no rodapé de verdade.
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return undefined;
+    const atualizar = () => {
+      const diferenca = window.innerHeight - vv.height - vv.offsetTop;
+      document.documentElement.style.setProperty('--vv-offset-bottom', `${Math.max(diferenca, 0)}px`);
+    };
+    atualizar();
+    vv.addEventListener('resize', atualizar);
+    vv.addEventListener('scroll', atualizar);
+    return () => {
+      vv.removeEventListener('resize', atualizar);
+      vv.removeEventListener('scroll', atualizar);
+    };
+  }, []);
+
+  const botaoAdicionar = (
+    <span className={styles.addSlot}>
+      <button
+        className={`${styles.addButton} ${flutuante ? styles.addButtonFlutuante : ''}`}
+        onClick={onAdicionar}
+        aria-label="Adicionar"
+      >
+        <Plus size={18} strokeWidth={2.5} aria-hidden="true" />
+        <span className={styles.addLabel} aria-hidden="true">
+          {' '}Adicionar
+        </span>
+      </button>
+    </span>
+  );
+
+  const [mesNome, ano] = tituloMes(mes).split(' de ');
+
   return (
+    // Mesma estrutura em qualquer largura: seta-mês-seta centralizado (grid de
+    // 3 colunas, a 1ª vazia só pra sobrar espaço simétrico) + Adicionar à
+    // direita. No mobile o ano só fica escondido via CSS (.monthAno).
     <div className={styles.toolbar}>
-      <div>
-        <div className={styles.monthTitle}>{tituloMes(mes)}</div>
-        <div className={styles.monthSubtitle}>
-          {dados.cliente}
-          {dados.tituloEstrategia ? ` · ${dados.tituloEstrategia}` : ''}
+      <div className={styles.monthNav}>
+        <button className={styles.monthNavBtn} onClick={() => onNav(-1)} disabled={carregando} aria-label="Mês anterior">
+          {/* Caixa já é matematicamente centralizada; o chevron (ponta de um
+              lado, "boca" aberta do outro) parece puxado pro lado oposto à
+              ponta se não compensar — por isso o nudge óptico de 1px na
+              direção que a seta aponta. */}
+          <ChevronLeft size={18} strokeWidth={2.2} style={{ transform: 'translateX(-1px)' }} aria-hidden="true" />
+        </button>
+        <div className={styles.monthTitle}>
+          {mesNome}
+          <span className={styles.monthAno}> de {ano}</span>
         </div>
-      </div>
-      <div className={styles.toolbarActions}>
-        <div className={styles.navGroup}>
-          <button className={styles.navButton} onClick={() => onNav(-1)} disabled={carregando} aria-label="Mês anterior">
-            ‹
-          </button>
-          <button className={styles.navButton} onClick={() => onNav(1)} disabled={carregando} aria-label="Próximo mês">
-            ›
-          </button>
-        </div>
-        <button className={styles.addButton} onClick={onAdicionar}>
-          + Adicionar
+        <button className={styles.monthNavBtn} onClick={() => onNav(1)} disabled={carregando} aria-label="Próximo mês">
+          <ChevronRight size={18} strokeWidth={2.2} style={{ transform: 'translateX(1px)' }} aria-hidden="true" />
         </button>
       </div>
+      {botaoAdicionar}
     </div>
   );
 }
@@ -571,7 +645,14 @@ function SummaryCards({ totals, moeda }) {
       <SummaryCard label="A pagar" icone={Clock} valor={totals.pendente} moeda={moeda} cor="var(--ink)" />
       <SummaryCard label="Em atraso" icone={TriangleAlert} valor={totals.atrasado} moeda={moeda} cor="var(--status-atrasado)" />
       <SummaryCard label="Entradas" icone={TrendingUp} valor={totals.receita} moeda={moeda} cor="var(--status-receita)" />
-      <SummaryCard label="Reservas" icone={PiggyBank} valor={totals.reservado || 0} moeda={moeda} cor="var(--status-reserva)" />
+      <SummaryCard
+        label="Reservas"
+        icone={PiggyBank}
+        valor={totals.reservado || 0}
+        moeda={moeda}
+        cor="var(--status-reserva)"
+        larguraTotalMobile
+      />
       <div className={styles.summaryDivider} aria-hidden="true" />
       <SummaryCard
         label="Disponível"
@@ -585,10 +666,10 @@ function SummaryCards({ totals, moeda }) {
   );
 }
 
-function SummaryCard({ label, icone: Icone, valor, moeda, cor, destaque, heroi }) {
+function SummaryCard({ label, icone: Icone, valor, moeda, cor, destaque, heroi, larguraTotalMobile }) {
   return (
     <div
-      className={`${styles.summaryCard} ${heroi ? styles.summaryCardHero : destaque ? styles.summaryCardDestaque : ''}`}
+      className={`${styles.summaryCard} ${heroi ? styles.summaryCardHero : destaque ? styles.summaryCardDestaque : ''} ${larguraTotalMobile ? styles.summaryCardLarga : ''}`}
       style={heroi ? { borderColor: cor, background: `color-mix(in srgb, ${cor} 8%, var(--surface-raised))` } : undefined}
     >
       <div className={styles.summaryLabel}>
@@ -735,7 +816,7 @@ function Item({ item, moeda, onEditar, onTogglePago, onPedirAcao }) {
           onClick={(ev) => { ev.stopPropagation(); onTogglePago(item); }}
           onKeyDown={(ev) => ev.stopPropagation()}
           aria-pressed={concluido}
-          aria-label={`${concluido ? 'Desmarcar' : 'Marcar'} ${item.tipo === 'reserva' ? 'guardado' : 'pago'}: ${item.nome}`}
+          aria-label={`${concluido ? 'Desmarcar' : 'Marcar'} ${item.tipo === 'reserva' ? 'reservado' : 'pago'}: ${item.nome}`}
         >
           <Check size={8} strokeWidth={3.5} aria-hidden="true" />
         </button>
@@ -913,31 +994,11 @@ function DayListRow({ item, moeda, onEditar, onTogglePago, comIcone }) {
           className={`${styles.agendaCheck} ${item.tipo === 'reserva' ? styles.agendaCheckReserva : ''} ${concluido ? styles.agendaCheckOn : ''}`}
           onClick={(ev) => { ev.stopPropagation(); onTogglePago(item); }}
           aria-pressed={concluido}
-          aria-label={`${concluido ? 'Desmarcar' : 'Marcar'} ${item.tipo === 'reserva' ? 'guardado' : 'pago'}: ${item.nome}`}
+          aria-label={`${concluido ? 'Desmarcar' : 'Marcar'} ${item.tipo === 'reserva' ? 'reservado' : 'pago'}: ${item.nome}`}
         >
           <Check size={14} strokeWidth={2.5} aria-hidden="true" />
         </button>
       )}
-    </div>
-  );
-}
-
-function ViewToggle({ vista, onChange }) {
-  const opcoes = [['mes', 'Mês'], ['agenda', 'Agenda']];
-  return (
-    <div className={styles.viewToggle} role="tablist" aria-label="Visualização">
-      {opcoes.map(([valor, label]) => (
-        <button
-          key={valor}
-          type="button"
-          role="tab"
-          aria-selected={vista === valor}
-          className={`${styles.viewToggleBtn} ${vista === valor ? styles.viewToggleBtnActive : ''}`}
-          onClick={() => onChange(valor)}
-        >
-          {label}
-        </button>
-      ))}
     </div>
   );
 }
@@ -1026,7 +1087,7 @@ function SemData({ itens, moeda, onEditar, onTogglePago }) {
                 className={`${styles.agendaCheck} ${styles.semDataCheck} ${item.tipo === 'reserva' ? styles.agendaCheckReserva : ''} ${concluido ? styles.agendaCheckOn : ''}`}
                 onClick={(ev) => { ev.stopPropagation(); onTogglePago(item); }}
                 aria-pressed={concluido}
-                aria-label={`${concluido ? 'Desmarcar' : 'Marcar'} ${item.tipo === 'reserva' ? 'guardado' : 'pago'}: ${item.nome}`}
+                aria-label={`${concluido ? 'Desmarcar' : 'Marcar'} ${item.tipo === 'reserva' ? 'reservado' : 'pago'}: ${item.nome}`}
               >
                 <Check size={10} strokeWidth={2.5} aria-hidden="true" />
               </button>
@@ -1045,14 +1106,22 @@ const OPCOES_TIPO = [
   { valor: 'renda', label: 'Renda' },
   { valor: 'reserva', label: 'Reserva' },
 ];
+const OPCOES_STATUS_CUSTO = [
+  { valor: 'nao', label: 'Não pago' },
+  { valor: 'sim', label: 'Pago' },
+];
+const OPCOES_STATUS_RESERVA = [
+  { valor: 'nao', label: 'Não reservado' },
+  { valor: 'sim', label: 'Reservado' },
+];
 
-// Interruptor terracota (Parcelado, Repetir todo mês). Mantém um <input
-// type="checkbox" role="switch"> escondido, então teclado e leitor de tela seguem
-// funcionando; o trilho desenhado ao lado reflete o estado via CSS. A linha
-// inteira é clicável. `fim`: última linha antes dos botões (mais espaço embaixo).
-function Interruptor({ marcado, onChange, fim, children }) {
+// Interruptor em linha do grupo (Parcelado, Repetir todo mês): ícone + rótulo à
+// esquerda, trilho à direita. Mantém um <input type="checkbox" role="switch">
+// escondido, então teclado e leitor de tela seguem funcionando; o trilho
+// desenhado reflete o estado via CSS. A linha inteira é clicável.
+function Interruptor({ marcado, onChange, icone: Icone, children }) {
   return (
-    <label className={`${styles.switchRow} ${fim ? styles.switchRowFim : ''}`}>
+    <label className={`${styles.linha} ${styles.linhaToggle}`}>
       <input
         type="checkbox"
         role="switch"
@@ -1063,20 +1132,23 @@ function Interruptor({ marcado, onChange, fim, children }) {
       <span className={styles.switchTrack} aria-hidden="true">
         <span className={styles.switchThumb} />
       </span>
-      <span className={styles.switchLabel}>{children}</span>
+      <span className={styles.linhaRotulo}>
+        <Icone size={18} strokeWidth={2} aria-hidden="true" />
+        {children}
+      </span>
     </label>
   );
 }
 
 // Seletor segmentado com a pílula deslizante (estilo "liquid glass"). `--n` ajusta
-// a largura da pílula ao número de opções (3 em Custo/Renda/Reserva e na
-// frequência de renda; 2 na de reserva). Se o valor atual não estiver entre as
-// opções, a pílula some em vez de marcar a primeira.
+// a largura da pílula ao número de opções (hoje só o tipo: Custo/Renda/Reserva).
+// Se o valor atual não estiver entre as opções, a pílula some em vez de marcar a
+// primeira.
 function Segmentado({ opcoes, valor, onChange, ariaLabel, compacto }) {
   const indice = opcoes.findIndex((o) => o.valor === valor);
   return (
     <div
-      className={`${styles.segmented} ${compacto ? styles.segmentedSm : ''}`}
+      className={`${styles.segmented} ${compacto ? styles.segmentedCompacto : ''}`}
       role="tablist"
       aria-label={ariaLabel}
       style={{ '--n': opcoes.length }}
@@ -1101,6 +1173,290 @@ function Segmentado({ opcoes, valor, onChange, ariaLabel, compacto }) {
     </div>
   );
 }
+// Dropdown customizado (lista num portal pro document.body, pra não ser
+// cortada pelo overflow-y:auto do modal). Visual próprio: pílula igual aos
+// outros campos, lista com cantos arredondados e gap embaixo da pílula, item
+// em foco/hover usa o mesmo creme (--interactive) do resto do app em vez do
+// azul padrão do navegador.
+// Topo de um popup `position: fixed` ancorado num gatilho (rect `r`): abaixo do
+// gatilho; se não couber, acima; se também não couber (janela baixa), encosta na
+// borda de baixo da janela em vez de ficar cortado.
+function topoPopup(r, altura) {
+  const margem = 8;
+  const abaixo = r.bottom + 6;
+  if (abaixo + altura <= window.innerHeight - margem) return abaixo;
+  const acima = r.top - 6 - altura;
+  if (acima >= margem) return acima;
+  return Math.max(margem, window.innerHeight - altura - margem);
+}
+
+// `linha` ({ Icone, rotulo }): em vez da pílula, renderiza uma linha de grupo
+// (ícone + rótulo à esquerda, valor + seta à direita) e a lista abre alinhada à direita.
+function Dropdown({ opcoes, valor, onChange, ariaLabel, style, linha }) {
+  const [aberto, setAberto] = useState(false);
+  const [posicao, setPosicao] = useState(null);
+  const [indiceAtivo, setIndiceAtivo] = useState(0);
+  const gatilhoRef = useRef(null);
+  const listaRef = useRef(null);
+  const idBase = useId();
+
+  const selecionada = opcoes.find((o) => o.valor === valor);
+
+  const abrir = () => {
+    const r = gatilhoRef.current.getBoundingClientRect();
+    const largura = linha ? Math.min(r.width, 240) : r.width;
+    const altura = Math.min(280, opcoes.length * 38 + 16);
+    setPosicao({ top: topoPopup(r, altura), left: linha ? r.right - largura : r.left, width: largura });
+    setIndiceAtivo(Math.max(opcoes.findIndex((o) => o.valor === valor), 0));
+    setAberto(true);
+  };
+
+  const selecionar = (opcao) => {
+    onChange(opcao);
+    setAberto(false);
+    gatilhoRef.current?.focus();
+  };
+
+  useEffect(() => {
+    if (!aberto) return undefined;
+    const fechar = (e) => {
+      if (gatilhoRef.current?.contains(e.target) || listaRef.current?.contains(e.target)) return;
+      setAberto(false);
+    };
+    // Ignora o scroll interno da própria lista (ela rola — tem mais opções do
+    // que cabem no max-height); só fecha quando quem rolou foi o fundo do modal.
+    const fecharNoScroll = (e) => {
+      if (listaRef.current?.contains(e.target)) return;
+      setAberto(false);
+    };
+    document.addEventListener('mousedown', fechar);
+    window.addEventListener('scroll', fecharNoScroll, true);
+    window.addEventListener('resize', fecharNoScroll);
+    return () => {
+      document.removeEventListener('mousedown', fechar);
+      window.removeEventListener('scroll', fecharNoScroll, true);
+      window.removeEventListener('resize', fecharNoScroll);
+    };
+  }, [aberto]);
+
+  useEffect(() => {
+    if (!aberto) return;
+    listaRef.current?.querySelector(`[data-indice="${indiceAtivo}"]`)?.scrollIntoView({ block: 'nearest' });
+  }, [aberto, indiceAtivo]);
+
+  const aoTeclar = (e) => {
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      if (!aberto) abrir();
+      else setIndiceAtivo((i) => Math.min(i + 1, opcoes.length - 1));
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      if (!aberto) abrir();
+      else setIndiceAtivo((i) => Math.max(i - 1, 0));
+    } else if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      if (aberto) selecionar(opcoes[indiceAtivo].valor);
+      else abrir();
+    } else if (e.key === 'Escape' && aberto) {
+      e.preventDefault();
+      setAberto(false);
+    }
+  };
+
+  return (
+    <>
+      <button
+        type="button"
+        ref={gatilhoRef}
+        className={linha ? `${styles.linha} ${styles.linhaGatilho}` : `${styles.fieldInput} ${styles.dropdownGatilho}`}
+        style={style}
+        role="combobox"
+        aria-label={linha ? linha.rotulo : undefined}
+        aria-haspopup="listbox"
+        aria-expanded={aberto}
+        aria-controls={`${idBase}-listbox`}
+        aria-activedescendant={aberto ? `${idBase}-${indiceAtivo}` : undefined}
+        onClick={() => (aberto ? setAberto(false) : abrir())}
+        onKeyDown={aoTeclar}
+      >
+        {linha && (
+          <span className={styles.linhaRotulo}>
+            <linha.Icone size={18} strokeWidth={2} aria-hidden="true" />
+            {linha.rotulo}
+          </span>
+        )}
+        <span className={linha ? styles.linhaValor : styles.dropdownValor}>{selecionada?.label ?? valor}</span>
+        <ChevronDown
+          size={16}
+          strokeWidth={2.2}
+          className={`${styles.dropdownSeta} ${aberto ? styles.dropdownSetaAberta : ''}`}
+          aria-hidden="true"
+        />
+      </button>
+      {aberto && posicao && createPortal(
+        <div
+          ref={listaRef}
+          id={`${idBase}-listbox`}
+          role="listbox"
+          aria-label={ariaLabel}
+          className={styles.dropdownLista}
+          style={{ top: posicao.top, left: posicao.left, width: posicao.width }}
+        >
+          {opcoes.map((o, i) => (
+            <button
+              key={o.valor}
+              type="button"
+              id={`${idBase}-${i}`}
+              data-indice={i}
+              role="option"
+              aria-selected={o.valor === valor}
+              className={`${styles.dropdownOpcao} ${i === indiceAtivo ? styles.dropdownOpcaoAtiva : ''}`}
+              onMouseEnter={() => setIndiceAtivo(i)}
+              onClick={() => selecionar(o.valor)}
+            >
+              {o.label}
+            </button>
+          ))}
+        </div>,
+        // Precisa ficar dentro de .page: é lá que as custom properties de cor
+        // (--surface-raised, --border etc.) são definidas. Um portal direto pro
+        // document.body ficaria fora desse escopo e renderizaria sem cor nenhuma.
+        document.querySelector(`.${styles.page}`) || document.body
+      )}
+    </>
+  );
+}
+
+const MESES_ABREV = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+
+// Seletor de mês em formato de calendário: popup com navegação de ano e uma
+// grade com os 12 meses (em vez de uma lista comprida pra rolar). `valor` é
+// sempre "AAAA-MM".
+// `linha`: mesmo formato de linha de grupo do Dropdown; o popup alinha à direita.
+function SeletorMes({ valor, onChange, ariaLabel, style, linha }) {
+  const [aberto, setAberto] = useState(false);
+  const [posicao, setPosicao] = useState(null);
+  const [anoExibido, setAnoExibido] = useState(() => Number(valor.slice(0, 4)));
+  const gatilhoRef = useRef(null);
+  const popupRef = useRef(null);
+
+  const anoAtual = Number(mesAtual().slice(0, 4));
+  const anoMin = anoAtual - 5;
+  const anoMax = anoAtual + 10;
+  const anoSelecionado = Number(valor.slice(0, 4));
+  const mesSelecionado = Number(valor.slice(5, 7)) - 1;
+
+  const abrir = () => {
+    const r = gatilhoRef.current.getBoundingClientRect();
+    setPosicao({ top: topoPopup(r, 232), left: linha ? r.right - 240 : r.left });
+    setAnoExibido(anoSelecionado);
+    setAberto(true);
+  };
+
+  const selecionar = (mesIndice) => {
+    onChange(`${anoExibido}-${String(mesIndice + 1).padStart(2, '0')}`);
+    setAberto(false);
+    gatilhoRef.current?.focus();
+  };
+
+  useEffect(() => {
+    if (!aberto) return undefined;
+    const fechar = (e) => {
+      if (gatilhoRef.current?.contains(e.target) || popupRef.current?.contains(e.target)) return;
+      setAberto(false);
+    };
+    const fecharNoScroll = (e) => {
+      if (popupRef.current?.contains(e.target)) return;
+      setAberto(false);
+    };
+    document.addEventListener('mousedown', fechar);
+    window.addEventListener('scroll', fecharNoScroll, true);
+    window.addEventListener('resize', fecharNoScroll);
+    return () => {
+      document.removeEventListener('mousedown', fechar);
+      window.removeEventListener('scroll', fecharNoScroll, true);
+      window.removeEventListener('resize', fecharNoScroll);
+    };
+  }, [aberto]);
+
+  return (
+    <>
+      <button
+        type="button"
+        ref={gatilhoRef}
+        className={linha ? `${styles.linha} ${styles.linhaGatilho}` : `${styles.fieldInput} ${styles.dropdownGatilho}`}
+        style={style}
+        aria-label={linha ? linha.rotulo : undefined}
+        aria-haspopup="dialog"
+        aria-expanded={aberto}
+        onClick={() => (aberto ? setAberto(false) : abrir())}
+      >
+        {linha && (
+          <span className={styles.linhaRotulo}>
+            <linha.Icone size={18} strokeWidth={2} aria-hidden="true" />
+            {linha.rotulo}
+          </span>
+        )}
+        <span className={linha ? styles.linhaValor : styles.dropdownValor}>{tituloMes(valor)}</span>
+        <ChevronDown
+          size={16}
+          strokeWidth={2.2}
+          className={`${styles.dropdownSeta} ${aberto ? styles.dropdownSetaAberta : ''}`}
+          aria-hidden="true"
+        />
+      </button>
+      {aberto && posicao && createPortal(
+        <div
+          ref={popupRef}
+          role="dialog"
+          aria-label={ariaLabel}
+          className={styles.mesPopup}
+          style={{ top: posicao.top, left: posicao.left }}
+        >
+          <div className={styles.mesPopupHeader}>
+            <button
+              type="button"
+              className={styles.mesPopupNav}
+              disabled={anoExibido <= anoMin}
+              onClick={() => setAnoExibido((a) => a - 1)}
+              aria-label="Ano anterior"
+            >
+              <ChevronLeft size={16} strokeWidth={2.2} />
+            </button>
+            <span className={styles.mesPopupAno}>{anoExibido}</span>
+            <button
+              type="button"
+              className={styles.mesPopupNav}
+              disabled={anoExibido >= anoMax}
+              onClick={() => setAnoExibido((a) => a + 1)}
+              aria-label="Próximo ano"
+            >
+              <ChevronRight size={16} strokeWidth={2.2} />
+            </button>
+          </div>
+          <div className={styles.mesPopupGrid}>
+            {MESES_ABREV.map((label, i) => {
+              const ativo = anoExibido === anoSelecionado && i === mesSelecionado;
+              return (
+                <button
+                  key={label}
+                  type="button"
+                  aria-pressed={ativo}
+                  className={`${styles.mesPopupMes} ${ativo ? styles.mesPopupMesAtiva : ''}`}
+                  onClick={() => selecionar(i)}
+                >
+                  {label}
+                </button>
+              );
+            })}
+          </div>
+        </div>,
+        document.querySelector(`.${styles.page}`) || document.body
+      )}
+    </>
+  );
+}
+
 const DIAS_SEMANA_OPCOES = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'];
 
 function semAcentoLocal(s) {
@@ -1128,7 +1484,68 @@ function normalizarNome(s) {
   return String(s == null ? '' : s).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
 }
 
-function PaymentPanel({ mes, erro, nomesCusto = [], categoriasCusto, modo, tipoInicial, item, onSalvar, onExcluir, onCancelar }) {
+// Valor em destaque (centro, grande): símbolo + inteiro em tinta cheia, centavos
+// em cinza e um cursor laranja. A digitação é por centavos (digita 1500 → 15,00),
+// como em apps de banco; o <input> real fica transparente por cima e só recebe o
+// foco/teclado (inputMode numérico).
+const MAX_DIGITOS_VALOR = 9;
+
+function partesDoValor(centavos, moeda) {
+  const valor = centavos / 100;
+  try {
+    const partes = new Intl.NumberFormat(localeDaMoeda(moeda), { style: 'currency', currency: moeda || 'BRL' }).formatToParts(valor);
+    let simbolo = '';
+    let inteiro = '';
+    let decimal = '';
+    for (const p of partes) {
+      if (p.type === 'currency') simbolo = p.value;
+      else if (p.type === 'integer' || p.type === 'group') inteiro += p.value;
+      else if (p.type === 'decimal' || p.type === 'fraction') decimal += p.value;
+    }
+    return { simbolo, inteiro, decimal };
+  } catch (e) {
+    if (!(e instanceof RangeError)) throw e;
+    const [i, d] = valor.toFixed(2).split('.');
+    return { simbolo: moeda || 'BRL', inteiro: i, decimal: `,${d}` };
+  }
+}
+
+function CampoValor({ rotulo, valor, onChange, moeda }) {
+  const [focado, setFocado] = useState(false);
+  const centavos = Math.round((Number(valor) || 0) * 100);
+  const { simbolo, inteiro, decimal } = partesDoValor(centavos, moeda);
+
+  const aoDigitar = (e) => {
+    const digitos = e.target.value.replace(/\D/g, '').slice(0, MAX_DIGITOS_VALOR);
+    const c = digitos ? parseInt(digitos, 10) : 0;
+    onChange(c ? (c / 100).toFixed(2) : '');
+  };
+
+  return (
+    <label className={styles.valorCampo}>
+      <span className={styles.valorRotulo}>{rotulo}</span>
+      <span className={`${styles.valorDisplay} ${centavos === 0 ? styles.valorVazio : ''}`} aria-hidden="true">
+        <span className={styles.valorSimbolo}>{simbolo}</span>
+        <span>{inteiro}</span>
+        <span className={styles.valorCentavos}>{decimal}</span>
+        {focado && <span className={styles.valorCursor} />}
+      </span>
+      <input
+        className={styles.valorInput}
+        type="text"
+        inputMode="numeric"
+        autoComplete="off"
+        aria-label={rotulo}
+        value={centavos ? String(centavos) : ''}
+        onChange={aoDigitar}
+        onFocus={() => setFocado(true)}
+        onBlur={() => setFocado(false)}
+      />
+    </label>
+  );
+}
+
+function PaymentPanel({ mes, erro, nomesCusto = [], categoriasCusto, moeda, modo, tipoInicial, item, onSalvar, onExcluir, onCancelar }) {
   const [tipo, setTipo] = useState(item ? item.tipo : tipoInicial);
   const [descricao, setDescricao] = useState(item?.nome || '');
   const [valor, setValor] = useState(item ? String(item.valor) : '');
@@ -1142,12 +1559,14 @@ function PaymentPanel({ mes, erro, nomesCusto = [], categoriasCusto, modo, tipoI
   const [parcelas, setParcelas] = useState(item?.parcela ? String(item.parcela.total) : '');
   const [parcelaAtual, setParcelaAtual] = useState(item?.parcela ? String(item.parcela.atual) : '1');
   const [statusGuardado, setStatusGuardado] = useState(item?.statusReserva === 'guardado');
+  const [inicio, setInicio] = useState(() => (item?.dataInicio ? item.dataInicio.slice(0, 7) : mes));
   const [salvando, setSalvando] = useState(false);
   const [excluindo, setExcluindo] = useState(false);
   const [confirmDuplicado, setConfirmDuplicado] = useState(false);
 
   const ehRenda = tipo === 'renda';
   const ehReserva = tipo === 'reserva';
+  const ehCusto = !ehRenda && !ehReserva;
   const ehSemanal = ehRenda && frequencia === 'Semanal';
   const comParcelas = !ehRenda && !ehReserva && parcelado;
   const parcelasValidas =
@@ -1164,6 +1583,7 @@ function PaymentPanel({ mes, erro, nomesCusto = [], categoriasCusto, modo, tipoI
         frequencia,
         diaRecebimento: ehSemanal ? diaSemana : Number(diaMes),
         repetirTodoMes,
+        dataInicio: inicio,
       };
     }
     if (ehReserva) {
@@ -1173,6 +1593,7 @@ function PaymentPanel({ mes, erro, nomesCusto = [], categoriasCusto, modo, tipoI
         frequencia,
         dia: Number(diaMes),
         repetirTodoMes,
+        dataInicio: inicio,
       };
     }
     return {
@@ -1181,6 +1602,7 @@ function PaymentPanel({ mes, erro, nomesCusto = [], categoriasCusto, modo, tipoI
       categoria,
       dia: Number(diaMes),
       repetirTodoMes,
+      dataInicio: inicio,
       ...(comParcelas && incluirParcelas && { parcelas: Number(parcelas), parcelaAtual: Number(parcelaAtual) }),
     };
   };
@@ -1193,8 +1615,12 @@ function PaymentPanel({ mes, erro, nomesCusto = [], categoriasCusto, modo, tipoI
     } else if (modo === 'editar' && tipo === 'reserva' && statusGuardado !== (item.statusReserva === 'guardado')) {
       statusExtra = statusGuardado ? 'Guardado' : 'Pendente';
     }
+    // Criar já pago/guardado: o status vai junto com o lançamento (o servidor marca).
+    let statusNaCriacao = {};
+    if (modo === 'criar' && tipo === 'custo' && statusPago) statusNaCriacao = { statusPagamento: 'Pago' };
+    else if (modo === 'criar' && tipo === 'reserva' && statusGuardado) statusNaCriacao = { statusReserva: 'Guardado' };
     try {
-      await onSalvar(tipo, montarForm(), statusExtra);
+      await onSalvar(tipo, { ...montarForm(), ...statusNaCriacao }, statusExtra);
     } finally {
       setSalvando(false);
     }
@@ -1231,32 +1657,70 @@ function PaymentPanel({ mes, erro, nomesCusto = [], categoriasCusto, modo, tipoI
     ? (ehRenda ? 'Nova renda' : ehReserva ? 'Nova reserva' : 'Novo pagamento')
     : `Editar ${substantivo}`;
 
+  // Mobile (folha de baixo): arrastar a alça pra baixo fecha, como no iOS. O painel
+  // acompanha o dedo; soltando longe o bastante ele desce e fecha, senão volta.
+  const painelRef = useRef(null);
+  const arrasto = useRef(null);
+  const ARRASTO_PARA_FECHAR = 100;
+
+  const comecarArrasto = (e) => {
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
+    arrasto.current = { y: e.clientY, dy: 0 };
+    e.currentTarget.setPointerCapture(e.pointerId);
+    painelRef.current.style.transition = 'none';
+  };
+  const arrastar = (e) => {
+    const a = arrasto.current;
+    if (!a) return;
+    a.dy = Math.max(0, e.clientY - a.y);
+    painelRef.current.style.transform = `translateY(${a.dy}px)`;
+  };
+  const soltarArrasto = () => {
+    const a = arrasto.current;
+    if (!a) return;
+    arrasto.current = null;
+    const el = painelRef.current;
+    el.style.transition = 'transform 0.25s cubic-bezier(0.32, 0.72, 0, 1)';
+    if (a.dy > ARRASTO_PARA_FECHAR) {
+      el.style.transform = 'translateY(100%)';
+      setTimeout(onCancelar, 220);
+    } else {
+      el.style.transform = '';
+      setTimeout(() => {
+        if (painelRef.current) painelRef.current.style.transition = '';
+      }, 260);
+    }
+  };
+
   return (
-    <div
-      style={{
-        position: 'fixed',
-        inset: 0,
-        background: 'var(--scrim)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        zIndex: 50,
-      }}
-      onClick={onCancelar}
-    >
+    <div className={styles.paymentOverlay} onClick={onCancelar}>
       <div
-        className={`${styles.panel} ${styles.modalPanel}`}
-        style={{
-          width: 440,
-          maxWidth: '90vw',
-          maxHeight: '90vh',
-          overflowY: 'auto',
-          boxSizing: 'border-box',
-        }}
+        ref={painelRef}
+        className={`${styles.panel} ${styles.modalPanel} ${styles.paymentPanel}`}
         onClick={(e) => e.stopPropagation()}
       >
-      {modo !== 'criar' && <div className={styles.panelTitle}>{titulo}</div>}
-      <div className={styles.panelSubtitle}>{tituloMes(mes)}</div>
+      {/* Mobile: alça + Cancelar | título | Salvar no topo (fixo ao rolar); os botões
+          de baixo somem. No desktop esta barra fica oculta. */}
+      <div className={styles.sheetTopo}>
+        <div
+          className={styles.sheetAlca}
+          onPointerDown={comecarArrasto}
+          onPointerMove={arrastar}
+          onPointerUp={soltarArrasto}
+          onPointerCancel={soltarArrasto}
+          aria-hidden="true"
+        />
+        <div className={styles.sheetHeader}>
+          <button type="button" className={styles.sheetCancelar} onClick={onCancelar}>
+            Cancelar
+          </button>
+          <span className={styles.sheetTitulo}>{titulo}</span>
+          <button type="button" className={styles.sheetSalvar} disabled={!valido || salvando} onClick={salvar}>
+            {salvando ? 'Salvando…' : 'Salvar'}
+          </button>
+        </div>
+      </div>
+      {modo !== 'criar' && <div className={`${styles.panelTitle} ${styles.tituloDesktop}`}>{titulo}</div>}
 
       {modo === 'criar' && (
         <Segmentado
@@ -1267,9 +1731,14 @@ function PaymentPanel({ mes, erro, nomesCusto = [], categoriasCusto, modo, tipoI
             setTipo(val);
             setFrequencia('Mensal');
             setRepetirTodoMes(true);
+            setStatusPago(false);
+            setStatusGuardado(false);
           }}
         />
       )}
+
+      <CampoValor rotulo={comParcelas ? 'Valor da parcela' : 'Valor'} valor={valor} onChange={setValor} moeda={moeda} />
+      {erro && <div className={`${styles.errorText} ${styles.erroTopo}`}>{erro}</div>}
 
       <label className={styles.fieldLabel}>{ehRenda ? 'Fonte' : 'Descrição'}</label>
       <input
@@ -1279,97 +1748,60 @@ function PaymentPanel({ mes, erro, nomesCusto = [], categoriasCusto, modo, tipoI
         placeholder={ehRenda ? 'Salário' : ehReserva ? 'Reserva de emergência' : 'Assinatura de streaming'}
       />
 
-      <div className={styles.fieldRow}>
-        <div style={{ flex: 1.3 }}>
-          <label className={styles.fieldLabel}>{comParcelas ? 'Valor da parcela' : 'Valor'}</label>
-          <input
-            className={styles.fieldInput}
-            style={{ marginBottom: 0 }}
-            type="number"
-            min="0"
-            step="0.01"
-            value={valor}
-            onChange={(e) => setValor(e.target.value)}
-            placeholder="15,00"
-          />
-        </div>
-        <div style={{ flex: 1 }}>
-          {ehSemanal ? (
-            <>
-              <label className={styles.fieldLabel}>Dia da semana</label>
-              <select
-                className={styles.fieldInput}
-                style={{ marginBottom: 0 }}
-                value={diaSemana}
-                onChange={(e) => setDiaSemana(e.target.value)}
-              >
-                {DIAS_SEMANA_OPCOES.map((d) => (
-                  <option key={d} value={d}>
-                    {d}
-                  </option>
-                ))}
-              </select>
-            </>
-          ) : (
-            <>
-              <label className={styles.fieldLabel}>Dia</label>
+      {/* Mesma estrutura nos três tipos: um cartão de linhas (rótulo com ícone à
+          esquerda, valor/controle à direita). A 1ª linha é Categoria (custo) ou
+          Frequência (renda/reserva); o resto é igual. */}
+      <div className={styles.grupo}>
+        {ehCusto && modo === 'criar' && (
+          <Interruptor icone={CreditCard} marcado={parcelado} onChange={setParcelado}>
+            Parcelado
+          </Interruptor>
+        )}
+        {comParcelas && (
+          <>
+            <label className={styles.linha}>
+              <span className={styles.linhaRotulo}>
+                <Layers size={18} strokeWidth={2} aria-hidden="true" />
+                Parcelas
+              </span>
               <input
-                className={styles.fieldInput}
-                style={{ marginBottom: 0 }}
+                className={styles.linhaInput}
+                type="number"
+                min="2"
+                max="120"
+                value={parcelas}
+                onChange={(e) => setParcelas(e.target.value)}
+                placeholder="10"
+              />
+            </label>
+            <label className={styles.linha}>
+              <span className={styles.linhaRotulo}>
+                <Hash size={18} strokeWidth={2} aria-hidden="true" />
+                Parcela atual
+              </span>
+              <input
+                className={styles.linhaInput}
                 type="number"
                 min="1"
-                max="31"
-                value={diaMes}
-                onChange={(e) => setDiaMes(e.target.value)}
-                placeholder="23"
+                max={parcelas || undefined}
+                value={parcelaAtual}
+                onChange={(e) => setParcelaAtual(e.target.value)}
+                placeholder="1"
               />
-            </>
-          )}
-        </div>
-      </div>
-
-      {modo === 'criar' && !ehRenda && !ehReserva && (
-        <Interruptor marcado={parcelado} onChange={setParcelado}>
-          Parcelado
-        </Interruptor>
-      )}
-
-      {comParcelas && (
-        <div className={styles.fieldRow}>
-          <div style={{ flex: 1 }}>
-            <label className={styles.fieldLabel}>Parcelas</label>
-            <input
-              className={styles.fieldInput}
-              style={{ marginBottom: 0 }}
-              type="number"
-              min="2"
-              max="120"
-              value={parcelas}
-              onChange={(e) => setParcelas(e.target.value)}
-              placeholder="10"
-            />
-          </div>
-          <div style={{ flex: 1 }}>
-            <label className={styles.fieldLabel}>Parcela atual</label>
-            <input
-              className={styles.fieldInput}
-              style={{ marginBottom: 0 }}
-              type="number"
-              min="1"
-              max={parcelas || undefined}
-              value={parcelaAtual}
-              onChange={(e) => setParcelaAtual(e.target.value)}
-              placeholder="1"
-            />
-          </div>
-        </div>
-      )}
-
-      {ehRenda || ehReserva ? (
-        <>
-          <label className={styles.fieldLabel}>Frequência</label>
-          <Segmentado
-            compacto
+            </label>
+          </>
+        )}
+        {ehCusto ? (
+          <Dropdown
+            linha={{ Icone: Tag, rotulo: 'Categoria' }}
+            ariaLabel="Categoria"
+            opcoes={categoriasCusto.map((c) => ({ valor: c.nome, label: c.nome }))}
+            valor={categoria}
+            onChange={setCategoria}
+          />
+        ) : (
+          <Dropdown
+            linha={{ Icone: Clock, rotulo: 'Frequência' }}
             ariaLabel="Frequência"
             opcoes={(ehReserva ? FREQUENCIAS_RESERVA : FREQUENCIAS_RENDA).map((f) => ({ valor: f, label: f }))}
             valor={frequencia}
@@ -1378,80 +1810,69 @@ function PaymentPanel({ mes, erro, nomesCusto = [], categoriasCusto, modo, tipoI
               setRepetirTodoMes(f !== 'Única');
             }}
           />
-        </>
-      ) : (
-        <>
-          <label className={styles.fieldLabel}>Categoria</label>
-          <div className={styles.chipsRow}>
-            {categoriasCusto.map((c) => {
-              const IconeCat = iconeCategoria(c.nome);
-              return (
-                <button
-                  key={c.nome}
-                  type="button"
-                  className={`${styles.chip} ${categoria === c.nome ? styles.chipActive : ''}`}
-                  onClick={() => setCategoria(c.nome)}
-                >
-                  <IconeCat size={14} strokeWidth={2.2} style={{ color: corIcone(c.cor), flex: 'none' }} aria-hidden="true" />
-                  {c.nome}
-                </button>
-              );
-            })}
-          </div>
-        </>
-      )}
+        )}
+        {ehSemanal ? (
+          <Dropdown
+            linha={{ Icone: CalendarDays, rotulo: 'Dia da semana' }}
+            ariaLabel="Dia da semana"
+            opcoes={DIAS_SEMANA_OPCOES.map((d) => ({ valor: d, label: d }))}
+            valor={diaSemana}
+            onChange={setDiaSemana}
+          />
+        ) : (
+          <label className={styles.linha}>
+            <span className={styles.linhaRotulo}>
+              <CalendarDays size={18} strokeWidth={2} aria-hidden="true" />
+              Dia do mês
+            </span>
+            <input
+              className={styles.linhaInput}
+              type="number"
+              min="1"
+              max="31"
+              value={diaMes}
+              onChange={(e) => setDiaMes(e.target.value)}
+              placeholder="23"
+            />
+          </label>
+        )}
+        {!comParcelas && (
+          <SeletorMes
+            linha={{ Icone: CalendarClock, rotulo: 'Começa em' }}
+            ariaLabel="Começa em"
+            valor={inicio}
+            onChange={setInicio}
+          />
+        )}
+        {!comParcelas && (
+          <Interruptor icone={Repeat} marcado={repetirTodoMes} onChange={setRepetirTodoMes}>
+            Repetir todo mês
+          </Interruptor>
+        )}
+      </div>
 
-      {modo === 'editar' && !ehRenda && !ehReserva && (
-        <>
-          <label className={styles.fieldLabel}>Status</label>
-          <div className={styles.statusToggle}>
-            <button
-              type="button"
-              className={`${styles.statusOption} ${!statusPago ? styles.statusOptionActive : ''}`}
-              onClick={() => setStatusPago(false)}
-            >
-              Não pago
-            </button>
-            <button
-              type="button"
-              className={`${styles.statusOption} ${statusPago ? styles.statusOptionActive : ''}`}
-              onClick={() => setStatusPago(true)}
-            >
-              Pago
-            </button>
-          </div>
-        </>
-      )}
-
-      {modo === 'editar' && ehReserva && (
+      {(ehCusto || ehReserva) && (
         <>
           <label className={styles.fieldLabel}>Status</label>
-          <div className={styles.statusToggle}>
-            <button
-              type="button"
-              className={`${styles.statusOption} ${!statusGuardado ? styles.statusOptionActive : ''}`}
-              onClick={() => setStatusGuardado(false)}
-            >
-              Não guardado
-            </button>
-            <button
-              type="button"
-              className={`${styles.statusOption} ${statusGuardado ? styles.statusOptionActive : ''}`}
-              onClick={() => setStatusGuardado(true)}
-            >
-              Guardado
-            </button>
-          </div>
+          {ehCusto ? (
+            <Segmentado
+              ariaLabel="Status do pagamento"
+              opcoes={OPCOES_STATUS_CUSTO}
+              valor={statusPago ? 'sim' : 'nao'}
+              onChange={(v) => setStatusPago(v === 'sim')}
+            />
+          ) : (
+            <Segmentado
+              ariaLabel="Status da reserva"
+              opcoes={OPCOES_STATUS_RESERVA}
+              valor={statusGuardado ? 'sim' : 'nao'}
+              onChange={(v) => setStatusGuardado(v === 'sim')}
+            />
+          )}
         </>
       )}
 
-      {!comParcelas && (
-        <Interruptor marcado={repetirTodoMes} onChange={setRepetirTodoMes} fim>
-          Repetir todo mês
-        </Interruptor>
-      )}
-
-      {erro && <div className={styles.errorText}>{erro}</div>}
+      {erro && <div className={`${styles.errorText} ${styles.erroBase}`}>{erro}</div>}
 
       <div className={styles.panelActions}>
         <button className={styles.btnPrimary} disabled={!valido || salvando} onClick={salvar}>
@@ -1567,7 +1988,7 @@ function ConfirmModal({ titulo, mensagem, confirmarLabel = 'Confirmar', cancelar
 
 function AcaoPagamentoModal({ item, onPagar, onEditar, onCancelar }) {
   const ehReserva = item.tipo === 'reserva';
-  const pagarLabel = ehReserva ? 'Guardado' : 'Pago';
+  const pagarLabel = ehReserva ? 'Reservado' : 'Pago';
   const [confirmando, setConfirmando] = useState(false);
 
   // Feedback: botão pisca verde e só então a ação (pagar/guardar) + fecha a tela.

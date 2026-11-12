@@ -162,11 +162,22 @@ describe('editarCusto', () => {
     expect(linhaEditada[header.indexOf('data_fim')]).toBe('');
   });
 
-  test('não mexe em Data_Início (preserva a original)', async () => {
+  test('sem "dataInicio" no pedido e Data_Início vazia na planilha: preenche com o mês visualizado', async () => {
     await editarCusto(base);
     const header = escrita.cabecalhoCusto(fx.SHEETS.CUSTO_FIXO);
     const [, , , linhaEditada] = sheets.updateRow.mock.calls[0];
-    expect(linhaEditada[header.indexOf('data_inicio')]).toBe(fx.SHEETS.CUSTO_FIXO[1][header.indexOf('data_inicio')]);
+    // Aluguel (fixture) está com Data_Início vazia; sem um novo mês escolhido
+    // no "Começa em", não tem o que preservar — cai no mês visualizado (mes:
+    // '2026-09' no `base`), igual já acontecia na criação de um item novo.
+    expect(linhaEditada[header.indexOf('data_inicio')]).toBe('01/09/2026');
+  });
+
+  test('"dataInicio" enviado (custo não parcelado): move o início e recalcula Data_Fim quando não recorrente', async () => {
+    await editarCusto({ ...base, repetirTodoMes: false, dataInicio: '2027-02' });
+    const header = escrita.cabecalhoCusto(fx.SHEETS.CUSTO_FIXO);
+    const [, , , linhaEditada] = sheets.updateRow.mock.calls[0];
+    expect(linhaEditada[header.indexOf('data_inicio')]).toBe('01/02/2027');
+    expect(linhaEditada[header.indexOf('data_fim')]).toBe('28/02/2027');
   });
 
   test('status: Inativo desativa; omitido preserva o original', async () => {

@@ -14,6 +14,10 @@ test('tolera acento, caixa e espaços', () => {
   expect(categoria('Software e Ferramentas').nome).toBe('Software e Ferramentas');
 });
 
+test('"Tecnologia" (categoria antiga) resolve como Software e Ferramentas', () => {
+  expect(categoria('Tecnologia').nome).toBe('Software e Ferramentas');
+});
+
 test('desconhecida ou vazia -> Outros', () => {
   expect(categoria('Xpto')).toEqual(OUTROS);
   expect(categoria('')).toEqual(OUTROS);

@@ -97,18 +97,33 @@ describe('editarRenda', () => {
     expect(linhaEditada[header.indexOf('observacoes')]).toBe(fx.SHEETS.RENDA[1][header.indexOf('observacoes')]);
   });
 
-  test('não mexe em Data_Início (preserva a original)', async () => {
+  test('sem "dataInicio" no pedido: mantém o mesmo mês de início já gravado (só normaliza o formato)', async () => {
     await editarRenda(base);
     const header = escrita.cabecalhoRenda(fx.SHEETS.RENDA);
     const [, , , linhaEditada] = sheets.updateRow.mock.calls[0];
-    expect(linhaEditada[header.indexOf('data_inicio')]).toBe(fx.SHEETS.RENDA[1][header.indexOf('data_inicio')]);
+    // Data_Início original da fixture é 01/07/2026 (serial). Sem um novo mês
+    // escolhido no "Começa em", o handler resolve a partir do que já estava
+    // gravado — não do "mes" visualizado (2026-09) — só que agora escreve
+    // sempre no formato texto (igual a criação já fazia), daí não dá pra
+    // comparar com o valor cru da fixture.
+    expect(linhaEditada[header.indexOf('data_inicio')]).toBe('01/07/2026');
   });
 
-  test('não recorrente: Data_Fim vira o fim do mês', async () => {
+  test('não recorrente: Data_Fim vira o fim do mês de início (não do mês visualizado)', async () => {
     await editarRenda({ ...base, repetirTodoMes: false });
     const header = escrita.cabecalhoRenda(fx.SHEETS.RENDA);
     const [, , , linhaEditada] = sheets.updateRow.mock.calls[0];
-    expect(linhaEditada[header.indexOf('data_fim')]).toBe('30/09/2026');
+    // Início gravado é julho/2026 (mês visualizado na edição é setembro/2026,
+    // mas isso não deve mais ditar o fim de um item de ocorrência única).
+    expect(linhaEditada[header.indexOf('data_fim')]).toBe('31/07/2026');
+  });
+
+  test('"dataInicio" enviado no pedido: move o início pro novo mês e recalcula Data_Fim quando não recorrente', async () => {
+    await editarRenda({ ...base, repetirTodoMes: false, dataInicio: '2027-01' });
+    const header = escrita.cabecalhoRenda(fx.SHEETS.RENDA);
+    const [, , , linhaEditada] = sheets.updateRow.mock.calls[0];
+    expect(linhaEditada[header.indexOf('data_inicio')]).toBe('01/01/2027');
+    expect(linhaEditada[header.indexOf('data_fim')]).toBe('31/01/2027');
   });
 
   test('muda pra mensal e valida o dia numérico', async () => {
